@@ -306,6 +306,14 @@
       color: color-mix(in srgb, var(--danger) 78%, var(--muted));
       font-weight: 620;
     }
+    .age-meta {
+      color: var(--muted);
+      font-size: .86rem;
+    }
+    .due.overdue {
+      color: color-mix(in srgb, var(--danger) 58%, var(--muted));
+      font-weight: 650;
+    }
     .list-row .task-title {
       margin: 1px 0 2px;
       font-size: 1rem;
@@ -1046,6 +1054,33 @@
       ["progress", "בתהליך"],
       ["done", "הושלם"]
     ];
+    function startOfToday() {
+      const date = new Date();
+      date.setHours(0, 0, 0, 0);
+      return date;
+    }
+    function isoDateFromOffset(days) {
+      const date = startOfToday();
+      date.setDate(date.getDate() + days);
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${date.getFullYear()}-${month}-${day}`;
+    }
+    function dateFromIso(value) {
+      if (!value) return null;
+      const date = new Date(`${value}T12:00:00`);
+      return Number.isNaN(date.getTime()) ? null : date;
+    }
+    function daysBetween(start, end = startOfToday()) {
+      const startDate = dateFromIso(start);
+      if (!startDate) return 0;
+      startDate.setHours(0, 0, 0, 0);
+      return Math.max(0, Math.floor((end - startDate) / 86400000));
+    }
+    function ageLabel(createdAt) {
+      const days = daysBetween(createdAt);
+      return days === 1 ? "נוצרה לפני יום" : `נוצרה לפני ${days} ימים`;
+    }
     const starterTasks = [
       { id: "t1", title: "אישור הזמנת ירקות", category: "kitchen", owner: "עדינה", due: "today", dueLabel: "היום · שלישי", status: "progress", notes: "לבדוק מול הספק ולאשר כמויות", updates: [{ by: "עדינה", text: "מחכה למחיר סופי" }] },
       { id: "t2", title: "בדיקת ציוד לשבת", category: "maintenance", owner: "אבי", due: "today", dueLabel: "היום · שלישי", status: "progress", notes: "לוודא שולחנות וכבלים באולם", updates: [{ by: "אבי", text: "חסר כבל מאריך אחד" }] },
@@ -1090,11 +1125,21 @@
       tasks: safeTasksStorage(),
       prefs: safeObjectStorage("beit-prefs", { dark: false, text: "רגיל" })
     };
-    state.tasks = state.tasks.map((task, index) => ({
-      priority: index % 5 === 0 ? "high" : "normal",
-      createdLabel: index % 3 === 0 ? "ראשון · 12 יוני" : "שני · 13 יוני",
-      ...task
-    }));
+    function normalizeTask(task, index) {
+      const dueDefaults = { today: isoDateFromOffset(0), tomorrow: isoDateFromOffset(1), date: isoDateFromOffset(12) };
+      const dueDate = task.status === "done" || task.due === "done" || task.due === "none"
+        ? null
+        : task.due_date || dueDefaults[task.due] || null;
+      return {
+        priority: index % 5 === 0 ? "high" : "normal",
+        created_at: task.created_at || isoDateFromOffset(-(index + 1)),
+        due_date: dueDate,
+        ...task,
+        due_date: dueDate,
+        due: task.due || (dueDate ? "date" : "none")
+      };
+    }
+    state.tasks = state.tasks.map(normalizeTask);
 
     document.body.dataset.theme = state.prefs.dark ? "dark" : "";
 
@@ -1113,6 +1158,36 @@
     }
     function cat(id) { return categories.find(c => c.id === id) || { id: "uncategorized", label: "ללא קטגוריה", icon: "office" }; }
     function priorityLabel(priority) { return priority === "high" ? "גבוהה" : "רגילה"; }
+    function formatHebrewDate(value) {
+      if (!value) return "ללא יעד";
+      const date = dateFromIso(value);
+      if (!date) return "ללא יעד";
+      const days = ["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
+      const months = ["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
+      return `${days[date.getDay()]} · ${date.getDate()} ${months[date.getMonth()]}`;
+    }
+    function isOverdue(task) {
+      if (task.status === "done" || !task.due_date) return false;
+      return dateFromIso(task.due_date) < startOfToday();
+    }
+    function taskDueLabel(task) {
+      if (task.status === "done") return task.dueLabel || "הושלם";
+      if (!task.due_date) return "ללא יעד";
+      if (isOverdue(task)) return `עבר יעד • ${formatHebrewDate(task.due_date)}`;
+      const diff = Math.round((dateFromIso(task.due_date) - startOfToday()) / 86400000);
+      if (diff === 0) return `היום · ${formatHebrewDate(task.due_date).split(" · ")[0]}`;
+      if (diff === 1) return `מחר · ${formatHebrewDate(task.due_date).split(" · ")[0]}`;
+      return formatHebrewDate(task.due_date);
+    }
+    function taskDueRank(task) {
+      if (task.status === "done") return 5;
+      if (isOverdue(task)) return 0;
+      if (!task.due_date) return 4;
+      const diff = Math.round((dateFromIso(task.due_date) - startOfToday()) / 86400000);
+      if (diff === 0) return 1;
+      if (diff === 1) return 2;
+      return 3;
+    }
     function byVisibleRole(tasks) {
       return state.role === "manager" ? tasks : tasks.filter(t => t.owner === "עדינה");
     }
@@ -1234,8 +1309,8 @@
     }
     function openTasksScreen() {
       const tasks = sortTasks(byVisibleRole(state.tasks).filter(t => t.status !== "done"));
-      const todayTasks = tasks.filter(t => t.due === "today");
-      const otherTasks = tasks.filter(t => t.due !== "today");
+      const todayTasks = tasks.filter(t => taskDueRank(t) <= 1);
+      const otherTasks = tasks.filter(t => taskDueRank(t) > 1);
       const showOwner = state.role === "manager";
       return `
         <section class="hero">
@@ -1268,15 +1343,14 @@
         </article>`;
     }
     function sortTasks(tasks) {
-      const dueOrder = { today: 0, tomorrow: 1, date: 2, done: 3 };
       return [...tasks].sort((a, b) => {
         if (state.allSort === "category") {
-          return cat(a.category).label.localeCompare(cat(b.category).label, "he") || dueOrder[a.due] - dueOrder[b.due] || a.title.localeCompare(b.title, "he");
+          return cat(a.category).label.localeCompare(cat(b.category).label, "he") || taskDueRank(a) - taskDueRank(b) || taskDueLabel(a).localeCompare(taskDueLabel(b), "he") || a.title.localeCompare(b.title, "he");
         }
         if (state.allSort === "owner") {
-          return a.owner.localeCompare(b.owner, "he") || dueOrder[a.due] - dueOrder[b.due] || a.title.localeCompare(b.title, "he");
+          return a.owner.localeCompare(b.owner, "he") || taskDueRank(a) - taskDueRank(b) || taskDueLabel(a).localeCompare(taskDueLabel(b), "he") || a.title.localeCompare(b.title, "he");
         }
-        return dueOrder[a.due] - dueOrder[b.due] || a.dueLabel.localeCompare(b.dueLabel, "he") || a.title.localeCompare(b.title, "he");
+        return taskDueRank(a) - taskDueRank(b) || taskDueLabel(a).localeCompare(taskDueLabel(b), "he") || a.title.localeCompare(b.title, "he");
       });
     }
     function sortControls() {
@@ -1300,6 +1374,7 @@
     }
     function listRow(t, showOwner) {
       const c = cat(t.category), s = statusMeta[t.status];
+      const overdue = isOverdue(t);
       return `
         <div class="list-row ${t.status === "done" ? "completed" : ""}" data-open="${t.id}" role="button" tabindex="0">
           <div class="list-row-content">
@@ -1309,7 +1384,8 @@
               <span class="status-line status-badge">${lineIcon(s.icon)} ${s.label}</span>
               <span class="priority-meta ${t.priority === "high" ? "high" : ""}">עדיפות ${priorityLabel(t.priority)}</span>
               ${showOwner ? `<span class="person-line">${lineIcon("user")} ${t.owner}</span>` : ""}
-              <span class="due">${t.dueLabel}</span>
+              <span class="due ${overdue ? "overdue" : ""}">${taskDueLabel(t)}</span>
+              <span class="age-meta">${ageLabel(t.created_at)}</span>
             </div>
           </div>
           ${t.status !== "done" ? `<button class="complete-row" type="button" data-status="${t.id}:done">${lineIcon("done")} הושלם</button>` : ""}
@@ -1319,6 +1395,7 @@
       const t = getVisibleTask(id);
       if (!t) return missingTaskScreen();
       const c = cat(t.category), s = statusMeta[t.status];
+      const overdue = isOverdue(t);
       const titleBlock = state.editingTitle
         ? `<input id="titleInput" value="${escapeHtml(t.title)}"><div class="quick-actions"><button class="primary" id="saveTitle">שמור</button><button id="cancelTitle">ביטול</button></div>`
         : `<div class="detail-title-row"><h1>${t.title}</h1><button class="icon" id="editTitle" aria-label="עריכת שם">${lineIcon("edit")}</button></div>`;
@@ -1339,7 +1416,7 @@
         </section>
         <section class="detail-block">
           <h2>יעד</h2>
-          <p>${t.dueLabel}</p>
+          <p class="due ${overdue ? "overdue" : ""}">${taskDueLabel(t)}</p>
           <div class="segmented">
             <button data-tomorrow="${t.id}">העבר למחר</button>
             <button id="pickDate">שנה תאריך</button>
@@ -1350,8 +1427,9 @@
           </div>
         </section>
         <section class="detail-block">
-          <h2>נוצר</h2>
-          <p class="muted">${t.createdLabel || "ראשון · 12 יוני"}</p>
+          <h2>נוצרה:</h2>
+          <p>${formatHebrewDate(t.created_at)}</p>
+          <p class="age-meta" style="margin-top:6px;">${ageLabel(t.created_at)}</p>
         </section>
         <section class="detail-block">
           <h2>הערות</h2>
@@ -1472,7 +1550,7 @@
             ${state.addingCategory ? `<div class="quick-actions add-panel"><input id="newCategoryName" placeholder="שם קטגוריה"><button class="primary" type="button" id="saveCategory">שמור קטגוריה</button><button type="button" id="cancelCategory">ביטול</button></div>` : ""}
           </div>
           ${state.role === "manager" ? `<div class="form-group"><h2>מבצע</h2>${peoplePickerMarkup()}${people.length ? "" : `<p class="muted" style="margin-top:10px;">אין מבצעים כרגע. אפשר ליצור משימה ללא מבצע או להוסיף מבצע חדש.</p>`}${state.addingPerson ? `<div class="quick-actions add-panel"><input id="newPersonName" placeholder="שם מבצע"><button class="primary" type="button" id="savePerson">שמור מבצע</button><button type="button" id="cancelPerson">ביטול</button></div>` : ""}</div>` : ""}
-          <div class="form-group"><h2>יעד</h2><div class="segmented"><button type="button" data-due-choice="today" class="active">היום</button><button type="button" data-due-choice="tomorrow">מחר</button><button type="button" data-due-choice="date">בחר תאריך</button></div><input id="newDate" type="date" style="display:none; margin-top:10px;"></div>
+          <div class="form-group"><h2>יעד</h2><div class="segmented"><button type="button" data-due-choice="today" class="active">היום</button><button type="button" data-due-choice="tomorrow">מחר</button><button type="button" data-due-choice="date">בחר תאריך</button><button type="button" data-due-choice="none">ללא יעד</button></div><input id="newDate" type="date" style="display:none; margin-top:10px;"></div>
           <div class="form-group"><h2>עדיפות</h2><div class="chips"><label class="chip"><input name="priority" type="radio" value="normal" checked> רגילה</label><label class="chip"><input name="priority" type="radio" value="high"> גבוהה</label></div></div>
           <div class="form-group"><h2>הערות</h2><textarea id="newNotes" placeholder="פרטים קצרים"></textarea></div>
           <button class="primary" type="submit" style="width:100%;">צור משימה</button>
@@ -1513,6 +1591,7 @@
         updateTask(id, {
           status,
           due: status === "done" ? "done" : task.due === "done" ? "today" : task.due,
+          due_date: status === "done" ? null : task.due === "done" ? isoDateFromOffset(0) : task.due_date,
           dueLabel: status === "done" ? "הושלם · היום" : task.due === "done" ? "היום · שלישי" : task.dueLabel
         });
         toast(status === "done" ? "המשימה סומנה כהושלמה" : "הסטטוס עודכן");
@@ -1525,7 +1604,7 @@
           toast("אין הרשאה למשימה זו");
           return;
         }
-        updateTask(id, { due: "tomorrow", dueLabel: "מחר · רביעי" });
+        updateTask(id, { due: "tomorrow", due_date: isoDateFromOffset(1), dueLabel: "מחר · רביעי" });
         toast("היעד עבר למחר");
       }));
       $("editNotes")?.addEventListener("click", () => { state.editingNotes = true; render(); });
@@ -1564,7 +1643,7 @@
           return;
         }
         if (!input) return toast("בחר תאריך");
-        updateTask(id, { due: "date", dueLabel: formatHebrewDate(input) });
+        updateTask(id, { due: "date", due_date: input, dueLabel: formatHebrewDate(input) });
         toast("התאריך עודכן");
       });
       $("addUpdate")?.addEventListener("click", () => {
@@ -1755,17 +1834,20 @@
           toast("בחר תאריך");
           return;
         }
-        const dueLabel = dueChoice === "today" ? "היום · שלישי" : dueChoice === "tomorrow" ? "מחר · רביעי" : formatHebrewDate($("newDate").value);
+        const dueDate = dueChoice === "today" ? isoDateFromOffset(0) : dueChoice === "tomorrow" ? isoDateFromOffset(1) : dueChoice === "date" ? $("newDate").value : null;
+        const dueLabel = dueDate ? taskDueLabel({ due_date: dueDate, status: "progress" }) : "ללא יעד";
         const task = {
           id: `t${Date.now()}`,
           title: $("newTitle").value,
           category: form.category?.value || "uncategorized",
           owner,
           due: dueChoice,
+          due_date: dueDate,
           dueLabel,
           status: "progress",
           priority: form.priority?.value || "normal",
-          createdLabel: "ראשון · 12 יוני",
+          created_at: isoDateFromOffset(0),
+          createdLabel: formatHebrewDate(isoDateFromOffset(0)),
           notes: $("newNotes").value,
           updates: []
         };
@@ -1774,13 +1856,6 @@
         toast("המשימה נוצרה");
         navigate(`task:${task.id}`);
       });
-    }
-    function formatHebrewDate(value) {
-      if (!value) return "שני · 14 יוני";
-      const date = new Date(value + "T12:00:00");
-      const days = ["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
-      const months = ["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
-      return `${days[date.getDay()]} · ${date.getDate()} ${months[date.getMonth()]}`;
     }
     function escapeHtml(text) {
       return String(text).replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;" }[ch]));
