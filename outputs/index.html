@@ -32,8 +32,8 @@
       --text: #ECE7DD;
       --muted: #B8B0A3;
       --line: rgba(255,255,255,.06);
-      --accent: #A8B79D;
-      --accent-soft: rgba(168,183,157,.12);
+      --accent: #A7F070;
+      --accent-soft: rgba(167,240,112,.12);
       --sand: #8E7B5F;
       --outer-shell: #252A25;
       --danger: #B85C50;
@@ -188,25 +188,25 @@
       font-weight: 760;
     }
     .section {
-      padding: 20px 0;
+      padding: 14px 0;
       border-top: 1px solid var(--line);
     }
     .task-group {
-      padding: 22px 0;
+      padding: 14px 0;
       border-top: 1px solid var(--line);
     }
     .task-group-title {
       font-size: 1rem;
       color: var(--muted);
       font-weight: 700;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
     .task-group.highlight {
       border-top: 2px solid var(--sand);
     }
     .cards, .list, .mgmt-list {
       display: grid;
-      gap: 12px;
+      gap: 8px;
     }
     .task-card {
       background: var(--surface);
@@ -235,21 +235,22 @@
       display: inline-flex;
       width: fit-content;
       padding: .28rem .55rem;
-      border: 1px solid var(--line);
+      border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
       border-radius: 999px;
       background: color-mix(in srgb, var(--surface-strong) 45%, var(--surface));
       color: var(--muted);
-      font-weight: 650;
+      font-size: .82rem;
+      font-weight: 560;
     }
     .task-title {
-      font-size: 1.06rem;
+      font-size: 1.04rem;
       font-weight: 760;
       margin: 8px 0;
     }
     .due {
       color: var(--muted);
-      margin: 8px 0 12px;
-      font-size: .94rem;
+      margin: 4px 0 0;
+      font-size: .9rem;
     }
     .quick-actions {
       display: flex;
@@ -261,29 +262,52 @@
       display: block;
       width: 100%;
       text-align: right;
-      border: 1px solid var(--line);
-      background: linear-gradient(180deg, var(--surface) 0%, #FBF7EF 100%);
-      border-radius: 16px;
-      padding: 14px;
-      min-height: 72px;
-      box-shadow: 0 2px 8px rgba(0,0,0,.03);
+      border: 0;
+      border-top: 1px solid var(--line);
+      background: transparent;
+      border-radius: 0;
+      padding: 0;
+      min-height: 66px;
+      box-shadow: none;
     }
     .list-row {
       position: relative;
       padding: 0;
       cursor: pointer;
       overflow: hidden;
-      min-height: 104px;
+      min-height: 68px;
     }
     .list-row-content {
-      padding: 16px 18px 16px 104px;
-      min-height: 104px;
+      padding: 8px 18px 8px 76px;
+      min-height: 68px;
     }
     .list-row.completed .list-row-content {
       padding-left: 18px;
     }
+    .row-meta {
+      display: flex;
+      gap: 7px 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: .88rem;
+      margin-top: 3px;
+      line-height: 1.4;
+    }
+    .row-meta .person-line,
+    .row-meta .due {
+      margin: 0;
+      font-size: .88rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .priority-meta.high {
+      color: color-mix(in srgb, var(--danger) 78%, var(--muted));
+      font-weight: 620;
+    }
     .list-row .task-title {
-      margin: 3px 0 4px;
+      margin: 1px 0 2px;
       font-size: 1rem;
     }
     .complete-row {
@@ -291,15 +315,16 @@
       left: 0;
       top: 0;
       bottom: 0;
-      width: 84px;
+      width: 66px;
       min-height: 100%;
       padding: .5rem .35rem;
       border: 0;
       border-right: 1px solid color-mix(in srgb, var(--status-done) 34%, var(--line));
       border-radius: 0;
       color: var(--status-done);
-      background: linear-gradient(180deg, color-mix(in srgb, var(--status-done) 13%, var(--surface)) 0%, color-mix(in srgb, var(--status-done) 22%, var(--surface)) 100%);
-      font-weight: 720;
+      background: color-mix(in srgb, var(--status-done) 13%, var(--surface));
+      font-weight: 650;
+      font-size: .84rem;
       z-index: 2;
       display: grid;
       place-content: center;
@@ -307,8 +332,8 @@
       box-shadow: inset 1px 0 0 rgba(255,255,255,.42);
     }
     .complete-row .line-icon {
-      width: 20px;
-      height: 20px;
+      width: 17px;
+      height: 17px;
       margin-inline: auto;
     }
     .dot { font-size: .9rem; }
@@ -378,7 +403,7 @@
       line-height: 1.2;
     }
     .detail-block {
-      padding: 20px 0;
+      padding: 14px 0;
       border-top: 1px solid var(--line);
     }
     .segmented {
@@ -391,6 +416,33 @@
       background: var(--accent);
       border-color: var(--accent);
       color: #fff;
+    }
+    #createForm .segmented {
+      gap: 6px;
+      margin-top: 8px;
+      padding: 3px;
+      border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+      border-radius: 11px;
+      background: color-mix(in srgb, var(--surface) 50%, transparent);
+    }
+    #createForm .segmented button {
+      flex: 1;
+      min-width: 82px;
+      min-height: 34px;
+      padding: .38rem .58rem;
+      border-radius: 8px;
+      border-color: transparent;
+      background: transparent;
+      color: var(--muted);
+      font-size: .88rem;
+      font-weight: 640;
+      box-shadow: none;
+    }
+    #createForm .segmented button.active {
+      background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+      border-color: color-mix(in srgb, var(--accent) 18%, transparent);
+      color: var(--accent);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent);
     }
     .updates {
       display: grid;
@@ -406,35 +458,89 @@
     }
     .management-tiles {
       display: grid;
-      gap: 8px;
+      gap: 0;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+      background: color-mix(in srgb, var(--surface) 86%, transparent);
+      box-shadow: 0 1px 4px rgba(0,0,0,.025);
     }
     .mgmt-row {
-      background: var(--surface);
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 14px;
+      min-height: 54px;
+      background: transparent;
+      border: 0;
+      border-bottom: 1px solid var(--line);
+      border-radius: 0;
+      padding: 9px 18px 9px 10px;
+      text-align: right;
+      box-shadow: none;
+    }
+    .mgmt-row:last-child {
+      border-bottom: 0;
+    }
+    .section > .mgmt-row {
       border: 1px solid var(--line);
-      border-radius: 16px;
-      padding: 16px;
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--surface) 86%, transparent);
     }
     .mgmt-row.create-row {
       min-height: 54px;
-      padding: 12px 18px;
-      border-radius: 12px;
+      padding: 9px 18px 9px 10px;
+      border-radius: 10px;
+    }
+    .mgmt-row.create-row,
+    .mgmt-row.wide[data-nav="create"] {
+      border-color: color-mix(in srgb, var(--accent) 30%, var(--line));
+      background:
+        linear-gradient(180deg, color-mix(in srgb, var(--accent) 8%, var(--surface)) 0%, color-mix(in srgb, var(--surface) 88%, transparent) 100%);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.52), 0 1px 4px rgba(0,0,0,.025);
     }
     .mgmt-row.create-row strong {
       margin-bottom: 0;
     }
+    .mgmt-row.create-row strong,
+    .mgmt-row.wide[data-nav="create"] strong {
+      color: var(--accent);
+      font-weight: 780;
+    }
     .mgmt-row strong {
       display: block;
       font-size: 1.02rem;
-      margin-bottom: 5px;
+      margin-bottom: 0;
     }
     .mgmt-row .big {
-      font-size: 1.8rem;
+      min-width: 38px;
+      min-height: 38px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 8px;
+      border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--line));
+      background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+      font-size: 1.02rem;
       font-weight: 760;
       color: var(--accent);
       direction: ltr;
-      text-align: right;
+      text-align: center;
     }
-    .chev { float: left; color: var(--muted); }
+    .row-left-icon {
+      width: 38px;
+      height: 38px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 8px;
+      border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--line));
+      background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+      color: var(--accent);
+    }
+    .mgmt-row.create-row .row-left-icon,
+    .mgmt-row.wide[data-nav="create"] .row-left-icon {
+      border-color: color-mix(in srgb, var(--accent) 34%, var(--line));
+      background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+    }
     .management-list {
       display: grid;
       gap: 0;
@@ -481,26 +587,61 @@
       color: var(--accent);
       background: color-mix(in srgb, var(--accent) 8%, var(--surface));
     }
+    #createForm {
+      display: grid;
+      gap: 0;
+    }
     .prefs-line, .form-group {
       padding: 16px 0;
       border-top: 1px solid var(--line);
     }
+    .form-group {
+      padding: 14px 0;
+    }
+    .form-group h2 {
+      margin-bottom: 8px;
+      color: var(--text);
+      font-size: .98rem;
+      font-weight: 740;
+    }
+    #createForm input,
+    #createForm textarea {
+      min-height: 42px;
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--surface) 86%, transparent);
+      border-color: color-mix(in srgb, var(--line) 82%, transparent);
+      padding: .66rem .78rem;
+      box-shadow: inset 0 1px 1px rgba(46,42,36,.025);
+    }
+    #createForm textarea {
+      min-height: 86px;
+    }
     .radio-grid, .chips {
       display: flex;
-      gap: 8px;
+      gap: 6px;
       flex-wrap: wrap;
-      margin-top: 10px;
+      margin-top: 8px;
     }
     .chip {
       display: inline-flex;
       align-items: center;
-      gap: 7px;
-      border: 1px solid var(--line);
-      background: var(--surface);
-      border-radius: 12px;
-      padding: .72rem .86rem;
-      min-height: 42px;
+      gap: 6px;
+      border: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
+      background: color-mix(in srgb, var(--surface) 56%, transparent);
+      border-radius: 10px;
+      padding: .48rem .68rem;
+      min-height: 34px;
       cursor: pointer;
+      color: var(--muted);
+      font-size: .9rem;
+      font-weight: 620;
+      box-shadow: none;
+      transition: border-color .18s ease, background .18s ease, color .18s ease;
+    }
+    .chip:has(input:checked) {
+      color: var(--accent);
+      border-color: color-mix(in srgb, var(--accent) 24%, var(--line));
+      background: color-mix(in srgb, var(--accent) 9%, var(--surface));
     }
     .category-chip {
       display: inline-flex;
@@ -513,54 +654,90 @@
     .chip.delete-select {
       border-color: var(--line);
       color: var(--text);
-      background: var(--surface);
+      background: color-mix(in srgb, var(--surface) 56%, transparent);
       font-weight: 750;
     }
     .chip.delete-select.selected {
       border-color: var(--danger);
-      outline: 2px solid color-mix(in srgb, var(--danger) 24%, transparent);
-      outline-offset: 2px;
-      background: color-mix(in srgb, var(--danger) 14%, var(--surface));
+      outline: 1px solid color-mix(in srgb, var(--danger) 28%, transparent);
+      outline-offset: 1px;
+      background: color-mix(in srgb, var(--danger) 10%, var(--surface));
     }
     button.delete-category {
-      min-height: 42px;
-      padding: 0 .7rem;
+      min-height: 34px;
+      padding: .42rem .66rem;
+      border-radius: 10px;
       border-color: color-mix(in srgb, var(--danger) 65%, var(--line));
       color: var(--danger);
-      background: linear-gradient(180deg, #FFF8F6 0%, color-mix(in srgb, var(--danger) 10%, var(--surface)) 100%);
-      font-weight: 850;
+      background: color-mix(in srgb, var(--danger) 7%, var(--surface));
+      font-size: .88rem;
+      font-weight: 760;
+      box-shadow: none;
     }
     button.add-inline {
-      min-height: 42px;
-      border-color: var(--accent);
+      min-height: 34px;
+      padding: .42rem .66rem;
+      border-radius: 10px;
+      border-color: color-mix(in srgb, var(--accent) 42%, var(--line));
       color: var(--accent);
-      background: linear-gradient(180deg, #FBFFF8 0%, color-mix(in srgb, var(--accent) 10%, var(--surface)) 100%);
-      font-weight: 850;
+      background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+      font-size: .88rem;
+      font-weight: 760;
+      box-shadow: none;
     }
     .add-panel {
       margin-top: 10px;
-      padding: 10px;
-      border: 2px solid var(--accent);
-      border-radius: 16px;
-      background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+      padding: 8px;
+      border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--line));
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+      box-shadow: none;
+    }
+    #createForm .quick-actions.add-panel {
+      align-items: center;
+      gap: 6px;
+    }
+    #createForm .quick-actions.add-panel input {
+      flex: 1 1 150px;
+    }
+    #createForm .quick-actions.add-panel button {
+      min-height: 38px;
+      padding: .5rem .7rem;
+      box-shadow: none;
+    }
+    #createForm > button.primary[type="submit"] {
+      margin-top: 14px;
+      min-height: 48px;
+      border-radius: 12px;
     }
     .sort-bar {
       display: flex;
-      gap: 8px;
+      gap: 6px;
       flex-wrap: wrap;
-      margin-top: 14px;
+      margin-top: 12px;
+      padding: 3px;
+      border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+      border-radius: 11px;
+      background: color-mix(in srgb, var(--surface) 50%, transparent);
     }
     .sort-bar button {
       flex: 1;
-      min-width: 96px;
-      background: linear-gradient(180deg, #FFFDF8 0%, #F3EEE5 100%);
+      min-width: 86px;
+      min-height: 34px;
+      padding: .38rem .58rem;
+      border-radius: 8px;
+      border-color: transparent;
+      background: transparent;
       color: var(--muted);
-      font-weight: 700;
+      font-size: .88rem;
+      font-weight: 640;
+      box-shadow: none;
     }
     .sort-bar button.active {
-      background: linear-gradient(180deg, #EEF3E8 0%, var(--accent-soft) 100%);
-      border-color: color-mix(in srgb, var(--accent) 22%, var(--line));
+      background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+      border-color: color-mix(in srgb, var(--accent) 18%, transparent);
       color: var(--accent);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent);
     }
     .danger-zone {
       border-top: 1px solid color-mix(in srgb, var(--danger) 50%, var(--line));
@@ -581,7 +758,22 @@
       background: linear-gradient(180deg, #C96E62 0%, var(--danger) 100%);
       color: #fff;
     }
-    .chip input { width: auto; accent-color: var(--accent); }
+    .chip input {
+      width: 14px;
+      height: 14px;
+      min-height: 0;
+      margin: 0;
+      flex: 0 0 auto;
+      accent-color: var(--accent);
+    }
+    #createForm .chip input {
+      width: 14px;
+      height: 14px;
+      min-height: 0;
+      padding: 0;
+      border-radius: 50%;
+      box-shadow: none;
+    }
     .line-icon {
       width: 1.05em;
       height: 1.05em;
@@ -637,7 +829,7 @@
     }
     [data-theme="dark"] button.soft,
     [data-theme="dark"] .sort-bar button.active {
-      background: linear-gradient(180deg, rgba(168,183,157,.15) 0%, rgba(168,183,157,.10) 100%);
+      background: linear-gradient(180deg, rgba(167,240,112,.14) 0%, rgba(167,240,112,.08) 100%);
       border-color: rgba(255,255,255,.08);
     }
     [data-theme="dark"] input,
@@ -647,9 +839,9 @@
     }
     [data-theme="dark"] .app-shell {
       background:
-        linear-gradient(180deg, rgba(255,255,255,.025), rgba(255,255,255,0) 140px),
-        linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(140,255,170,.016), rgba(255,255,255,0) 140px),
+        linear-gradient(rgba(140,255,170,.055) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(140,255,170,.055) 1px, transparent 1px),
         var(--bg);
       background-size: auto, 28px 28px, 28px 28px, auto;
       border-color: rgba(255,255,255,.08);
@@ -664,14 +856,28 @@
       border-color: var(--line);
       box-shadow: inset 0 1px 0 rgba(255,255,255,.03), 0 1px 2px rgba(0,0,0,.08);
     }
+    [data-theme="dark"] .bottom-nav button.active,
+    [data-theme="dark"] .sort-bar button.active,
+    [data-theme="dark"] .role-switch button.active,
+    [data-theme="dark"] .segmented button.active {
+      background: linear-gradient(180deg, rgba(167,240,112,.18) 0%, rgba(167,240,112,.11) 100%);
+      border-color: rgba(167,240,112,.18);
+      color: var(--accent);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.035), 0 0 0 1px rgba(167,240,112,.025);
+      text-shadow: 0 0 8px rgba(167,240,112,.12);
+    }
+    [data-theme="dark"] .brand strong,
+    [data-theme="dark"] h1 {
+      color: color-mix(in srgb, var(--text) 88%, var(--accent));
+    }
     [data-theme="dark"] .task-card,
     [data-theme="dark"] .list-row,
     [data-theme="dark"] .mgmt-row,
     [data-theme="dark"] .update-item,
     [data-theme="dark"] .chip {
-      background: linear-gradient(180deg, #3D433D 0%, #3A3F3A 100%);
+      background: #3A3F3A;
       border-color: var(--line);
-      box-shadow: 0 1px 2px rgba(0,0,0,.08);
+      box-shadow: 0 1px 1px rgba(0,0,0,.035);
     }
     [data-theme="dark"] .status-badge {
       background: rgba(255,255,255,.035);
@@ -679,7 +885,40 @@
     }
     [data-theme="dark"] .complete-row,
     [data-theme="dark"] button.add-inline {
-      background: linear-gradient(180deg, rgba(111,138,94,.14) 0%, rgba(111,138,94,.09) 100%);
+      color: var(--accent);
+      border-color: rgba(167,240,112,.18);
+      background: linear-gradient(180deg, rgba(167,240,112,.12) 0%, rgba(167,240,112,.075) 100%);
+    }
+    [data-theme="dark"] .mgmt-row.create-row,
+    [data-theme="dark"] .mgmt-row.wide[data-nav="create"] {
+      border-color: rgba(167,240,112,.20);
+      background: linear-gradient(180deg, rgba(167,240,112,.09) 0%, rgba(255,255,255,.022) 100%);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.025), 0 1px 1px rgba(0,0,0,.035);
+    }
+    [data-theme="dark"] .mgmt-row.create-row .row-left-icon,
+    [data-theme="dark"] .mgmt-row.wide[data-nav="create"] .row-left-icon {
+      border-color: rgba(167,240,112,.22);
+      background: rgba(167,240,112,.10);
+    }
+    [data-theme="dark"] #createForm input,
+    [data-theme="dark"] #createForm textarea {
+      background: color-mix(in srgb, var(--surface-strong) 78%, transparent);
+      border-color: rgba(255,255,255,.065);
+      box-shadow: inset 0 1px 1px rgba(0,0,0,.045);
+    }
+    [data-theme="dark"] #createForm .chip,
+    [data-theme="dark"] #createForm .segmented,
+    [data-theme="dark"] #createForm .sort-bar {
+      background: rgba(255,255,255,.018);
+      border-color: rgba(255,255,255,.06);
+      box-shadow: none;
+    }
+    [data-theme="dark"] #createForm .chip:has(input:checked),
+    [data-theme="dark"] #createForm .segmented button.active {
+      background: rgba(167,240,112,.095);
+      border-color: rgba(167,240,112,.18);
+      color: var(--accent);
+      box-shadow: inset 0 0 0 1px rgba(167,240,112,.025);
     }
     [data-theme="dark"] button.delete-category,
     [data-theme="dark"] button.danger {
@@ -689,7 +928,7 @@
       background: linear-gradient(180deg, rgba(184,92,80,.88) 0%, rgba(184,92,80,.78) 100%);
     }
     [data-theme="dark"] .add-panel {
-      background: rgba(168,183,157,.08);
+      background: rgba(167,240,112,.07);
     }
     [data-theme="dark"] .toast {
       background: #4A4036;
@@ -746,6 +985,7 @@
         done: '<path d="M20 6 9 17l-5-5"/>',
         settings: '<path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/><path d="M19.4 15a1.8 1.8 0 0 0 .36 2l.04.04a2 2 0 1 1-2.83 2.83l-.04-.04a1.8 1.8 0 0 0-2-.36 1.8 1.8 0 0 0-1 1.63V21a2 2 0 1 1-4 0v-.06a1.8 1.8 0 0 0-1-1.63 1.8 1.8 0 0 0-2 .36l-.04.04a2 2 0 1 1-2.83-2.83l.04-.04a1.8 1.8 0 0 0 .36-2 1.8 1.8 0 0 0-1.63-1H3a2 2 0 1 1 0-4h.06a1.8 1.8 0 0 0 1.63-1 1.8 1.8 0 0 0-.36-2l-.04-.04A2 2 0 1 1 7.12 3.9l.04.04a1.8 1.8 0 0 0 2 .36h.01A1.8 1.8 0 0 0 10.2 2.7V2a2 2 0 1 1 4 0v.06a1.8 1.8 0 0 0 1 1.63 1.8 1.8 0 0 0 2-.36l.04-.04a2 2 0 1 1 2.83 2.83l-.04.04a1.8 1.8 0 0 0-.36 2v.01a1.8 1.8 0 0 0 1.63 1H21a2 2 0 1 1 0 4h-.06a1.8 1.8 0 0 0-1.54 1.03z"/>',
         list: '<path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/>',
+        add: '<path d="M12 5v14"/><path d="M5 12h14"/>',
         today: '<rect x="4" y="5" width="16" height="16" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/><path d="M9 15h6"/>',
         preferences: '<path d="M4 7h16"/><path d="M7 7a2 2 0 1 0 0 .01"/><path d="M4 17h16"/><path d="M17 17a2 2 0 1 0 0 .01"/>',
         back: '<path d="M19 12H5"/><path d="m12 19-7-7 7-7"/>',
@@ -828,6 +1068,11 @@
       tasks: JSON.parse(localStorage.getItem("beit-tasks") || "null") || starterTasks,
       prefs: JSON.parse(localStorage.getItem("beit-prefs") || "null") || { dark: false, text: "רגיל" }
     };
+    state.tasks = state.tasks.map((task, index) => ({
+      priority: index % 5 === 0 ? "high" : "normal",
+      createdLabel: index % 3 === 0 ? "ראשון · 12 יוני" : "שני · 13 יוני",
+      ...task
+    }));
 
     document.body.dataset.theme = state.prefs.dark ? "dark" : "";
 
@@ -845,6 +1090,7 @@
       setTimeout(() => $("toast").classList.remove("show"), 1600);
     }
     function cat(id) { return categories.find(c => c.id === id) || { id: "uncategorized", label: "ללא קטגוריה", icon: "office" }; }
+    function priorityLabel(priority) { return priority === "high" ? "גבוהה" : "רגילה"; }
     function byVisibleRole(tasks) {
       return state.role === "manager" ? tasks : tasks.filter(t => t.owner === "עדינה");
     }
@@ -892,7 +1138,7 @@
       if (view === "management") return managementScreen();
       if (view === "all") return openTasksScreen();
       if (view === "today") return openTasksScreen();
-      if (view === "done") return listScreen("הושלם", byVisibleRole(state.tasks).filter(t => t.status === "done"), state.role === "manager");
+      if (view === "done") return listScreen("הושלם", sortTasks(byVisibleRole(state.tasks).filter(t => t.status === "done")), state.role === "manager", "", true);
       if (view === "prefs") return prefsScreen();
       if (view === "create") return createScreen();
       if (view.startsWith("task:")) return detailScreen(view.split(":")[1]);
@@ -927,7 +1173,7 @@
           <h2 class="task-group-title">שאר המשימות</h2>
           <div class="list">${otherTasks.length ? otherTasks.map(t => listRow(t, showOwner)).join("") : `<div class="empty">אין משימות נוספות.</div>`}</div>
         </section>
-        ${state.role === "user" ? `<section class="section"><button class="mgmt-row wide" data-nav="create"><span class="chev">+</span><strong>יצירת משימה חדשה</strong><span class="muted">הוספה מהירה למשימות שלי</span></button></section>` : ""}`;
+        ${state.role === "user" ? `<section class="section"><button class="mgmt-row wide" data-nav="create"><span><strong>יצירת משימה חדשה</strong><span class="muted">הוספה מהירה למשימות שלי</span></span><span class="row-left-icon">${lineIcon("add")}</span></button></section>` : ""}`;
     }
     function taskCard(t) {
       const c = cat(t.category), s = statusMeta[t.status];
@@ -973,7 +1219,7 @@
         <section class="list">
           ${tasks.length ? tasks.map(t => listRow(t, showOwner)).join("") : `<div class="empty">אין משימות להצגה.</div>`}
         </section>
-        ${showCreate ? `<section class="section"><button class="mgmt-row wide" data-nav="create"><span class="chev">+</span><strong>יצירת משימה חדשה</strong><span class="muted">הוספה מהירה למשימות שלי</span></button></section>` : ""}`;
+        ${showCreate ? `<section class="section"><button class="mgmt-row wide" data-nav="create"><span><strong>יצירת משימה חדשה</strong><span class="muted">הוספה מהירה למשימות שלי</span></span><span class="row-left-icon">${lineIcon("add")}</span></button></section>` : ""}`;
     }
     function listRow(t, showOwner) {
       const c = cat(t.category), s = statusMeta[t.status];
@@ -982,9 +1228,12 @@
           <div class="list-row-content">
             <div class="category">${lineIcon(c.icon)} ${c.label}</div>
             <div class="task-title"><span class="dot ${s.dot}">${lineIcon(s.icon)}</span> ${t.title}</div>
-            <div class="status-line status-badge">${lineIcon(s.icon)} ${s.label}</div>
-            ${showOwner ? `<div class="person-line">${lineIcon("user")} ${t.owner}</div>` : ""}
-            <div class="due">${t.dueLabel}</div>
+            <div class="row-meta">
+              <span class="status-line status-badge">${lineIcon(s.icon)} ${s.label}</span>
+              <span class="priority-meta ${t.priority === "high" ? "high" : ""}">עדיפות ${priorityLabel(t.priority)}</span>
+              ${showOwner ? `<span class="person-line">${lineIcon("user")} ${t.owner}</span>` : ""}
+              <span class="due">${t.dueLabel}</span>
+            </div>
           </div>
           ${t.status !== "done" ? `<button class="complete-row" type="button" data-status="${t.id}:done">${lineIcon("done")} הושלם</button>` : ""}
         </div>`;
@@ -1009,6 +1258,7 @@
           <h2>סטטוס</h2>
           <p class="status-line status-badge">${lineIcon(s.icon)} ${s.label}</p>
           <div class="segmented">${statusButtons.map(([key,label]) => `<button data-status="${t.id}:${key}" class="${t.status === key ? "active" : ""}">${label}</button>`).join("")}</div>
+          <p class="muted" style="margin-top:10px;">עדיפות: ${priorityLabel(t.priority)}</p>
         </section>
         <section class="detail-block">
           <h2>יעד</h2>
@@ -1021,6 +1271,10 @@
             <input id="dateInput" type="date">
             <div class="quick-actions"><button class="primary" id="saveDate">שמור תאריך</button></div>
           </div>
+        </section>
+        <section class="detail-block">
+          <h2>נוצר</h2>
+          <p class="muted">${t.createdLabel || "ראשון · 12 יוני"}</p>
         </section>
         <section class="detail-block">
           <h2>הערות</h2>
@@ -1042,8 +1296,8 @@
           <h1>ניהול</h1>
         </section>
         <section class="management-tiles">
-          <button class="mgmt-row" data-nav="filter:progress"><span class="chev">‹</span><strong>משימות בתהליך</strong><div class="big">${progress}</div></button>
-          <button class="mgmt-row" data-nav="done"><span class="chev">‹</span><strong>משימות שהושלמו</strong><div class="big">${done}</div></button>
+          <button class="mgmt-row" data-nav="filter:progress"><strong>משימות בתהליך</strong><div class="big">${progress}</div></button>
+          <button class="mgmt-row" data-nav="done"><strong>משימות שהושלמו</strong><div class="big">${done}</div></button>
         </section>
         <section class="section">
           <h2>קטגוריות</h2>
@@ -1054,7 +1308,7 @@
           <div class="management-list">${people.map(p => `<button class="management-list-row" data-nav="person:${encodeURIComponent(p)}"><span class="name">${p}</span><span class="icon-box">${lineIcon("user")}</span></button>`).join("")}</div>
         </section>
         <section class="section">
-          <button class="mgmt-row create-row" data-nav="create"><span class="chev">+</span><strong>יצירת משימה חדשה</strong></button>
+          <button class="mgmt-row create-row" data-nav="create"><strong>יצירת משימה חדשה</strong><span class="row-left-icon">${lineIcon("add")}</span></button>
         </section>`;
     }
     function prefsScreen() {
@@ -1066,8 +1320,11 @@
       return `
         <section class="hero"><h1>העדפות</h1></section>
         <section class="prefs-line">
-          <h2>מצב כהה</h2>
-          <label class="chip"><input id="darkToggle" type="checkbox" ${state.prefs.dark ? "checked" : ""}> פעיל</label>
+          <h2>מצב תצוגה</h2>
+          <div class="segmented">
+            <button type="button" data-theme-choice="light" class="${state.prefs.dark ? "" : "active"}">מצב בהיר</button>
+            <button type="button" data-theme-choice="dark" class="${state.prefs.dark ? "active" : ""}">מצב כהה</button>
+          </div>
         </section>
         ${state.role === "manager" ? `<section class="prefs-line danger-zone">
           <h2>ניקוי משימות</h2>
@@ -1132,6 +1389,7 @@
           </div>
           ${state.role === "manager" ? `<div class="form-group"><h2>מבצע/ים</h2>${peoplePickerMarkup()}${people.length ? "" : `<p class="muted" style="margin-top:10px;">אין מבצעים כרגע. אפשר ליצור משימה ללא מבצע או להוסיף מבצע חדש.</p>`}${state.addingPerson ? `<div class="quick-actions add-panel"><input id="newPersonName" placeholder="שם מבצע"><button class="primary" type="button" id="savePerson">שמור מבצע</button><button type="button" id="cancelPerson">ביטול</button></div>` : ""}</div>` : ""}
           <div class="form-group"><h2>יעד</h2><div class="segmented"><button type="button" data-due-choice="today" class="active">היום</button><button type="button" data-due-choice="tomorrow">מחר</button><button type="button" data-due-choice="date">בחר תאריך</button></div><input id="newDate" type="date" style="display:none; margin-top:10px;"></div>
+          <div class="form-group"><h2>עדיפות</h2><div class="chips"><label class="chip"><input name="priority" type="radio" value="normal" checked> רגילה</label><label class="chip"><input name="priority" type="radio" value="high"> גבוהה</label></div></div>
           <div class="form-group"><h2>הערות</h2><textarea id="newNotes" placeholder="פרטים קצרים"></textarea></div>
           <button class="primary" type="submit" style="width:100%;">צור משימה</button>
         </form>`;
@@ -1204,12 +1462,12 @@
         updateTask(id, { updates: [...t.updates, { by: state.role === "manager" ? "צבי" : "עדינה", text: "עדכון מהיר נוסף" }] });
         toast("נוסף עדכון");
       });
-      $("darkToggle")?.addEventListener("change", e => {
-        state.prefs.dark = e.target.checked;
+      document.querySelectorAll("[data-theme-choice]").forEach(btn => btn.addEventListener("click", e => {
+        state.prefs.dark = e.currentTarget.dataset.themeChoice === "dark";
         document.body.dataset.theme = state.prefs.dark ? "dark" : "";
         save();
         render();
-      });
+      }));
       $("clearAllTasks")?.addEventListener("click", () => {
         if (state.clearAllStep < 2) {
           state.clearAllStep += 1;
@@ -1383,6 +1641,8 @@
           due: dueChoice,
           dueLabel,
           status: "progress",
+          priority: form.priority?.value || "normal",
+          createdLabel: "ראשון · 12 יוני",
           notes: $("newNotes").value,
           updates: []
         };
