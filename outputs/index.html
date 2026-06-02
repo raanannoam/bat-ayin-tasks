@@ -1,0 +1,1412 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F7F3EA">
+  <title>משימות ישיבת בת עין</title>
+  <style>
+    :root {
+      --bg: #F7F3EA;
+      --surface: #FFFDF8;
+      --surface-strong: #F2E8D8;
+      --text: #2E2A24;
+      --muted: #7A746A;
+      --line: #E4DCCF;
+      --accent: #566B4F;
+      --accent-soft: #E8EDE2;
+      --sand: #CDBB9D;
+      --danger: #B85C50;
+      --status-progress: #C7893A;
+      --status-done: #6F8A5E;
+      --soft-blue: #6F8FA3;
+      --outer-shell: #EAE4D8;
+      --radius: 12px;
+      font-family: "Heebo", "Assistant", "Rubik", "Noto Sans Hebrew", "Segoe UI", Arial, sans-serif;
+    }
+
+    [data-theme="dark"] {
+      --bg: #2F332F;
+      --surface: #3A3F3A;
+      --surface-strong: #444A44;
+      --text: #ECE7DD;
+      --muted: #B8B0A3;
+      --line: rgba(255,255,255,.06);
+      --accent: #A8B79D;
+      --accent-soft: rgba(168,183,157,.12);
+      --sand: #8E7B5F;
+      --outer-shell: #252A25;
+      --danger: #B85C50;
+      --status-progress: #C7893A;
+      --status-done: #6F8A5E;
+      --soft-blue: #6F8FA3;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--outer-shell);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 18px 0;
+    }
+    [data-theme="dark"] body, body[data-theme="dark"] {
+      background: var(--outer-shell);
+    }
+    button, input, textarea {
+      font: inherit;
+      color: inherit;
+    }
+    button {
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, #FFFDF8 0%, #F3EEE5 100%);
+      border-radius: 12px;
+      padding: .78rem 1rem;
+      cursor: pointer;
+      min-height: 46px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.72), 0 2px 8px rgba(0,0,0,.035);
+      transition: transform .18s ease, background .18s ease, border-color .18s ease, color .18s ease;
+    }
+    button:hover {
+      border-color: color-mix(in srgb, var(--sand) 68%, var(--line));
+    }
+    button:active {
+      transform: translateY(1px);
+      box-shadow: inset 0 1px 2px rgba(46,42,36,.08);
+    }
+    button.primary {
+      background: linear-gradient(180deg, #6D8264 0%, #566B4F 100%);
+      color: white;
+      border-color: var(--accent);
+      font-weight: 750;
+    }
+    button.soft {
+      background: linear-gradient(180deg, #F4F6EF 0%, var(--accent-soft) 100%);
+      border-color: color-mix(in srgb, var(--accent) 22%, var(--line));
+      color: var(--accent);
+      font-weight: 700;
+    }
+    button.icon {
+      width: 44px;
+      padding: 0;
+      display: inline-grid;
+      place-items: center;
+    }
+    input, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: .85rem;
+      outline-color: var(--accent);
+      box-shadow: inset 0 1px 2px rgba(46,42,36,.035);
+    }
+    textarea { min-height: 110px; resize: vertical; }
+    .app-shell {
+      width: min(calc(100% - 28px), 430px);
+      margin: 0 auto;
+      min-height: calc(100vh - 36px);
+      padding: 18px 16px 112px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.68), rgba(255,255,255,0) 160px),
+        linear-gradient(rgba(120,110,90,.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(120,110,90,.04) 1px, transparent 1px),
+        var(--surface);
+      background-size: auto, 28px 28px, 28px 28px, auto;
+      border: 1px solid color-mix(in srgb, var(--sand) 42%, var(--line));
+      border-radius: 28px;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.75),
+        inset 0 0 0 8px rgba(234,228,216,.42),
+        0 2px 8px rgba(0,0,0,.04);
+      overflow: hidden;
+      position: relative;
+    }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 8;
+      margin: -18px -16px 18px;
+      padding: 14px 18px 12px;
+      backdrop-filter: blur(16px);
+      background: color-mix(in srgb, var(--surface) 86%, transparent);
+      border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .brand {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.15;
+      min-width: 0;
+    }
+    .brand strong { font-size: .98rem; }
+    .brand span { color: var(--muted); font-size: .8rem; }
+    .role-switch {
+      display: inline-grid;
+      grid-template-columns: 1fr 1fr;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: var(--surface);
+      min-width: 142px;
+    }
+    .role-switch button {
+      border: 0;
+      border-radius: 0;
+      padding: .52rem .65rem;
+      min-height: 36px;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .role-switch button.active {
+      background: var(--accent);
+      color: #fff;
+    }
+    h1, h2, h3, p { margin: 0; }
+    h1 { font-size: clamp(1.65rem, 4.5vw, 2.15rem); letter-spacing: 0; font-weight: 760; }
+    h2 { font-size: 1.08rem; margin-bottom: .75rem; font-weight: 720; }
+    h3 { font-size: 1rem; margin-bottom: .48rem; }
+    .muted { color: var(--muted); }
+    .hero {
+      padding: 22px 2px 16px;
+    }
+    .hero .count {
+      margin-top: 14px;
+      width: 74px;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: var(--surface-strong);
+      border: 1px solid var(--line);
+      color: var(--accent);
+      font-size: 2.1rem;
+      font-weight: 760;
+    }
+    .section {
+      padding: 20px 0;
+      border-top: 1px solid var(--line);
+    }
+    .task-group {
+      padding: 22px 0;
+      border-top: 1px solid var(--line);
+    }
+    .task-group-title {
+      font-size: 1rem;
+      color: var(--muted);
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .task-group.highlight {
+      border-top: 2px solid var(--sand);
+    }
+    .cards, .list, .mgmt-list {
+      display: grid;
+      gap: 12px;
+    }
+    .task-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 18px;
+      text-align: right;
+      box-shadow: 0 2px 8px rgba(0,0,0,.035);
+    }
+    .task-card header, .list-row header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .category, .status-line, .person-line {
+      color: var(--muted);
+      font-size: .95rem;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .status-badge {
+      display: inline-flex;
+      width: fit-content;
+      padding: .28rem .55rem;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--surface-strong) 45%, var(--surface));
+      color: var(--muted);
+      font-weight: 650;
+    }
+    .task-title {
+      font-size: 1.06rem;
+      font-weight: 760;
+      margin: 8px 0;
+    }
+    .due {
+      color: var(--muted);
+      margin: 8px 0 12px;
+      font-size: .94rem;
+    }
+    .quick-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .quick-actions button { flex: 1; min-width: 112px; }
+    .list-row, .mgmt-row {
+      display: block;
+      width: 100%;
+      text-align: right;
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, var(--surface) 0%, #FBF7EF 100%);
+      border-radius: 16px;
+      padding: 14px;
+      min-height: 72px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.03);
+    }
+    .list-row {
+      position: relative;
+      padding: 0;
+      cursor: pointer;
+      overflow: hidden;
+      min-height: 104px;
+    }
+    .list-row-content {
+      padding: 16px 18px 16px 104px;
+      min-height: 104px;
+    }
+    .list-row.completed .list-row-content {
+      padding-left: 18px;
+    }
+    .list-row .task-title {
+      margin: 3px 0 4px;
+      font-size: 1rem;
+    }
+    .complete-row {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 84px;
+      min-height: 100%;
+      padding: .5rem .35rem;
+      border: 0;
+      border-right: 1px solid color-mix(in srgb, var(--status-done) 34%, var(--line));
+      border-radius: 0;
+      color: var(--status-done);
+      background: linear-gradient(180deg, color-mix(in srgb, var(--status-done) 13%, var(--surface)) 0%, color-mix(in srgb, var(--status-done) 22%, var(--surface)) 100%);
+      font-weight: 720;
+      z-index: 2;
+      display: grid;
+      place-content: center;
+      gap: 7px;
+      box-shadow: inset 1px 0 0 rgba(255,255,255,.42);
+    }
+    .complete-row .line-icon {
+      width: 20px;
+      height: 20px;
+      margin-inline: auto;
+    }
+    .dot { font-size: .9rem; }
+    .dot.progress { color: var(--status-progress); }
+    .dot.done { color: var(--status-done); }
+    .bottom-nav {
+      position: fixed;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(calc(100% - 50px), 398px);
+      display: grid;
+      gap: 2px;
+      padding: 8px 10px;
+      background: color-mix(in srgb, var(--surface) 82%, transparent);
+      backdrop-filter: blur(16px);
+      border-top: 1px solid var(--line);
+      border-inline: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
+      border-radius: 18px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.04), inset 0 1px 0 rgba(255,255,255,.65);
+      z-index: 20;
+    }
+    .bottom-nav.manager { grid-template-columns: repeat(4, 1fr); }
+    .bottom-nav.user { grid-template-columns: repeat(3, 1fr); }
+    .bottom-nav button {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      min-height: 54px;
+      padding: 6px 3px;
+      display: grid;
+      place-items: center;
+      gap: 2px;
+      font-size: .74rem;
+      border-radius: var(--radius);
+    }
+    .bottom-nav button span:first-child { line-height: 0; }
+    .bottom-nav button.active {
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 800;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.42);
+    }
+    .detail-head {
+      display: grid;
+      gap: 12px;
+      padding-top: 6px;
+    }
+    .back {
+      justify-self: start;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: transparent;
+      border-color: transparent;
+      padding-inline: 0;
+      color: var(--muted);
+    }
+    .detail-title-row {
+      display: flex;
+      gap: 8px;
+      align-items: start;
+      justify-content: space-between;
+    }
+    .detail-title-row h1 {
+      flex: 1;
+      line-height: 1.2;
+    }
+    .detail-block {
+      padding: 20px 0;
+      border-top: 1px solid var(--line);
+    }
+    .segmented {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .segmented button.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .updates {
+      display: grid;
+      gap: 9px;
+      margin-top: 10px;
+    }
+    .update-item {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.03);
+    }
+    .management-tiles {
+      display: grid;
+      gap: 8px;
+    }
+    .mgmt-row {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+    }
+    .mgmt-row.create-row {
+      min-height: 54px;
+      padding: 12px 18px;
+      border-radius: 12px;
+    }
+    .mgmt-row.create-row strong {
+      margin-bottom: 0;
+    }
+    .mgmt-row strong {
+      display: block;
+      font-size: 1.02rem;
+      margin-bottom: 5px;
+    }
+    .mgmt-row .big {
+      font-size: 1.8rem;
+      font-weight: 760;
+      color: var(--accent);
+      direction: ltr;
+      text-align: right;
+    }
+    .chev { float: left; color: var(--muted); }
+    .management-list {
+      display: grid;
+      gap: 0;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+      background: color-mix(in srgb, var(--surface) 86%, transparent);
+      box-shadow: 0 1px 4px rgba(0,0,0,.025);
+    }
+    .management-list-row {
+      width: 100%;
+      min-height: 54px;
+      display: grid;
+      grid-template-columns: 1fr 38px;
+      align-items: center;
+      gap: 14px;
+      padding: 9px 18px 9px 10px;
+      border: 0;
+      border-radius: 0;
+      border-bottom: 1px solid var(--line);
+      background: transparent;
+      text-align: right;
+      box-shadow: none;
+    }
+    .management-list-row:last-child {
+      border-bottom: 0;
+    }
+    .management-list-row .name {
+      justify-self: start;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text);
+      font-weight: 620;
+    }
+    .management-list-row .icon-box {
+      justify-self: end;
+      width: 34px;
+      height: 34px;
+      border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--line));
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+    }
+    .prefs-line, .form-group {
+      padding: 16px 0;
+      border-top: 1px solid var(--line);
+    }
+    .radio-grid, .chips {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      border-radius: 12px;
+      padding: .72rem .86rem;
+      min-height: 42px;
+      cursor: pointer;
+    }
+    .category-chip {
+      display: inline-flex;
+      align-items: stretch;
+      gap: 4px;
+    }
+    .category-chip .chip {
+      margin: 0;
+    }
+    .chip.delete-select {
+      border-color: var(--line);
+      color: var(--text);
+      background: var(--surface);
+      font-weight: 750;
+    }
+    .chip.delete-select.selected {
+      border-color: var(--danger);
+      outline: 2px solid color-mix(in srgb, var(--danger) 24%, transparent);
+      outline-offset: 2px;
+      background: color-mix(in srgb, var(--danger) 14%, var(--surface));
+    }
+    button.delete-category {
+      min-height: 42px;
+      padding: 0 .7rem;
+      border-color: color-mix(in srgb, var(--danger) 65%, var(--line));
+      color: var(--danger);
+      background: linear-gradient(180deg, #FFF8F6 0%, color-mix(in srgb, var(--danger) 10%, var(--surface)) 100%);
+      font-weight: 850;
+    }
+    button.add-inline {
+      min-height: 42px;
+      border-color: var(--accent);
+      color: var(--accent);
+      background: linear-gradient(180deg, #FBFFF8 0%, color-mix(in srgb, var(--accent) 10%, var(--surface)) 100%);
+      font-weight: 850;
+    }
+    .add-panel {
+      margin-top: 10px;
+      padding: 10px;
+      border: 2px solid var(--accent);
+      border-radius: 16px;
+      background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+    }
+    .sort-bar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+    .sort-bar button {
+      flex: 1;
+      min-width: 96px;
+      background: linear-gradient(180deg, #FFFDF8 0%, #F3EEE5 100%);
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .sort-bar button.active {
+      background: linear-gradient(180deg, #EEF3E8 0%, var(--accent-soft) 100%);
+      border-color: color-mix(in srgb, var(--accent) 22%, var(--line));
+      color: var(--accent);
+    }
+    .danger-zone {
+      border-top: 1px solid color-mix(in srgb, var(--danger) 50%, var(--line));
+      color: var(--danger);
+    }
+    .danger-zone h2,
+    .danger-zone p {
+      color: var(--danger);
+    }
+    button.danger {
+      width: 100%;
+      background: linear-gradient(180deg, #FFF7F5 0%, color-mix(in srgb, var(--danger) 12%, var(--surface)) 100%);
+      border-color: var(--danger);
+      color: var(--danger);
+      font-weight: 850;
+    }
+    button.danger.final {
+      background: linear-gradient(180deg, #C96E62 0%, var(--danger) 100%);
+      color: #fff;
+    }
+    .chip input { width: auto; accent-color: var(--accent); }
+    .line-icon {
+      width: 1.05em;
+      height: 1.05em;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+      flex: 0 0 auto;
+      vertical-align: -0.16em;
+    }
+    .bottom-nav .line-icon {
+      width: 19px;
+      height: 19px;
+    }
+    .icon-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .empty {
+      padding: 28px 12px;
+      text-align: center;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+    }
+    .toast {
+      position: fixed;
+      right: 50%;
+      bottom: 92px;
+      transform: translateX(50%) translateY(20px);
+      background: #3B352E;
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 12px;
+      opacity: 0;
+      pointer-events: none;
+      transition: .2s ease;
+      z-index: 30;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(50%) translateY(0);
+    }
+    [data-theme="dark"] button {
+      background: linear-gradient(180deg, #474D47 0%, #414741 100%);
+      border-color: var(--line);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.035), 0 1px 2px rgba(0,0,0,.08);
+    }
+    [data-theme="dark"] button.primary {
+      background: linear-gradient(180deg, #61715B 0%, #566B4F 100%);
+      color: var(--text);
+    }
+    [data-theme="dark"] button.soft,
+    [data-theme="dark"] .sort-bar button.active {
+      background: linear-gradient(180deg, rgba(168,183,157,.15) 0%, rgba(168,183,157,.10) 100%);
+      border-color: rgba(255,255,255,.08);
+    }
+    [data-theme="dark"] input,
+    [data-theme="dark"] textarea {
+      background: var(--surface-strong);
+      box-shadow: inset 0 1px 1px rgba(0,0,0,.08);
+    }
+    [data-theme="dark"] .app-shell {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.025), rgba(255,255,255,0) 140px),
+        linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px),
+        var(--bg);
+      background-size: auto, 28px 28px, 28px 28px, auto;
+      border-color: rgba(255,255,255,.08);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.035),
+        inset 0 0 0 8px rgba(255,255,255,.018),
+        0 1px 2px rgba(0,0,0,.10);
+    }
+    [data-theme="dark"] .topbar,
+    [data-theme="dark"] .bottom-nav {
+      background: color-mix(in srgb, var(--surface-strong) 82%, transparent);
+      border-color: var(--line);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.03), 0 1px 2px rgba(0,0,0,.08);
+    }
+    [data-theme="dark"] .task-card,
+    [data-theme="dark"] .list-row,
+    [data-theme="dark"] .mgmt-row,
+    [data-theme="dark"] .update-item,
+    [data-theme="dark"] .chip {
+      background: linear-gradient(180deg, #3D433D 0%, #3A3F3A 100%);
+      border-color: var(--line);
+      box-shadow: 0 1px 2px rgba(0,0,0,.08);
+    }
+    [data-theme="dark"] .status-badge {
+      background: rgba(255,255,255,.035);
+      border-color: rgba(255,255,255,.07);
+    }
+    [data-theme="dark"] .complete-row,
+    [data-theme="dark"] button.add-inline {
+      background: linear-gradient(180deg, rgba(111,138,94,.14) 0%, rgba(111,138,94,.09) 100%);
+    }
+    [data-theme="dark"] button.delete-category,
+    [data-theme="dark"] button.danger {
+      background: linear-gradient(180deg, rgba(184,92,80,.16) 0%, rgba(184,92,80,.10) 100%);
+    }
+    [data-theme="dark"] button.danger.final {
+      background: linear-gradient(180deg, rgba(184,92,80,.88) 0%, rgba(184,92,80,.78) 100%);
+    }
+    [data-theme="dark"] .add-panel {
+      background: rgba(168,183,157,.08);
+    }
+    [data-theme="dark"] .toast {
+      background: #4A4036;
+    }
+    @media (min-width: 720px) {
+      .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .management-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .management-tiles .wide { grid-column: 1 / -1; }
+    }
+    @media (max-width: 480px) {
+      body { padding: 0; }
+      .app-shell {
+        width: 100%;
+        min-height: 100vh;
+        border-radius: 0;
+        border: 0;
+      }
+      .bottom-nav {
+        width: calc(100% - 18px);
+        bottom: 8px;
+      }
+    }
+    </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <strong>משימות ישיבת בת עין</strong>
+        <span id="roleLabel">מצב משתמש רגיל</span>
+      </div>
+      <div class="role-switch" aria-label="בחירת מצב">
+        <button id="userMode" type="button">עדינה</button>
+        <button id="managerMode" type="button">צבי</button>
+      </div>
+    </header>
+    <main id="app" aria-live="polite"></main>
+  </div>
+  <nav id="bottomNav" class="bottom-nav user" aria-label="ניווט ראשי"></nav>
+  <div id="toast" class="toast" role="status"></div>
+
+  <script>
+    function lineIcon(name) {
+      const icons = {
+        kitchen: '<path d="M7 3v18"/><path d="M4 3v6a3 3 0 0 0 6 0V3"/><path d="M15 3v18"/><path d="M15 3c3 2 4 5 4 8h-4"/>',
+        maintenance: '<path d="M14.7 6.3a4 4 0 0 0-5 5L4 17v3h3l5.7-5.7a4 4 0 0 0 5-5l-2.6 2.6-3-3z"/>',
+        study: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21z"/><path d="M4 5.5V21"/><path d="M8 7h8"/>',
+        money: '<rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 9h.01M18 15h.01"/>',
+        events: '<rect x="4" y="5" width="16" height="16" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/><path d="M8 14h3M13 14h3M8 17h3"/>',
+        office: '<path d="M3 7h18v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 7l3-4h12l3 4"/><path d="M9 13h6"/>',
+        user: '<circle cx="12" cy="8" r="3"/><path d="M5 20a7 7 0 0 1 14 0"/>',
+        users: '<path d="M16 18a4 4 0 0 0-8 0"/><circle cx="12" cy="9" r="3"/><path d="M19 18a3 3 0 0 0-2-2.8"/><path d="M5 18a3 3 0 0 1 2-2.8"/>',
+        progress: '<circle cx="12" cy="12" r="8"/><path d="M12 8v5l3 2"/>',
+        done: '<path d="M20 6 9 17l-5-5"/>',
+        settings: '<path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/><path d="M19.4 15a1.8 1.8 0 0 0 .36 2l.04.04a2 2 0 1 1-2.83 2.83l-.04-.04a1.8 1.8 0 0 0-2-.36 1.8 1.8 0 0 0-1 1.63V21a2 2 0 1 1-4 0v-.06a1.8 1.8 0 0 0-1-1.63 1.8 1.8 0 0 0-2 .36l-.04.04a2 2 0 1 1-2.83-2.83l.04-.04a1.8 1.8 0 0 0 .36-2 1.8 1.8 0 0 0-1.63-1H3a2 2 0 1 1 0-4h.06a1.8 1.8 0 0 0 1.63-1 1.8 1.8 0 0 0-.36-2l-.04-.04A2 2 0 1 1 7.12 3.9l.04.04a1.8 1.8 0 0 0 2 .36h.01A1.8 1.8 0 0 0 10.2 2.7V2a2 2 0 1 1 4 0v.06a1.8 1.8 0 0 0 1 1.63 1.8 1.8 0 0 0 2-.36l.04-.04a2 2 0 1 1 2.83 2.83l-.04.04a1.8 1.8 0 0 0-.36 2v.01a1.8 1.8 0 0 0 1.63 1H21a2 2 0 1 1 0 4h-.06a1.8 1.8 0 0 0-1.54 1.03z"/>',
+        list: '<path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/>',
+        today: '<rect x="4" y="5" width="16" height="16" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/><path d="M9 15h6"/>',
+        preferences: '<path d="M4 7h16"/><path d="M7 7a2 2 0 1 0 0 .01"/><path d="M4 17h16"/><path d="M17 17a2 2 0 1 0 0 .01"/>',
+        back: '<path d="M19 12H5"/><path d="m12 19-7-7 7-7"/>',
+        edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>'
+      };
+      return `<svg class="line-icon" viewBox="0 0 24 24" aria-hidden="true">${icons[name] || icons.office}</svg>`;
+    }
+    function labelIcon(name, text) {
+      return `<span class="icon-label">${lineIcon(name)}<span>${text}</span></span>`;
+    }
+    const baseCategories = [
+      { id: "kitchen", label: "מטבח", icon: "kitchen" },
+      { id: "maintenance", label: "תחזוקה", icon: "maintenance" },
+      { id: "study", label: "לימוד", icon: "study" },
+      { id: "money", label: "כספים", icon: "money" },
+      { id: "events", label: "אירועים", icon: "events" },
+      { id: "office", label: "משרד", icon: "office" }
+    ];
+    function loadCategories() {
+      const hidden = JSON.parse(localStorage.getItem("beit-hidden-categories") || "[]");
+      const custom = JSON.parse(localStorage.getItem("beit-categories") || "[]");
+      return [...baseCategories.filter(c => !hidden.includes(c.id)), ...custom];
+    }
+    let categories = loadCategories();
+    const basePeople = ["עדינה", "אבי", "חיה", "צבי"];
+    function loadPeople() {
+      const hidden = JSON.parse(localStorage.getItem("beit-hidden-people") || "[]");
+      const custom = JSON.parse(localStorage.getItem("beit-people") || "[]");
+      return [...basePeople.filter(p => !hidden.includes(p)), ...custom];
+    }
+    let people = loadPeople();
+    const statusMeta = {
+      progress: { label: "בתהליך", dot: "progress", icon: "progress" },
+      done: { label: "הושלם", dot: "done", icon: "done" }
+    };
+    const statusButtons = [
+      ["progress", "בתהליך"],
+      ["done", "הושלם"]
+    ];
+    const starterTasks = [
+      { id: "t1", title: "אישור הזמנת ירקות", category: "kitchen", owner: "עדינה", due: "today", dueLabel: "היום · שלישי", status: "progress", notes: "לבדוק מול הספק ולאשר כמויות", updates: [{ by: "עדינה", text: "מחכה למחיר סופי" }] },
+      { id: "t2", title: "בדיקת ציוד לשבת", category: "maintenance", owner: "אבי", due: "today", dueLabel: "היום · שלישי", status: "progress", notes: "לוודא שולחנות וכבלים באולם", updates: [{ by: "אבי", text: "חסר כבל מאריך אחד" }] },
+      { id: "t3", title: "בדיקת ספק", category: "events", owner: "חיה", due: "date", dueLabel: "שני · 14 יוני", status: "progress", notes: "לקבל אישור על מועד הגעה", updates: [] },
+      { id: "t4", title: "הכנת דף מקורות", category: "study", owner: "עדינה", due: "tomorrow", dueLabel: "מחר · רביעי", status: "progress", notes: "להדפיס עשרים עותקים", updates: [] },
+      { id: "t11", title: "סידור רשימת קניות", category: "office", owner: "עדינה", due: "today", dueLabel: "היום · שלישי", status: "progress", notes: "לעדכן אחרי שיחה עם המטבח", updates: [] },
+      { id: "t12", title: "תיאום הדפסות", category: "study", owner: "עדינה", due: "today", dueLabel: "היום · שלישי", status: "progress", notes: "לבדוק מול המזכירות לפני 13:00", updates: [] },
+      { id: "t5", title: "אישור תשלום לספק", category: "money", owner: "צבי", due: "today", dueLabel: "היום · שלישי", status: "progress", notes: "לוודא חשבונית לפני אישור", updates: [] },
+      { id: "t6", title: "שיחה עם איש תחזוקה", category: "maintenance", owner: "צבי", due: "today", dueLabel: "היום · שלישי", status: "progress", notes: "לתאם תיקון ידית בדלת", updates: [] },
+      { id: "t7", title: "תשלום לספק", category: "money", owner: "עדינה", due: "done", dueLabel: "הושלם · ראשון", status: "done", notes: "נסגר", updates: [{ by: "צבי", text: "אושר במזכירות" }] },
+      { id: "t8", title: "דף מקורות לשיעור", category: "study", owner: "עדינה", due: "done", dueLabel: "הושלם · שני", status: "done", notes: "הועבר להדפסה", updates: [] },
+      { id: "t9", title: "הזמנת ציוד", category: "maintenance", owner: "צבי", due: "done", dueLabel: "הושלם · שני", status: "done", notes: "בוצע", updates: [] },
+      { id: "t10", title: "בדיקת מלאי", category: "kitchen", owner: "חיה", due: "tomorrow", dueLabel: "מחר · רביעי", status: "progress", notes: "לבדוק שמן, קמח ותבלינים", updates: [] }
+    ];
+
+    const dataVersion = "mockup-v3";
+    if (localStorage.getItem("beit-version") !== dataVersion) {
+      localStorage.setItem("beit-tasks", JSON.stringify(starterTasks));
+      localStorage.setItem("beit-version", dataVersion);
+    }
+
+    const params = new URLSearchParams(location.search);
+    const lockedRole = params.get("mockup") === "manager" ? "manager" : params.get("mockup") === "user" ? "user" : null;
+    document.body.classList.toggle("locked-role", Boolean(lockedRole));
+
+    const state = {
+      role: lockedRole || localStorage.getItem("beit-role") || "user",
+      view: location.hash.replace("#", "") || "today",
+      lastList: "today",
+      editingNotes: false,
+      editingTitle: false,
+      clearAllStep: 0,
+      addingCategory: false,
+      deletingCategory: false,
+      categoriesToDelete: [],
+      addingPerson: false,
+      deletingPerson: false,
+      peopleToDelete: [],
+      allSort: "date",
+      draftDate: "",
+      tasks: JSON.parse(localStorage.getItem("beit-tasks") || "null") || starterTasks,
+      prefs: JSON.parse(localStorage.getItem("beit-prefs") || "null") || { dark: false, text: "רגיל" }
+    };
+
+    document.body.dataset.theme = state.prefs.dark ? "dark" : "";
+
+    const $ = (id) => document.getElementById(id);
+    const app = $("app");
+
+    function save() {
+      localStorage.setItem("beit-tasks", JSON.stringify(state.tasks));
+      if (!lockedRole) localStorage.setItem("beit-role", state.role);
+      localStorage.setItem("beit-prefs", JSON.stringify(state.prefs));
+    }
+    function toast(text) {
+      $("toast").textContent = text;
+      $("toast").classList.add("show");
+      setTimeout(() => $("toast").classList.remove("show"), 1600);
+    }
+    function cat(id) { return categories.find(c => c.id === id) || { id: "uncategorized", label: "ללא קטגוריה", icon: "office" }; }
+    function byVisibleRole(tasks) {
+      return state.role === "manager" ? tasks : tasks.filter(t => t.owner === "עדינה");
+    }
+    function openTasks() {
+      return state.tasks.filter(t => t.status !== "done");
+    }
+    function navigate(view) {
+      state.editingNotes = false;
+      state.editingTitle = false;
+      state.clearAllStep = 0;
+      state.addingCategory = false;
+      state.deletingCategory = false;
+      state.categoriesToDelete = [];
+      state.addingPerson = false;
+      state.deletingPerson = false;
+      state.peopleToDelete = [];
+      state.view = view;
+      if (!view.startsWith("task:")) state.lastList = view;
+      location.hash = view;
+      render();
+    }
+    function updateTask(id, patch) {
+      state.tasks = state.tasks.map(t => t.id === id ? { ...t, ...patch } : t);
+      save();
+      render();
+    }
+    function render() {
+      $("userMode").classList.toggle("active", state.role === "user");
+      $("managerMode").classList.toggle("active", state.role === "manager");
+      $("roleLabel").textContent = state.role === "manager" ? "מצב צבי / מנהל" : "מצב משתמש רגיל";
+      document.querySelector(".role-switch").style.display = lockedRole ? "none" : "";
+      const view = state.view;
+      if (state.view === "today") {
+        state.view = "all";
+      }
+      if (state.role === "user" && (view === "management" || view.startsWith("person:") || view.startsWith("category:") || view.startsWith("filter:"))) {
+        state.view = "all";
+      }
+      app.innerHTML = route();
+      renderNav();
+      bindPage();
+    }
+    function route() {
+      const view = state.view;
+      if (view === "management") return managementScreen();
+      if (view === "all") return openTasksScreen();
+      if (view === "today") return openTasksScreen();
+      if (view === "done") return listScreen("הושלם", byVisibleRole(state.tasks).filter(t => t.status === "done"), state.role === "manager");
+      if (view === "prefs") return prefsScreen();
+      if (view === "create") return createScreen();
+      if (view.startsWith("task:")) return detailScreen(view.split(":")[1]);
+      if (view.startsWith("person:")) {
+        const person = decodeURIComponent(view.split(":")[1]);
+        return listScreen(person, state.tasks.filter(t => t.owner === person && t.status !== "done"), true, `${state.tasks.filter(t => t.owner === person && t.status !== "done").length} משימות`);
+      }
+      if (view.startsWith("category:")) {
+        const category = decodeURIComponent(view.split(":")[1]);
+        const c = cat(category);
+        return listScreen(`${lineIcon(c.icon)} ${c.label}`, state.tasks.filter(t => t.category === category && t.status !== "done"), true);
+      }
+      if (view.startsWith("filter:progress")) return listScreen("משימות בתהליך", state.tasks.filter(t => t.status === "progress"), true);
+      if (view.startsWith("filter:open")) return listScreen("משימות בתהליך", state.tasks.filter(t => t.status === "progress"), true);
+      return openTasksScreen();
+    }
+    function openTasksScreen() {
+      const tasks = sortTasks(byVisibleRole(state.tasks).filter(t => t.status !== "done"));
+      const todayTasks = tasks.filter(t => t.due === "today");
+      const otherTasks = tasks.filter(t => t.due !== "today");
+      const showOwner = state.role === "manager";
+      return `
+        <section class="hero">
+          <h1>משימות פתוחות</h1>
+          ${sortControls()}
+        </section>
+        <section class="task-group highlight">
+          <h2 class="task-group-title">להיום</h2>
+          <div class="list">${todayTasks.length ? todayTasks.map(t => listRow(t, showOwner)).join("") : `<div class="empty">אין משימות להיום.</div>`}</div>
+        </section>
+        <section class="task-group">
+          <h2 class="task-group-title">שאר המשימות</h2>
+          <div class="list">${otherTasks.length ? otherTasks.map(t => listRow(t, showOwner)).join("") : `<div class="empty">אין משימות נוספות.</div>`}</div>
+        </section>
+        ${state.role === "user" ? `<section class="section"><button class="mgmt-row wide" data-nav="create"><span class="chev">+</span><strong>יצירת משימה חדשה</strong><span class="muted">הוספה מהירה למשימות שלי</span></button></section>` : ""}`;
+    }
+    function taskCard(t) {
+      const c = cat(t.category), s = statusMeta[t.status];
+      return `
+        <article class="task-card" data-open="${t.id}">
+          <header>
+            <span class="status-line status-badge">${lineIcon(s.icon)} ${s.label}</span>
+            <span class="category">${lineIcon(c.icon)} ${c.label}</span>
+          </header>
+          <div class="task-title">${t.title}</div>
+          <div class="due">יעד: ${t.dueLabel}</div>
+          <div class="quick-actions">
+            <button class="primary" data-status="${t.id}:done">סמן כהושלם</button>
+          </div>
+        </article>`;
+    }
+    function sortTasks(tasks) {
+      const dueOrder = { today: 0, tomorrow: 1, date: 2, done: 3 };
+      return [...tasks].sort((a, b) => {
+        if (state.allSort === "category") {
+          return cat(a.category).label.localeCompare(cat(b.category).label, "he") || dueOrder[a.due] - dueOrder[b.due] || a.title.localeCompare(b.title, "he");
+        }
+        if (state.allSort === "owner") {
+          return a.owner.localeCompare(b.owner, "he") || dueOrder[a.due] - dueOrder[b.due] || a.title.localeCompare(b.title, "he");
+        }
+        return dueOrder[a.due] - dueOrder[b.due] || a.dueLabel.localeCompare(b.dueLabel, "he") || a.title.localeCompare(b.title, "he");
+      });
+    }
+    function sortControls() {
+      const labels = state.role === "manager"
+        ? [["date", "לפי תאריך"], ["category", "לפי קטגוריה"], ["owner", "לפי מבצע"]]
+        : [["date", "לפי תאריך"], ["category", "לפי קטגוריה"]];
+      return `<div class="sort-bar" aria-label="אפשרויות מיון">${labels.map(([key, label]) => `<button data-sort="${key}" class="${state.allSort === key ? "active" : ""}">${label}</button>`).join("")}</div>`;
+    }
+    function listScreen(title, tasks, showOwner, subtitle = "", sortable = false, showCreate = false) {
+      return `
+        <section class="hero">
+          ${state.role === "manager" && state.view !== "all" && state.view !== "done" ? `<button class="back" data-nav="management">${lineIcon("back")} חזרה</button>` : ""}
+          <h1>${title}</h1>
+          ${subtitle ? `<p class="muted">${subtitle}</p>` : ""}
+          ${sortable ? sortControls() : ""}
+        </section>
+        <section class="list">
+          ${tasks.length ? tasks.map(t => listRow(t, showOwner)).join("") : `<div class="empty">אין משימות להצגה.</div>`}
+        </section>
+        ${showCreate ? `<section class="section"><button class="mgmt-row wide" data-nav="create"><span class="chev">+</span><strong>יצירת משימה חדשה</strong><span class="muted">הוספה מהירה למשימות שלי</span></button></section>` : ""}`;
+    }
+    function listRow(t, showOwner) {
+      const c = cat(t.category), s = statusMeta[t.status];
+      return `
+        <div class="list-row ${t.status === "done" ? "completed" : ""}" data-open="${t.id}" role="button" tabindex="0">
+          <div class="list-row-content">
+            <div class="category">${lineIcon(c.icon)} ${c.label}</div>
+            <div class="task-title"><span class="dot ${s.dot}">${lineIcon(s.icon)}</span> ${t.title}</div>
+            <div class="status-line status-badge">${lineIcon(s.icon)} ${s.label}</div>
+            ${showOwner ? `<div class="person-line">${lineIcon("user")} ${t.owner}</div>` : ""}
+            <div class="due">${t.dueLabel}</div>
+          </div>
+          ${t.status !== "done" ? `<button class="complete-row" type="button" data-status="${t.id}:done">${lineIcon("done")} הושלם</button>` : ""}
+        </div>`;
+    }
+    function detailScreen(id) {
+      const t = state.tasks.find(x => x.id === id);
+      if (!t) return `<section class="hero"><h1>המשימה לא נמצאה</h1></section>`;
+      const c = cat(t.category), s = statusMeta[t.status];
+      const titleBlock = state.editingTitle
+        ? `<input id="titleInput" value="${escapeHtml(t.title)}"><div class="quick-actions"><button class="primary" id="saveTitle">שמור</button><button id="cancelTitle">ביטול</button></div>`
+        : `<div class="detail-title-row"><h1>${t.title}</h1><button class="icon" id="editTitle" aria-label="עריכת שם">${lineIcon("edit")}</button></div>`;
+      const notesBlock = state.editingNotes
+        ? `<textarea id="notesInput">${escapeHtml(t.notes)}</textarea><div class="quick-actions"><button class="primary" id="saveNotes">שמור</button><button id="cancelNotes">ביטול</button></div>`
+        : `<p>${t.notes || "אין הערות."}</p><button class="soft" id="editNotes">ערוך</button>`;
+      return `
+        <section class="detail-head">
+          <button class="back" data-nav="${state.lastList || "today"}">${lineIcon("back")} חזרה</button>
+          <div class="category">${lineIcon(c.icon)} ${c.label}</div>
+          ${titleBlock}
+        </section>
+        <section class="detail-block">
+          <h2>סטטוס</h2>
+          <p class="status-line status-badge">${lineIcon(s.icon)} ${s.label}</p>
+          <div class="segmented">${statusButtons.map(([key,label]) => `<button data-status="${t.id}:${key}" class="${t.status === key ? "active" : ""}">${label}</button>`).join("")}</div>
+        </section>
+        <section class="detail-block">
+          <h2>יעד</h2>
+          <p>${t.dueLabel}</p>
+          <div class="segmented">
+            <button data-tomorrow="${t.id}">העבר למחר</button>
+            <button id="pickDate">שנה תאריך</button>
+          </div>
+          <div id="dateChooser" style="display:none; margin-top:10px;">
+            <input id="dateInput" type="date">
+            <div class="quick-actions"><button class="primary" id="saveDate">שמור תאריך</button></div>
+          </div>
+        </section>
+        <section class="detail-block">
+          <h2>הערות</h2>
+          ${notesBlock}
+        </section>
+        <section class="detail-block">
+          <h2>עדכונים</h2>
+          <div class="updates">
+            ${t.updates.length ? t.updates.map(u => `<div class="update-item"><strong>${u.by}:</strong><br>${u.text}</div>`).join("") : `<p class="muted">אין עדכונים עדיין.</p>`}
+          </div>
+          <button class="soft" id="addUpdate" style="margin-top:10px;">+ עדכון</button>
+        </section>`;
+    }
+    function managementScreen() {
+      const progress = state.tasks.filter(t => t.status === "progress").length;
+      const done = state.tasks.filter(t => t.status === "done").length;
+      return `
+        <section class="hero">
+          <h1>ניהול</h1>
+        </section>
+        <section class="management-tiles">
+          <button class="mgmt-row" data-nav="filter:progress"><span class="chev">‹</span><strong>משימות בתהליך</strong><div class="big">${progress}</div></button>
+          <button class="mgmt-row" data-nav="done"><span class="chev">‹</span><strong>משימות שהושלמו</strong><div class="big">${done}</div></button>
+        </section>
+        <section class="section">
+          <h2>קטגוריות</h2>
+          <div class="management-list">${categories.slice(0,5).map(c => `<button class="management-list-row" data-nav="category:${c.id}"><span class="name">${c.label}</span><span class="icon-box">${lineIcon(c.icon)}</span></button>`).join("")}</div>
+        </section>
+        <section class="section">
+          <h2>מבצעים</h2>
+          <div class="management-list">${people.map(p => `<button class="management-list-row" data-nav="person:${encodeURIComponent(p)}"><span class="name">${p}</span><span class="icon-box">${lineIcon("user")}</span></button>`).join("")}</div>
+        </section>
+        <section class="section">
+          <button class="mgmt-row create-row" data-nav="create"><span class="chev">+</span><strong>יצירת משימה חדשה</strong></button>
+        </section>`;
+    }
+    function prefsScreen() {
+      const clearPrompt = state.clearAllStep === 0
+        ? { text: "נקה את כל המשימות.", detail: "פעולה זו מוחקת את כל המשימות.", cls: "" }
+        : state.clearAllStep === 1
+          ? { text: "כן, אני בטוח. המשך.", detail: "אישור ראשון התקבל. צריך אישור נוסף.", cls: "" }
+          : { text: "אישור אחרון: מחק הכל.", detail: "זה האישור השני והסופי.", cls: " final" };
+      return `
+        <section class="hero"><h1>העדפות</h1></section>
+        <section class="prefs-line">
+          <h2>מצב כהה</h2>
+          <label class="chip"><input id="darkToggle" type="checkbox" ${state.prefs.dark ? "checked" : ""}> פעיל</label>
+        </section>
+        ${state.role === "manager" ? `<section class="prefs-line danger-zone">
+          <h2>ניקוי משימות</h2>
+          <p>${clearPrompt.detail}</p>
+          <button class="danger${clearPrompt.cls}" id="clearAllTasks" type="button">${clearPrompt.text}</button>
+        </section>` : ""}`;
+    }
+    function categoryPickerMarkup() {
+      const categoryItems = categories.map((c, i) => {
+        if (state.deletingCategory) {
+          const selected = state.categoriesToDelete.includes(c.id) ? " selected" : "";
+          return `<button class="chip delete-select${selected}" type="button" data-mark-delete-category="${c.id}">${lineIcon(c.icon)} ${c.label}</button>`;
+        }
+        return `<label class="chip"><input name="category" type="radio" value="${c.id}" ${i===0 ? "checked" : ""}> ${lineIcon(c.icon)} ${c.label}</label>`;
+      }).join("");
+      const canManageCategories = state.role === "manager";
+      const deleteButton = canManageCategories && categories.length ? `<button class="delete-category" type="button" id="startDeleteCategory">${state.deletingCategory ? "ביטול מחיקה" : "מחק קטגוריה"}</button>` : "";
+      const confirm = state.deletingCategory && state.categoriesToDelete.length
+        ? `<div class="quick-actions" style="margin-top:10px;"><button class="danger final" type="button" id="confirmDeleteCategory">אשר מחיקה (${state.categoriesToDelete.length})</button><button type="button" id="cancelDeleteCategory">ביטול</button></div>`
+        : "";
+      const help = state.deletingCategory
+        ? `<p class="muted" style="margin-top:10px; color: var(--danger);">בחר קטגוריה אחת או יותר למחיקה. רק המסומנות במסגרת אדומה יימחקו.</p>`
+        : "";
+      return `
+        <div class="chips">${categoryItems}${canManageCategories ? `<button class="add-inline" type="button" id="showCategoryInput">הוספת קטגוריה +</button>` : ""}${deleteButton}</div>
+        ${help}
+        ${confirm}`;
+    }
+    function peoplePickerMarkup() {
+      const items = people.map((person, i) => {
+        if (state.deletingPerson) {
+          const selected = state.peopleToDelete.includes(person) ? " selected" : "";
+          return `<button class="chip delete-select${selected}" type="button" data-mark-delete-person="${person}">${lineIcon("user")} ${person}</button>`;
+        }
+        return `<label class="chip"><input name="owner" type="checkbox" value="${person}" ${i===0 ? "checked" : ""}> ${person}</label>`;
+      }).join("");
+      const deleteButton = people.length ? `<button class="delete-category" type="button" id="startDeletePerson">${state.deletingPerson ? "ביטול מחיקה" : "מחק מבצע"}</button>` : "";
+      const confirm = state.deletingPerson && state.peopleToDelete.length
+        ? `<div class="quick-actions" style="margin-top:10px;"><button class="danger final" type="button" id="confirmDeletePerson">אשר מחיקה (${state.peopleToDelete.length})</button><button type="button" id="cancelDeletePerson">ביטול</button></div>`
+        : "";
+      const help = state.deletingPerson
+        ? `<p class="muted" style="margin-top:10px; color: var(--danger);">בחר מבצע אחד או יותר למחיקה. רק המסומנים במסגרת אדומה יימחקו.</p>`
+        : "";
+      return `
+        <div class="chips">${items}<button class="add-inline" type="button" id="showPersonInput">הוספת מבצע +</button>${deleteButton}</div>
+        ${help}
+        ${confirm}`;
+    }
+    function createScreen() {
+      return `
+        <section class="hero">
+          <button class="back" data-nav="${state.role === "manager" ? "management" : "all"}">${lineIcon("back")} חזרה</button>
+          <h1>משימה חדשה</h1>
+        </section>
+        <form id="createForm">
+          <div class="form-group"><h2>כותרת</h2><input id="newTitle" required placeholder="מה צריך לעשות?"></div>
+          <div class="form-group">
+            <h2>קטגוריה</h2>
+            ${categoryPickerMarkup()}
+            ${categories.length ? "" : `<p class="muted" style="margin-top:10px;">אין קטגוריות כרגע. אפשר ליצור משימה ללא קטגוריה או להוסיף קטגוריה חדשה.</p>`}
+            ${state.addingCategory ? `<div class="quick-actions add-panel"><input id="newCategoryName" placeholder="שם קטגוריה"><button class="primary" type="button" id="saveCategory">שמור קטגוריה</button><button type="button" id="cancelCategory">ביטול</button></div>` : ""}
+          </div>
+          ${state.role === "manager" ? `<div class="form-group"><h2>מבצע/ים</h2>${peoplePickerMarkup()}${people.length ? "" : `<p class="muted" style="margin-top:10px;">אין מבצעים כרגע. אפשר ליצור משימה ללא מבצע או להוסיף מבצע חדש.</p>`}${state.addingPerson ? `<div class="quick-actions add-panel"><input id="newPersonName" placeholder="שם מבצע"><button class="primary" type="button" id="savePerson">שמור מבצע</button><button type="button" id="cancelPerson">ביטול</button></div>` : ""}</div>` : ""}
+          <div class="form-group"><h2>יעד</h2><div class="segmented"><button type="button" data-due-choice="today" class="active">היום</button><button type="button" data-due-choice="tomorrow">מחר</button><button type="button" data-due-choice="date">בחר תאריך</button></div><input id="newDate" type="date" style="display:none; margin-top:10px;"></div>
+          <div class="form-group"><h2>הערות</h2><textarea id="newNotes" placeholder="פרטים קצרים"></textarea></div>
+          <button class="primary" type="submit" style="width:100%;">צור משימה</button>
+        </form>`;
+    }
+    function renderNav() {
+      const items = state.role === "manager"
+        ? [["management","ניהול","settings"],["all","משימות פתוחות","list"],["done","הושלם","done"],["prefs","העדפות","preferences"]]
+        : [["all","משימות פתוחות","list"],["done","הושלם","done"],["prefs","העדפות","preferences"]];
+      const nav = $("bottomNav");
+      nav.className = `bottom-nav ${state.role === "manager" ? "manager" : "user"}`;
+      nav.innerHTML = items.map(([view,label,iconName]) => `<button data-nav="${view}" class="${state.view === view ? "active" : ""}"><span>${lineIcon(iconName)}</span><span>${label}</span></button>`).join("");
+    }
+    function bindPage() {
+      document.querySelectorAll("[data-nav]").forEach(el => el.addEventListener("click", e => navigate(e.currentTarget.dataset.nav)));
+      document.querySelectorAll("[data-sort]").forEach(el => el.addEventListener("click", e => {
+        state.allSort = e.currentTarget.dataset.sort;
+        render();
+      }));
+      document.querySelectorAll("[data-open]").forEach(el => el.addEventListener("click", e => {
+        if (e.target.closest("[data-status]")) return;
+        navigate(`task:${e.currentTarget.dataset.open}`);
+      }));
+      document.querySelectorAll("[data-open]").forEach(el => el.addEventListener("keydown", e => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        navigate(`task:${e.currentTarget.dataset.open}`);
+      }));
+      document.querySelectorAll("[data-status]").forEach(el => el.addEventListener("click", e => {
+        e.stopPropagation();
+        const [id, status] = e.currentTarget.dataset.status.split(":");
+        const task = state.tasks.find(t => t.id === id);
+        updateTask(id, {
+          status,
+          due: status === "done" ? "done" : task.due === "done" ? "today" : task.due,
+          dueLabel: status === "done" ? "הושלם · היום" : task.due === "done" ? "היום · שלישי" : task.dueLabel
+        });
+        toast(status === "done" ? "המשימה סומנה כהושלמה" : "הסטטוס עודכן");
+      }));
+      document.querySelectorAll("[data-tomorrow]").forEach(el => el.addEventListener("click", e => {
+        updateTask(e.currentTarget.dataset.tomorrow, { due: "tomorrow", dueLabel: "מחר · רביעי" });
+        toast("היעד עבר למחר");
+      }));
+      $("editNotes")?.addEventListener("click", () => { state.editingNotes = true; render(); });
+      $("cancelNotes")?.addEventListener("click", () => { state.editingNotes = false; render(); });
+      $("saveNotes")?.addEventListener("click", () => {
+        const id = state.view.split(":")[1];
+        state.editingNotes = false;
+        updateTask(id, { notes: $("notesInput").value });
+        toast("ההערות נשמרו");
+      });
+      $("editTitle")?.addEventListener("click", () => { state.editingTitle = true; render(); });
+      $("cancelTitle")?.addEventListener("click", () => { state.editingTitle = false; render(); });
+      $("saveTitle")?.addEventListener("click", () => {
+        const id = state.view.split(":")[1];
+        state.editingTitle = false;
+        updateTask(id, { title: $("titleInput").value || "משימה ללא כותרת" });
+        toast("שם המשימה נשמר");
+      });
+      $("pickDate")?.addEventListener("click", () => { $("dateChooser").style.display = "block"; });
+      $("saveDate")?.addEventListener("click", () => {
+        const input = $("dateInput").value;
+        const id = state.view.split(":")[1];
+        if (!input) return toast("בחר תאריך");
+        updateTask(id, { due: "date", dueLabel: formatHebrewDate(input) });
+        toast("התאריך עודכן");
+      });
+      $("addUpdate")?.addEventListener("click", () => {
+        const id = state.view.split(":")[1];
+        const t = state.tasks.find(x => x.id === id);
+        updateTask(id, { updates: [...t.updates, { by: state.role === "manager" ? "צבי" : "עדינה", text: "עדכון מהיר נוסף" }] });
+        toast("נוסף עדכון");
+      });
+      $("darkToggle")?.addEventListener("change", e => {
+        state.prefs.dark = e.target.checked;
+        document.body.dataset.theme = state.prefs.dark ? "dark" : "";
+        save();
+        render();
+      });
+      $("clearAllTasks")?.addEventListener("click", () => {
+        if (state.clearAllStep < 2) {
+          state.clearAllStep += 1;
+          render();
+          return;
+        }
+        state.tasks = [];
+        state.clearAllStep = 0;
+        save();
+        render();
+        toast("כל המשימות נמחקו");
+      });
+      $("showCategoryInput")?.addEventListener("click", () => {
+        state.addingCategory = true;
+        state.deletingCategory = false;
+        state.categoriesToDelete = [];
+        state.addingPerson = false;
+        state.deletingPerson = false;
+        state.peopleToDelete = [];
+        render();
+      });
+      $("cancelCategory")?.addEventListener("click", () => {
+        state.addingCategory = false;
+        render();
+      });
+      $("saveCategory")?.addEventListener("click", () => {
+        const name = $("newCategoryName").value.trim();
+        if (!name) return toast("כתוב שם קטגוריה");
+        const category = { id: `custom-${Date.now()}`, label: name, icon: "office" };
+        const custom = JSON.parse(localStorage.getItem("beit-categories") || "[]");
+        custom.push(category);
+        localStorage.setItem("beit-categories", JSON.stringify(custom));
+        categories = loadCategories();
+        state.addingCategory = false;
+        state.deletingCategory = false;
+        state.categoriesToDelete = [];
+        render();
+        setTimeout(() => {
+          const input = document.querySelector(`input[name="category"][value="${category.id}"]`);
+          if (input) input.checked = true;
+        }, 0);
+        toast("הקטגוריה נוספה");
+      });
+      $("startDeleteCategory")?.addEventListener("click", () => {
+        state.deletingCategory = !state.deletingCategory;
+        state.categoriesToDelete = [];
+        state.addingCategory = false;
+        state.addingPerson = false;
+        state.deletingPerson = false;
+        state.peopleToDelete = [];
+        render();
+      });
+      document.querySelectorAll("[data-mark-delete-category]").forEach(btn => btn.addEventListener("click", e => {
+        const id = e.currentTarget.dataset.markDeleteCategory;
+        state.categoriesToDelete = state.categoriesToDelete.includes(id)
+          ? state.categoriesToDelete.filter(categoryId => categoryId !== id)
+          : [...state.categoriesToDelete, id];
+        render();
+      }));
+      $("cancelDeleteCategory")?.addEventListener("click", () => {
+        state.deletingCategory = false;
+        state.categoriesToDelete = [];
+        render();
+      });
+      $("confirmDeleteCategory")?.addEventListener("click", () => {
+        const ids = state.categoriesToDelete;
+        if (!ids.length) return;
+        const hidden = JSON.parse(localStorage.getItem("beit-hidden-categories") || "[]");
+        ids.filter(id => baseCategories.some(c => c.id === id)).forEach(id => {
+          if (!hidden.includes(id)) hidden.push(id);
+        });
+        localStorage.setItem("beit-hidden-categories", JSON.stringify(hidden));
+        const custom = JSON.parse(localStorage.getItem("beit-categories") || "[]").filter(c => !ids.includes(c.id));
+        localStorage.setItem("beit-categories", JSON.stringify(custom));
+        categories = loadCategories();
+        const fallbackCategory = categories[0]?.id || "uncategorized";
+        state.tasks = state.tasks.map(t => ids.includes(t.category) ? { ...t, category: fallbackCategory } : t);
+        state.deletingCategory = false;
+        state.categoriesToDelete = [];
+        save();
+        render();
+        toast(ids.length === 1 ? "הקטגוריה נמחקה" : "הקטגוריות נמחקו");
+      });
+      $("showPersonInput")?.addEventListener("click", () => {
+        state.addingPerson = true;
+        state.deletingPerson = false;
+        state.peopleToDelete = [];
+        state.addingCategory = false;
+        state.deletingCategory = false;
+        state.categoriesToDelete = [];
+        render();
+      });
+      $("cancelPerson")?.addEventListener("click", () => {
+        state.addingPerson = false;
+        render();
+      });
+      $("savePerson")?.addEventListener("click", () => {
+        const name = $("newPersonName").value.trim();
+        if (!name) return toast("כתוב שם מבצע");
+        const custom = JSON.parse(localStorage.getItem("beit-people") || "[]");
+        if (![...basePeople, ...custom].includes(name)) custom.push(name);
+        localStorage.setItem("beit-people", JSON.stringify(custom));
+        people = loadPeople();
+        state.addingPerson = false;
+        state.deletingPerson = false;
+        state.peopleToDelete = [];
+        render();
+        setTimeout(() => {
+          const input = document.querySelector(`input[name="owner"][value="${name}"]`);
+          if (input) input.checked = true;
+        }, 0);
+        toast("המבצע נוסף");
+      });
+      $("startDeletePerson")?.addEventListener("click", () => {
+        state.deletingPerson = !state.deletingPerson;
+        state.peopleToDelete = [];
+        state.addingPerson = false;
+        state.addingCategory = false;
+        state.deletingCategory = false;
+        state.categoriesToDelete = [];
+        render();
+      });
+      document.querySelectorAll("[data-mark-delete-person]").forEach(btn => btn.addEventListener("click", e => {
+        const person = e.currentTarget.dataset.markDeletePerson;
+        state.peopleToDelete = state.peopleToDelete.includes(person)
+          ? state.peopleToDelete.filter(item => item !== person)
+          : [...state.peopleToDelete, person];
+        render();
+      }));
+      $("cancelDeletePerson")?.addEventListener("click", () => {
+        state.deletingPerson = false;
+        state.peopleToDelete = [];
+        render();
+      });
+      $("confirmDeletePerson")?.addEventListener("click", () => {
+        const names = state.peopleToDelete;
+        if (!names.length) return;
+        const hidden = JSON.parse(localStorage.getItem("beit-hidden-people") || "[]");
+        names.filter(name => basePeople.includes(name)).forEach(name => {
+          if (!hidden.includes(name)) hidden.push(name);
+        });
+        localStorage.setItem("beit-hidden-people", JSON.stringify(hidden));
+        const custom = JSON.parse(localStorage.getItem("beit-people") || "[]").filter(name => !names.includes(name));
+        localStorage.setItem("beit-people", JSON.stringify(custom));
+        people = loadPeople();
+        const fallbackOwner = people[0] || "ללא מבצע";
+        state.tasks = state.tasks.map(t => names.includes(t.owner) ? { ...t, owner: fallbackOwner } : t);
+        state.deletingPerson = false;
+        state.peopleToDelete = [];
+        save();
+        render();
+        toast(names.length === 1 ? "המבצע נמחק" : "המבצעים נמחקו");
+      });
+      document.querySelectorAll("[data-due-choice]").forEach(btn => btn.addEventListener("click", e => {
+        document.querySelectorAll("[data-due-choice]").forEach(b => b.classList.remove("active"));
+        e.currentTarget.classList.add("active");
+        $("newDate").style.display = e.currentTarget.dataset.dueChoice === "date" ? "block" : "none";
+      }));
+      $("createForm")?.addEventListener("submit", e => {
+        e.preventDefault();
+        const form = e.currentTarget;
+        const owners = [...form.querySelectorAll("input[name='owner']:checked")].map(x => x.value);
+        const owner = state.role === "manager" ? (owners[0] || people[0] || "ללא מבצע") : "עדינה";
+        const dueChoice = document.querySelector("[data-due-choice].active").dataset.dueChoice;
+        const dueLabel = dueChoice === "today" ? "היום · שלישי" : dueChoice === "tomorrow" ? "מחר · רביעי" : formatHebrewDate($("newDate").value);
+        const task = {
+          id: `t${Date.now()}`,
+          title: $("newTitle").value,
+          category: form.category?.value || "uncategorized",
+          owner,
+          due: dueChoice,
+          dueLabel,
+          status: "progress",
+          notes: $("newNotes").value,
+          updates: []
+        };
+        state.tasks = [task, ...state.tasks];
+        save();
+        toast("המשימה נוצרה");
+        navigate(`task:${task.id}`);
+      });
+    }
+    function formatHebrewDate(value) {
+      if (!value) return "שני · 14 יוני";
+      const date = new Date(value + "T12:00:00");
+      const days = ["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
+      const months = ["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
+      return `${days[date.getDay()]} · ${date.getDate()} ${months[date.getMonth()]}`;
+    }
+    function escapeHtml(text) {
+      return String(text).replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;" }[ch]));
+    }
+    $("userMode").addEventListener("click", () => { if (!lockedRole) { state.role = "user"; save(); navigate("today"); } });
+    $("managerMode").addEventListener("click", () => { if (!lockedRole) { state.role = "manager"; save(); navigate("management"); } });
+    window.addEventListener("hashchange", () => { state.view = location.hash.replace("#", "") || (state.role === "manager" ? "management" : "today"); render(); });
+    if (!location.hash) location.hash = state.role === "manager" ? "management" : "today";
+    render();
+  </script>
+</body>
+</html>
