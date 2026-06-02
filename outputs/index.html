@@ -1004,16 +1004,37 @@
       { id: "events", label: "אירועים", icon: "events" },
       { id: "office", label: "משרד", icon: "office" }
     ];
+    function safeParseStorage(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : fallback;
+      } catch {
+        localStorage.removeItem(key);
+        return fallback;
+      }
+    }
+    function safeArrayStorage(key) {
+      const value = safeParseStorage(key, []);
+      return Array.isArray(value) ? value : [];
+    }
+    function safeTasksStorage() {
+      const value = safeParseStorage("beit-tasks", null);
+      return Array.isArray(value) ? value : starterTasks;
+    }
+    function safeObjectStorage(key, fallback) {
+      const value = safeParseStorage(key, fallback);
+      return value && typeof value === "object" && !Array.isArray(value) ? value : fallback;
+    }
     function loadCategories() {
-      const hidden = JSON.parse(localStorage.getItem("beit-hidden-categories") || "[]");
-      const custom = JSON.parse(localStorage.getItem("beit-categories") || "[]");
+      const hidden = safeArrayStorage("beit-hidden-categories");
+      const custom = safeArrayStorage("beit-categories");
       return [...baseCategories.filter(c => !hidden.includes(c.id)), ...custom];
     }
     let categories = loadCategories();
     const basePeople = ["עדינה", "אבי", "חיה", "צבי"];
     function loadPeople() {
-      const hidden = JSON.parse(localStorage.getItem("beit-hidden-people") || "[]");
-      const custom = JSON.parse(localStorage.getItem("beit-people") || "[]");
+      const hidden = safeArrayStorage("beit-hidden-people");
+      const custom = safeArrayStorage("beit-people");
       return [...basePeople.filter(p => !hidden.includes(p)), ...custom];
     }
     let people = loadPeople();
@@ -1049,11 +1070,12 @@
     const params = new URLSearchParams(location.search);
     const lockedRole = params.get("mockup") === "manager" ? "manager" : params.get("mockup") === "user" ? "user" : null;
     document.body.classList.toggle("locked-role", Boolean(lockedRole));
+    const initialRole = lockedRole || localStorage.getItem("beit-role") || "user";
 
     const state = {
-      role: lockedRole || localStorage.getItem("beit-role") || "user",
-      view: location.hash.replace("#", "") || "today",
-      lastList: "today",
+      role: initialRole,
+      view: location.hash.replace("#", "") || (initialRole === "manager" ? "management" : "all"),
+      lastList: "all",
       editingNotes: false,
       editingTitle: false,
       clearAllStep: 0,
@@ -1065,8 +1087,8 @@
       peopleToDelete: [],
       allSort: "date",
       draftDate: "",
-      tasks: JSON.parse(localStorage.getItem("beit-tasks") || "null") || starterTasks,
-      prefs: JSON.parse(localStorage.getItem("beit-prefs") || "null") || { dark: false, text: "רגיל" }
+      tasks: safeTasksStorage(),
+      prefs: safeObjectStorage("beit-prefs", { dark: false, text: "רגיל" })
     };
     state.tasks = state.tasks.map((task, index) => ({
       priority: index % 5 === 0 ? "high" : "normal",
@@ -1094,8 +1116,51 @@
     function byVisibleRole(tasks) {
       return state.role === "manager" ? tasks : tasks.filter(t => t.owner === "עדינה");
     }
+    function canAccessTask(task) {
+      return Boolean(task) && (state.role === "manager" || task.owner === "עדינה");
+    }
+    function getTask(id) {
+      return state.tasks.find(x => x.id === id);
+    }
+    function getVisibleTask(id) {
+      const task = getTask(id);
+      return canAccessTask(task) ? task : null;
+    }
+    function validBackRoute(view) {
+      if (state.role === "manager") {
+        return ["all", "done", "management"].includes(view) || view.startsWith("person:") || view.startsWith("category:") || view.startsWith("filter:");
+      }
+      return ["all", "done"].includes(view);
+    }
+    function defaultRoute() {
+      return state.role === "manager" ? "management" : "all";
+    }
+    function normalizeView(view) {
+      if (!view || view === "today") return defaultRoute();
+      if (state.role === "user") {
+        if (["all", "done", "prefs", "create"].includes(view) || view.startsWith("task:")) return view;
+        return "all";
+      }
+      if (["management", "all", "done", "prefs", "create"].includes(view)) return view;
+      if (view.startsWith("task:") || view.startsWith("person:") || view.startsWith("category:") || view.startsWith("filter:progress") || view.startsWith("filter:open")) return view;
+      return "management";
+    }
+    function setRoute(view, replace = false) {
+      state.view = view;
+      const nextHash = `#${view}`;
+      if (location.hash === nextHash) return;
+      if (replace) {
+        history.replaceState(null, "", `${location.pathname}${location.search}${nextHash}`);
+      } else {
+        location.hash = view;
+      }
+    }
     function openTasks() {
       return state.tasks.filter(t => t.status !== "done");
+    }
+    function resetScroll() {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      document.querySelector(".app-shell")?.scrollTo({ top: 0, left: 0, behavior: "auto" });
     }
     function navigate(view) {
       state.editingNotes = false;
@@ -1107,27 +1172,39 @@
       state.addingPerson = false;
       state.deletingPerson = false;
       state.peopleToDelete = [];
-      state.view = view;
-      if (!view.startsWith("task:")) state.lastList = view;
-      location.hash = view;
+      const normalized = normalizeView(view);
+      if (!normalized.startsWith("task:") && validBackRoute(normalized)) state.lastList = normalized;
+      setRoute(normalized);
       render();
+      resetScroll();
     }
     function updateTask(id, patch) {
+      const task = getTask(id);
+      if (!canAccessTask(task)) {
+        navigate("all");
+        toast("אין הרשאה למשימה זו");
+        return false;
+      }
       state.tasks = state.tasks.map(t => t.id === id ? { ...t, ...patch } : t);
       save();
       render();
+      return true;
     }
     function render() {
       $("userMode").classList.toggle("active", state.role === "user");
       $("managerMode").classList.toggle("active", state.role === "manager");
       $("roleLabel").textContent = state.role === "manager" ? "מצב צבי / מנהל" : "מצב משתמש רגיל";
       document.querySelector(".role-switch").style.display = lockedRole ? "none" : "";
-      const view = state.view;
-      if (state.view === "today") {
-        state.view = "all";
+      const normalized = normalizeView(state.view);
+      if (normalized !== state.view) {
+        setRoute(normalized, true);
       }
-      if (state.role === "user" && (view === "management" || view.startsWith("person:") || view.startsWith("category:") || view.startsWith("filter:"))) {
-        state.view = "all";
+      if (state.view.startsWith("task:")) {
+        const task = getTask(state.view.split(":")[1]);
+        if (task && !canAccessTask(task)) {
+          setRoute("all", true);
+          toast("אין הרשאה למשימה זו");
+        }
       }
       app.innerHTML = route();
       renderNav();
@@ -1239,8 +1316,8 @@
         </div>`;
     }
     function detailScreen(id) {
-      const t = state.tasks.find(x => x.id === id);
-      if (!t) return `<section class="hero"><h1>המשימה לא נמצאה</h1></section>`;
+      const t = getVisibleTask(id);
+      if (!t) return missingTaskScreen();
       const c = cat(t.category), s = statusMeta[t.status];
       const titleBlock = state.editingTitle
         ? `<input id="titleInput" value="${escapeHtml(t.title)}"><div class="quick-actions"><button class="primary" id="saveTitle">שמור</button><button id="cancelTitle">ביטול</button></div>`
@@ -1250,7 +1327,7 @@
         : `<p>${t.notes || "אין הערות."}</p><button class="soft" id="editNotes">ערוך</button>`;
       return `
         <section class="detail-head">
-          <button class="back" data-nav="${state.lastList || "today"}">${lineIcon("back")} חזרה</button>
+          <button class="back" data-nav="${validBackRoute(state.lastList) ? state.lastList : "all"}">${lineIcon("back")} חזרה</button>
           <div class="category">${lineIcon(c.icon)} ${c.label}</div>
           ${titleBlock}
         </section>
@@ -1286,6 +1363,13 @@
             ${t.updates.length ? t.updates.map(u => `<div class="update-item"><strong>${u.by}:</strong><br>${u.text}</div>`).join("") : `<p class="muted">אין עדכונים עדיין.</p>`}
           </div>
           <button class="soft" id="addUpdate" style="margin-top:10px;">+ עדכון</button>
+        </section>`;
+    }
+    function missingTaskScreen() {
+      return `
+        <section class="hero">
+          <button class="back" data-nav="${validBackRoute(state.lastList) ? state.lastList : "all"}">${lineIcon("back")} חזרה</button>
+          <h1>המשימה לא נמצאה</h1>
         </section>`;
     }
     function managementScreen() {
@@ -1359,7 +1443,7 @@
           const selected = state.peopleToDelete.includes(person) ? " selected" : "";
           return `<button class="chip delete-select${selected}" type="button" data-mark-delete-person="${person}">${lineIcon("user")} ${person}</button>`;
         }
-        return `<label class="chip"><input name="owner" type="checkbox" value="${person}" ${i===0 ? "checked" : ""}> ${person}</label>`;
+        return `<label class="chip"><input name="owner" type="radio" value="${person}" ${i===0 ? "checked" : ""}> ${person}</label>`;
       }).join("");
       const deleteButton = people.length ? `<button class="delete-category" type="button" id="startDeletePerson">${state.deletingPerson ? "ביטול מחיקה" : "מחק מבצע"}</button>` : "";
       const confirm = state.deletingPerson && state.peopleToDelete.length
@@ -1387,7 +1471,7 @@
             ${categories.length ? "" : `<p class="muted" style="margin-top:10px;">אין קטגוריות כרגע. אפשר ליצור משימה ללא קטגוריה או להוסיף קטגוריה חדשה.</p>`}
             ${state.addingCategory ? `<div class="quick-actions add-panel"><input id="newCategoryName" placeholder="שם קטגוריה"><button class="primary" type="button" id="saveCategory">שמור קטגוריה</button><button type="button" id="cancelCategory">ביטול</button></div>` : ""}
           </div>
-          ${state.role === "manager" ? `<div class="form-group"><h2>מבצע/ים</h2>${peoplePickerMarkup()}${people.length ? "" : `<p class="muted" style="margin-top:10px;">אין מבצעים כרגע. אפשר ליצור משימה ללא מבצע או להוסיף מבצע חדש.</p>`}${state.addingPerson ? `<div class="quick-actions add-panel"><input id="newPersonName" placeholder="שם מבצע"><button class="primary" type="button" id="savePerson">שמור מבצע</button><button type="button" id="cancelPerson">ביטול</button></div>` : ""}</div>` : ""}
+          ${state.role === "manager" ? `<div class="form-group"><h2>מבצע</h2>${peoplePickerMarkup()}${people.length ? "" : `<p class="muted" style="margin-top:10px;">אין מבצעים כרגע. אפשר ליצור משימה ללא מבצע או להוסיף מבצע חדש.</p>`}${state.addingPerson ? `<div class="quick-actions add-panel"><input id="newPersonName" placeholder="שם מבצע"><button class="primary" type="button" id="savePerson">שמור מבצע</button><button type="button" id="cancelPerson">ביטול</button></div>` : ""}</div>` : ""}
           <div class="form-group"><h2>יעד</h2><div class="segmented"><button type="button" data-due-choice="today" class="active">היום</button><button type="button" data-due-choice="tomorrow">מחר</button><button type="button" data-due-choice="date">בחר תאריך</button></div><input id="newDate" type="date" style="display:none; margin-top:10px;"></div>
           <div class="form-group"><h2>עדיפות</h2><div class="chips"><label class="chip"><input name="priority" type="radio" value="normal" checked> רגילה</label><label class="chip"><input name="priority" type="radio" value="high"> גבוהה</label></div></div>
           <div class="form-group"><h2>הערות</h2><textarea id="newNotes" placeholder="פרטים קצרים"></textarea></div>
@@ -1420,7 +1504,12 @@
       document.querySelectorAll("[data-status]").forEach(el => el.addEventListener("click", e => {
         e.stopPropagation();
         const [id, status] = e.currentTarget.dataset.status.split(":");
-        const task = state.tasks.find(t => t.id === id);
+        const task = getTask(id);
+        if (!canAccessTask(task)) {
+          navigate("all");
+          toast("אין הרשאה למשימה זו");
+          return;
+        }
         updateTask(id, {
           status,
           due: status === "done" ? "done" : task.due === "done" ? "today" : task.due,
@@ -1429,13 +1518,25 @@
         toast(status === "done" ? "המשימה סומנה כהושלמה" : "הסטטוס עודכן");
       }));
       document.querySelectorAll("[data-tomorrow]").forEach(el => el.addEventListener("click", e => {
-        updateTask(e.currentTarget.dataset.tomorrow, { due: "tomorrow", dueLabel: "מחר · רביעי" });
+        const id = e.currentTarget.dataset.tomorrow;
+        const task = getTask(id);
+        if (!canAccessTask(task)) {
+          navigate("all");
+          toast("אין הרשאה למשימה זו");
+          return;
+        }
+        updateTask(id, { due: "tomorrow", dueLabel: "מחר · רביעי" });
         toast("היעד עבר למחר");
       }));
       $("editNotes")?.addEventListener("click", () => { state.editingNotes = true; render(); });
       $("cancelNotes")?.addEventListener("click", () => { state.editingNotes = false; render(); });
       $("saveNotes")?.addEventListener("click", () => {
         const id = state.view.split(":")[1];
+        if (!canAccessTask(getTask(id))) {
+          navigate("all");
+          toast("אין הרשאה למשימה זו");
+          return;
+        }
         state.editingNotes = false;
         updateTask(id, { notes: $("notesInput").value });
         toast("ההערות נשמרו");
@@ -1444,6 +1545,11 @@
       $("cancelTitle")?.addEventListener("click", () => { state.editingTitle = false; render(); });
       $("saveTitle")?.addEventListener("click", () => {
         const id = state.view.split(":")[1];
+        if (!canAccessTask(getTask(id))) {
+          navigate("all");
+          toast("אין הרשאה למשימה זו");
+          return;
+        }
         state.editingTitle = false;
         updateTask(id, { title: $("titleInput").value || "משימה ללא כותרת" });
         toast("שם המשימה נשמר");
@@ -1452,13 +1558,23 @@
       $("saveDate")?.addEventListener("click", () => {
         const input = $("dateInput").value;
         const id = state.view.split(":")[1];
+        if (!canAccessTask(getTask(id))) {
+          navigate("all");
+          toast("אין הרשאה למשימה זו");
+          return;
+        }
         if (!input) return toast("בחר תאריך");
         updateTask(id, { due: "date", dueLabel: formatHebrewDate(input) });
         toast("התאריך עודכן");
       });
       $("addUpdate")?.addEventListener("click", () => {
         const id = state.view.split(":")[1];
-        const t = state.tasks.find(x => x.id === id);
+        const t = getTask(id);
+        if (!canAccessTask(t)) {
+          navigate("all");
+          toast("אין הרשאה למשימה זו");
+          return;
+        }
         updateTask(id, { updates: [...t.updates, { by: state.role === "manager" ? "צבי" : "עדינה", text: "עדכון מהיר נוסף" }] });
         toast("נוסף עדכון");
       });
@@ -1497,7 +1613,7 @@
         const name = $("newCategoryName").value.trim();
         if (!name) return toast("כתוב שם קטגוריה");
         const category = { id: `custom-${Date.now()}`, label: name, icon: "office" };
-        const custom = JSON.parse(localStorage.getItem("beit-categories") || "[]");
+        const custom = safeArrayStorage("beit-categories");
         custom.push(category);
         localStorage.setItem("beit-categories", JSON.stringify(custom));
         categories = loadCategories();
@@ -1535,12 +1651,12 @@
       $("confirmDeleteCategory")?.addEventListener("click", () => {
         const ids = state.categoriesToDelete;
         if (!ids.length) return;
-        const hidden = JSON.parse(localStorage.getItem("beit-hidden-categories") || "[]");
+        const hidden = safeArrayStorage("beit-hidden-categories");
         ids.filter(id => baseCategories.some(c => c.id === id)).forEach(id => {
           if (!hidden.includes(id)) hidden.push(id);
         });
         localStorage.setItem("beit-hidden-categories", JSON.stringify(hidden));
-        const custom = JSON.parse(localStorage.getItem("beit-categories") || "[]").filter(c => !ids.includes(c.id));
+        const custom = safeArrayStorage("beit-categories").filter(c => !ids.includes(c.id));
         localStorage.setItem("beit-categories", JSON.stringify(custom));
         categories = loadCategories();
         const fallbackCategory = categories[0]?.id || "uncategorized";
@@ -1567,7 +1683,7 @@
       $("savePerson")?.addEventListener("click", () => {
         const name = $("newPersonName").value.trim();
         if (!name) return toast("כתוב שם מבצע");
-        const custom = JSON.parse(localStorage.getItem("beit-people") || "[]");
+        const custom = safeArrayStorage("beit-people");
         if (![...basePeople, ...custom].includes(name)) custom.push(name);
         localStorage.setItem("beit-people", JSON.stringify(custom));
         people = loadPeople();
@@ -1605,12 +1721,12 @@
       $("confirmDeletePerson")?.addEventListener("click", () => {
         const names = state.peopleToDelete;
         if (!names.length) return;
-        const hidden = JSON.parse(localStorage.getItem("beit-hidden-people") || "[]");
+        const hidden = safeArrayStorage("beit-hidden-people");
         names.filter(name => basePeople.includes(name)).forEach(name => {
           if (!hidden.includes(name)) hidden.push(name);
         });
         localStorage.setItem("beit-hidden-people", JSON.stringify(hidden));
-        const custom = JSON.parse(localStorage.getItem("beit-people") || "[]").filter(name => !names.includes(name));
+        const custom = safeArrayStorage("beit-people").filter(name => !names.includes(name));
         localStorage.setItem("beit-people", JSON.stringify(custom));
         people = loadPeople();
         const fallbackOwner = people[0] || "ללא מבצע";
@@ -1624,14 +1740,21 @@
       document.querySelectorAll("[data-due-choice]").forEach(btn => btn.addEventListener("click", e => {
         document.querySelectorAll("[data-due-choice]").forEach(b => b.classList.remove("active"));
         e.currentTarget.classList.add("active");
-        $("newDate").style.display = e.currentTarget.dataset.dueChoice === "date" ? "block" : "none";
+        const dateInput = $("newDate");
+        const dateMode = e.currentTarget.dataset.dueChoice === "date";
+        dateInput.style.display = dateMode ? "block" : "none";
+        dateInput.required = dateMode;
       }));
       $("createForm")?.addEventListener("submit", e => {
         e.preventDefault();
         const form = e.currentTarget;
-        const owners = [...form.querySelectorAll("input[name='owner']:checked")].map(x => x.value);
-        const owner = state.role === "manager" ? (owners[0] || people[0] || "ללא מבצע") : "עדינה";
+        const owner = state.role === "manager" ? (form.owner?.value || people[0] || "ללא מבצע") : "עדינה";
         const dueChoice = document.querySelector("[data-due-choice].active").dataset.dueChoice;
+        if (dueChoice === "date" && !$("newDate").value) {
+          $("newDate").focus();
+          toast("בחר תאריך");
+          return;
+        }
         const dueLabel = dueChoice === "today" ? "היום · שלישי" : dueChoice === "tomorrow" ? "מחר · רביעי" : formatHebrewDate($("newDate").value);
         const task = {
           id: `t${Date.now()}`,
@@ -1662,10 +1785,14 @@
     function escapeHtml(text) {
       return String(text).replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;" }[ch]));
     }
-    $("userMode").addEventListener("click", () => { if (!lockedRole) { state.role = "user"; save(); navigate("today"); } });
+    $("userMode").addEventListener("click", () => { if (!lockedRole) { state.role = "user"; save(); navigate("all"); } });
     $("managerMode").addEventListener("click", () => { if (!lockedRole) { state.role = "manager"; save(); navigate("management"); } });
-    window.addEventListener("hashchange", () => { state.view = location.hash.replace("#", "") || (state.role === "manager" ? "management" : "today"); render(); });
-    if (!location.hash) location.hash = state.role === "manager" ? "management" : "today";
+    window.addEventListener("hashchange", () => {
+      state.view = location.hash.replace("#", "") || defaultRoute();
+      render();
+      resetScroll();
+    });
+    if (!location.hash) location.hash = defaultRoute();
     render();
   </script>
 </body>
