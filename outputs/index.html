@@ -129,8 +129,9 @@
       margin: -18px -16px 18px;
       padding: 14px 18px 12px;
       backdrop-filter: blur(16px);
-      background: color-mix(in srgb, var(--surface) 86%, transparent);
-      border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+      background: color-mix(in srgb, var(--surface-strong) 46%, var(--surface));
+      border-bottom: 1px solid color-mix(in srgb, var(--line) 92%, var(--sand));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.58), 0 8px 16px -16px rgba(46,42,36,.34);
       display: flex;
       gap: 8px;
       align-items: center;
@@ -583,6 +584,35 @@
       background: color-mix(in srgb, var(--surface) 72%, transparent);
       box-shadow: none;
       padding: 10px 12px;
+    }
+    .update-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+    .update-meta {
+      color: var(--muted);
+      font-size: .82rem;
+      line-height: 1.35;
+    }
+    .update-edit {
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+      min-height: 0;
+      padding: 0;
+      color: var(--accent);
+      font-size: .84rem;
+      font-weight: 700;
+    }
+    .update-edit-panel {
+      display: grid;
+      gap: 8px;
+    }
+    .update-edit-panel textarea {
+      min-height: 84px;
     }
     .linked-text {
       white-space: pre-wrap;
@@ -1264,6 +1294,11 @@
       const days = daysBetween(createdAt);
       return days === 1 ? "נוצרה לפני יום" : `נוצרה לפני ${days} ימים`;
     }
+    function relativeAgeLabel(createdAt) {
+      const days = daysBetween(createdAt);
+      if (days === 0) return "היום";
+      return days === 1 ? "לפני יום" : `לפני ${days} ימים`;
+    }
     const starterTasks = [
       { id: "t1", title: "אישור הזמנת ירקות", category: "kitchen", owner: "עדינה", due: "today", dueLabel: "היום · שלישי", status: "progress", notes: "לבדוק מול הספק ולאשר כמויות", updates: [{ by: "עדינה", text: "מחכה למחיר סופי" }] },
       { id: "t2", title: "בדיקת ציוד לשבת", category: "maintenance", owner: "אבי", due: "today", dueLabel: "היום · שלישי", status: "progress", notes: "לוודא שולחנות וכבלים באולם", updates: [{ by: "אבי", text: "חסר כבל מאריך אחד" }] },
@@ -1304,6 +1339,8 @@
       lastList: "all",
       editingNotes: false,
       editingTitle: false,
+      addingUpdate: false,
+      editingUpdateIndex: null,
       clearAllStep: 0,
       addingCategory: false,
       deletingCategory: false,
@@ -1316,18 +1353,27 @@
       tasks: safeTasksStorage(),
       prefs: safeObjectStorage("beit-prefs", { dark: false, text: "רגיל" })
     };
+    function normalizeUpdate(update, taskIndex, updateIndex) {
+      return {
+        by: update.by || "עדינה",
+        text: update.text || "",
+        created_at: update.created_at || isoDateFromOffset(-(taskIndex + updateIndex + 1))
+      };
+    }
     function normalizeTask(task, index) {
       const dueDefaults = { today: isoDateFromOffset(0), tomorrow: isoDateFromOffset(1), date: isoDateFromOffset(12) };
       const dueDate = task.status === "done" || task.due === "done" || task.due === "none"
         ? null
         : task.due_date || dueDefaults[task.due] || null;
+      const updates = Array.isArray(task.updates) ? task.updates.map((update, updateIndex) => normalizeUpdate(update, index, updateIndex)) : [];
       return {
         priority: index % 5 === 0 ? "high" : "normal",
         created_at: task.created_at || isoDateFromOffset(-(index + 1)),
         due_date: dueDate,
         ...task,
         due_date: dueDate,
-        due: task.due || (dueDate ? "date" : "none")
+        due: task.due || (dueDate ? "date" : "none"),
+        updates
       };
     }
     state.tasks = state.tasks.map(normalizeTask);
@@ -1436,6 +1482,8 @@
     function navigate(view) {
       state.editingNotes = false;
       state.editingTitle = false;
+      state.addingUpdate = false;
+      state.editingUpdateIndex = null;
       state.clearAllStep = 0;
       state.addingCategory = false;
       state.deletingCategory = false;
@@ -1622,10 +1670,33 @@
           ${t.status !== "done" ? `<button class="complete-row" type="button" data-status="${t.id}:done" aria-label="סמן כהושלם">${lineIcon("done")}<span class="complete-label">סמן<br>כהושלם</span></button>` : ""}
         </div>`;
     }
+    function updateEditorMarkup(id, text = "", saveId = "saveUpdate", cancelId = "cancelUpdate") {
+      return `
+        <div class="update-edit-panel">
+          <textarea id="${id}" placeholder="כתוב עדכון קצר">${escapeHtml(text)}</textarea>
+          <div class="detail-actions">
+            <button class="primary" id="${saveId}">שמור</button>
+            <button id="${cancelId}">בטל</button>
+          </div>
+        </div>`;
+    }
+    function renderUpdateItem(update, index) {
+      if (state.editingUpdateIndex === index) {
+        return `<div class="update-item">${updateEditorMarkup("editUpdateInput", update.text, "saveEditedUpdate", "cancelEditedUpdate")}</div>`;
+      }
+      return `
+        <div class="update-item">
+          <div class="update-head">
+            <span class="update-meta">${escapeHtml(update.by)} · ${relativeAgeLabel(update.created_at)}</span>
+            <button class="update-edit" type="button" data-edit-update="${index}">ערוך</button>
+          </div>
+          <div class="linked-text">${renderLinkedText(update.text)}</div>
+        </div>`;
+    }
     function detailScreen(id) {
       const t = getVisibleTask(id);
       if (!t) return missingTaskScreen();
-      const c = cat(t.category), s = statusMeta[t.status];
+      const c = cat(t.category);
       const overdue = isOverdue(t);
       const titleBlock = state.editingTitle
         ? `<div class="detail-edit-panel"><input id="titleInput" value="${escapeHtml(t.title)}"><div class="detail-actions"><button class="primary" id="saveTitle">שמור</button><button id="cancelTitle">ביטול</button></div></div>`
@@ -1680,9 +1751,9 @@
             <h2>עדכונים</h2>
             <div class="detail-row-main">
               <div class="updates">
-                ${t.updates.length ? t.updates.map(u => `<div class="update-item"><strong>${escapeHtml(u.by)}:</strong><br><span class="linked-text">${renderLinkedText(u.text)}</span></div>`).join("") : `<p class="muted">אין עדכונים עדיין.</p>`}
+                ${t.updates.length ? t.updates.map(renderUpdateItem).join("") : `<p class="muted">אין עדכונים עדיין.</p>`}
               </div>
-              <div class="detail-actions"><button class="soft" id="addUpdate">+ עדכון</button></div>
+              ${state.addingUpdate ? updateEditorMarkup("newUpdateInput") : `<div class="detail-actions"><button class="soft" id="addUpdate">+ הוסף עדכון</button></div>`}
             </div>
           </div>
         </section>`;
@@ -1912,8 +1983,58 @@
           toast("אין הרשאה למשימה זו");
           return;
         }
-        updateTask(id, { updates: [...t.updates, { by: state.role === "manager" ? "צבי" : "עדינה", text: "עדכון מהיר נוסף" }] });
+        state.addingUpdate = true;
+        state.editingUpdateIndex = null;
+        render();
+      });
+      $("cancelUpdate")?.addEventListener("click", () => {
+        state.addingUpdate = false;
+        render();
+      });
+      $("saveUpdate")?.addEventListener("click", () => {
+        const id = state.view.split(":")[1];
+        const t = getTask(id);
+        if (!canAccessTask(t)) {
+          navigate("all");
+          toast("אין הרשאה למשימה זו");
+          return;
+        }
+        const text = $("newUpdateInput").value.trim();
+        if (!text) return toast("כתוב עדכון");
+        state.addingUpdate = false;
+        updateTask(id, { updates: [...t.updates, { by: state.role === "manager" ? "צבי" : "עדינה", text, created_at: isoDateFromOffset(0) }] });
         toast("נוסף עדכון");
+      });
+      document.querySelectorAll("[data-edit-update]").forEach(el => el.addEventListener("click", e => {
+        e.stopPropagation();
+        state.addingUpdate = false;
+        state.editingUpdateIndex = Number(e.currentTarget.dataset.editUpdate);
+        render();
+      }));
+      $("cancelEditedUpdate")?.addEventListener("click", () => {
+        state.editingUpdateIndex = null;
+        render();
+      });
+      $("saveEditedUpdate")?.addEventListener("click", () => {
+        const id = state.view.split(":")[1];
+        const t = getTask(id);
+        const index = state.editingUpdateIndex;
+        if (!canAccessTask(t)) {
+          navigate("all");
+          toast("אין הרשאה למשימה זו");
+          return;
+        }
+        if (!Number.isInteger(index) || !t.updates[index]) {
+          state.editingUpdateIndex = null;
+          render();
+          return;
+        }
+        const text = $("editUpdateInput").value.trim();
+        if (!text) return toast("כתוב עדכון");
+        const updates = t.updates.map((update, updateIndex) => updateIndex === index ? { ...update, text } : update);
+        state.editingUpdateIndex = null;
+        updateTask(id, { updates });
+        toast("העדכון נשמר");
       });
       document.querySelectorAll("[data-theme-choice]").forEach(btn => btn.addEventListener("click", e => {
         state.prefs.dark = e.currentTarget.dataset.themeChoice === "dark";
