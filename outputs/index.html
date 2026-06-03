@@ -166,6 +166,17 @@
       background: var(--accent);
       color: #fff;
     }
+    .mockup-notice {
+      margin: -8px 0 14px;
+      padding: 7px 10px;
+      border: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
+      border-radius: 9px;
+      background: color-mix(in srgb, var(--surface) 72%, transparent);
+      color: var(--muted);
+      font-size: .76rem;
+      line-height: 1.35;
+      text-align: center;
+    }
     h1, h2, h3, p { margin: 0; }
     h1 { font-size: clamp(1.65rem, 4.5vw, 2.15rem); letter-spacing: 0; font-weight: 760; }
     h2 { font-size: 1.08rem; margin-bottom: .75rem; font-weight: 720; }
@@ -200,6 +211,27 @@
       color: var(--muted);
       font-weight: 700;
       margin-bottom: 8px;
+    }
+    .list-group {
+      padding-top: 10px;
+    }
+    .list-group + .list-group {
+      margin-top: 18px;
+    }
+    .list-group-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 18px 8px;
+      color: var(--muted);
+      font-size: .92rem;
+      font-weight: 720;
+    }
+    .list-group-title::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: color-mix(in srgb, var(--line) 82%, transparent);
     }
     .task-group.highlight {
       border-top: 2px solid var(--sand);
@@ -278,7 +310,7 @@
       min-height: 68px;
     }
     .list-row-content {
-      padding: 8px 18px 8px 76px;
+      padding: 8px 18px 8px 92px;
       min-height: 68px;
     }
     .list-row.completed .list-row-content {
@@ -323,26 +355,33 @@
       left: 0;
       top: 0;
       bottom: 0;
-      width: 66px;
+      width: 82px;
       min-height: 100%;
-      padding: .5rem .35rem;
+      padding: .45rem .3rem;
       border: 0;
       border-right: 1px solid color-mix(in srgb, var(--status-done) 34%, var(--line));
       border-radius: 0;
       color: var(--status-done);
       background: color-mix(in srgb, var(--status-done) 13%, var(--surface));
       font-weight: 650;
-      font-size: .84rem;
+      font-size: .78rem;
+      line-height: 1.12;
+      text-align: center;
+      white-space: normal;
       z-index: 2;
       display: grid;
       place-content: center;
-      gap: 7px;
+      gap: 5px;
       box-shadow: inset 1px 0 0 rgba(255,255,255,.42);
     }
     .complete-row .line-icon {
       width: 17px;
       height: 17px;
       margin-inline: auto;
+    }
+    .complete-label {
+      display: block;
+      line-height: 1.12;
     }
     .dot { font-size: .9rem; }
     .dot.progress { color: var(--status-progress); }
@@ -555,6 +594,19 @@
       box-shadow: none;
       padding: 10px 12px;
     }
+    .linked-text {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+    .linked-text a {
+      color: var(--accent);
+      text-decoration: underline;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+    }
+    .linked-text a:hover {
+      color: var(--accent-strong);
+    }
     .management-tiles {
       display: grid;
       gap: 0;
@@ -693,6 +745,39 @@
     .prefs-line, .form-group {
       padding: 16px 0;
       border-top: 1px solid var(--line);
+    }
+    .prefs-line h2 {
+      margin-bottom: 8px;
+      color: var(--text);
+      font-size: .98rem;
+      font-weight: 740;
+    }
+    .prefs-line .segmented {
+      gap: 6px;
+      margin-top: 8px;
+      padding: 3px;
+      border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+      border-radius: 11px;
+      background: color-mix(in srgb, var(--surface) 50%, transparent);
+    }
+    .prefs-line .segmented button {
+      flex: 1;
+      min-width: 82px;
+      min-height: 34px;
+      padding: .38rem .58rem;
+      border-radius: 8px;
+      border-color: transparent;
+      background: transparent;
+      color: var(--muted);
+      font-size: .88rem;
+      font-weight: 640;
+      box-shadow: none;
+    }
+    .prefs-line .segmented button.active {
+      background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+      border-color: color-mix(in srgb, var(--accent) 18%, transparent);
+      color: var(--accent);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent);
     }
     .form-group {
       padding: 14px 0;
@@ -847,11 +932,16 @@
       color: var(--danger);
     }
     button.danger {
-      width: 100%;
+      width: auto;
+      min-height: 34px;
+      padding: .42rem .72rem;
+      border-radius: 10px;
       background: linear-gradient(180deg, #FFF7F5 0%, color-mix(in srgb, var(--danger) 12%, var(--surface)) 100%);
       border-color: var(--danger);
       color: var(--danger);
-      font-weight: 850;
+      font-size: .88rem;
+      font-weight: 700;
+      box-shadow: none;
     }
     button.danger.final {
       background: linear-gradient(180deg, #C96E62 0%, var(--danger) 100%);
@@ -950,6 +1040,7 @@
         0 1px 2px rgba(0,0,0,.10);
     }
     [data-theme="dark"] .topbar,
+    [data-theme="dark"] .mockup-notice,
     [data-theme="dark"] .bottom-nav {
       background: color-mix(in srgb, var(--surface-strong) 82%, transparent);
       border-color: var(--line);
@@ -1014,6 +1105,7 @@
     }
     [data-theme="dark"] #createForm .chip,
     [data-theme="dark"] #createForm .segmented,
+    [data-theme="dark"] .prefs-line .segmented,
     [data-theme="dark"] #createForm .sort-bar,
     [data-theme="dark"] .detail-row-main .segmented {
       background: rgba(255,255,255,.018);
@@ -1022,6 +1114,7 @@
     }
     [data-theme="dark"] #createForm .chip:has(input:checked),
     [data-theme="dark"] #createForm .segmented button.active,
+    [data-theme="dark"] .prefs-line .segmented button.active,
     [data-theme="dark"] .detail-row-main .segmented button.active {
       background: rgba(167,240,112,.095);
       border-color: rgba(167,240,112,.18);
@@ -1073,6 +1166,7 @@
         <button id="managerMode" type="button">צבי</button>
       </div>
     </header>
+    <div class="mockup-notice">מוקאפ לבדיקה • הנתונים נשמרים רק במכשיר זה</div>
     <main id="app" aria-live="polite"></main>
   </div>
   <nav id="bottomNav" class="bottom-nav user" aria-label="ניווט ראשי"></nav>
@@ -1288,8 +1382,11 @@
       if (diff === 1) return 2;
       return 3;
     }
-    function byVisibleRole(tasks) {
-      return state.role === "manager" ? tasks : tasks.filter(t => t.owner === "עדינה");
+    function personalOwner() {
+      return state.role === "manager" ? "צבי" : "עדינה";
+    }
+    function personalTasks(tasks) {
+      return tasks.filter(t => t.owner === personalOwner());
     }
     function canAccessTask(task) {
       return Boolean(task) && (state.role === "manager" || task.owner === "עדינה");
@@ -1317,7 +1414,7 @@
         return "all";
       }
       if (["management", "all", "done", "prefs", "create"].includes(view)) return view;
-      if (view.startsWith("task:") || view.startsWith("person:") || view.startsWith("category:") || view.startsWith("filter:progress") || view.startsWith("filter:open")) return view;
+      if (view.startsWith("task:") || view.startsWith("person:") || view.startsWith("category:") || view.startsWith("filter:")) return view;
       return "management";
     }
     function setRoute(view, replace = false) {
@@ -1390,40 +1487,44 @@
       if (view === "management") return managementScreen();
       if (view === "all") return openTasksScreen();
       if (view === "today") return openTasksScreen();
-      if (view === "done") return listScreen("הושלם", sortTasks(byVisibleRole(state.tasks).filter(t => t.status === "done")), state.role === "manager", "", true);
+      if (view === "done") return listScreen("הושלם", sortTasks(personalTasks(state.tasks).filter(t => t.status === "done"), currentSort("personal")), state.role === "manager", "", true, false, "personal");
       if (view === "prefs") return prefsScreen();
       if (view === "create") return createScreen();
       if (view.startsWith("task:")) return detailScreen(view.split(":")[1]);
       if (view.startsWith("person:")) {
         const person = decodeURIComponent(view.split(":")[1]);
-        return listScreen(person, state.tasks.filter(t => t.owner === person && t.status !== "done"), true, `${state.tasks.filter(t => t.owner === person && t.status !== "done").length} משימות`);
+        const tasks = sortTasks(state.tasks.filter(t => t.owner === person && t.status !== "done"), currentSort("person"));
+        return listScreen(person, tasks, true, `${tasks.length} משימות`, true, false, "person");
       }
       if (view.startsWith("category:")) {
         const category = decodeURIComponent(view.split(":")[1]);
         const c = cat(category);
-        return listScreen(`${lineIcon(c.icon)} ${c.label}`, state.tasks.filter(t => t.category === category && t.status !== "done"), true);
+        const tasks = sortTasks(state.tasks.filter(t => t.category === category && t.status !== "done"), currentSort("category"));
+        return listScreen(`${lineIcon(c.icon)} ${c.label}`, tasks, true, "", true, false, "category");
       }
-      if (view.startsWith("filter:progress")) return listScreen("משימות בתהליך", state.tasks.filter(t => t.status === "progress"), true);
-      if (view.startsWith("filter:open")) return listScreen("משימות בתהליך", state.tasks.filter(t => t.status === "progress"), true);
+      if (view.startsWith("filter:done")) return listScreen("משימות שהושלמו", sortTasks(state.tasks.filter(t => t.status === "done"), currentSort("org")), true, `${state.tasks.filter(t => t.status === "done").length} משימות`, true, false, "org");
+      if (view.startsWith("filter:progress")) return listScreen("משימות בתהליך", sortTasks(state.tasks.filter(t => t.status === "progress"), currentSort("org")), true, "", true, false, "org");
+      if (view.startsWith("filter:open")) return listScreen("משימות בתהליך", sortTasks(state.tasks.filter(t => t.status === "progress"), currentSort("org")), true, "", true, false, "org");
       return openTasksScreen();
     }
     function openTasksScreen() {
-      const tasks = sortTasks(byVisibleRole(state.tasks).filter(t => t.status !== "done"));
+      const sortMode = currentSort("personal");
+      const tasks = sortTasks(personalTasks(state.tasks).filter(t => t.status !== "done"), sortMode);
       const todayTasks = tasks.filter(t => taskDueRank(t) <= 1);
       const otherTasks = tasks.filter(t => taskDueRank(t) > 1);
       const showOwner = state.role === "manager";
       return `
         <section class="hero">
           <h1>משימות פתוחות</h1>
-          ${sortControls()}
+          ${sortControls("personal")}
         </section>
         <section class="task-group highlight">
           <h2 class="task-group-title">להיום</h2>
-          <div class="list">${todayTasks.length ? todayTasks.map(t => listRow(t, showOwner)).join("") : `<div class="empty">אין משימות להיום.</div>`}</div>
+          <div class="list">${renderTaskList(todayTasks, showOwner, "אין משימות להיום.", sortMode)}</div>
         </section>
         <section class="task-group">
           <h2 class="task-group-title">שאר המשימות</h2>
-          <div class="list">${otherTasks.length ? otherTasks.map(t => listRow(t, showOwner)).join("") : `<div class="empty">אין משימות נוספות.</div>`}</div>
+          <div class="list">${renderTaskList(otherTasks, showOwner, "אין משימות נוספות.", sortMode)}</div>
         </section>
         ${state.role === "user" ? `<section class="section"><button class="mgmt-row wide" data-nav="create"><span><strong>יצירת משימה חדשה</strong><span class="muted">הוספה מהירה למשימות שלי</span></span><span class="row-left-icon">${lineIcon("add")}</span></button></section>` : ""}`;
     }
@@ -1442,33 +1543,66 @@
           </div>
         </article>`;
     }
-    function sortTasks(tasks) {
+    function sortTasks(tasks, sortMode = state.allSort) {
       return [...tasks].sort((a, b) => {
-        if (state.allSort === "category") {
+        if (sortMode === "category") {
           return cat(a.category).label.localeCompare(cat(b.category).label, "he") || taskDueRank(a) - taskDueRank(b) || taskDueLabel(a).localeCompare(taskDueLabel(b), "he") || a.title.localeCompare(b.title, "he");
         }
-        if (state.allSort === "owner") {
+        if (sortMode === "owner") {
           return a.owner.localeCompare(b.owner, "he") || taskDueRank(a) - taskDueRank(b) || taskDueLabel(a).localeCompare(taskDueLabel(b), "he") || a.title.localeCompare(b.title, "he");
         }
         return taskDueRank(a) - taskDueRank(b) || taskDueLabel(a).localeCompare(taskDueLabel(b), "he") || a.title.localeCompare(b.title, "he");
       });
     }
-    function sortControls() {
-      const labels = state.role === "manager"
-        ? [["date", "לפי תאריך"], ["category", "לפי קטגוריה"], ["owner", "לפי מבצע"]]
-        : [["date", "לפי תאריך"], ["category", "לפי קטגוריה"]];
-      return `<div class="sort-bar" aria-label="אפשרויות מיון">${labels.map(([key, label]) => `<button data-sort="${key}" class="${state.allSort === key ? "active" : ""}">${label}</button>`).join("")}</div>`;
+    function sortOptions(context = "personal") {
+      if (context === "org") return [["date", "לפי תאריך"], ["category", "לפי קטגוריה"], ["owner", "לפי מבצע"]];
+      if (context === "category") return [["date", "לפי תאריך"], ["owner", "לפי מבצע"]];
+      if (context === "person") return [["date", "לפי תאריך"], ["category", "לפי קטגוריה"]];
+      return [["date", "לפי תאריך"], ["category", "לפי קטגוריה"]];
     }
-    function listScreen(title, tasks, showOwner, subtitle = "", sortable = false, showCreate = false) {
+    function currentSort(context = "personal") {
+      const allowed = sortOptions(context).map(([key]) => key);
+      return allowed.includes(state.allSort) ? state.allSort : "date";
+    }
+    function sortControls(context = "personal") {
+      const labels = sortOptions(context);
+      const activeSort = currentSort(context);
+      return `<div class="sort-bar" aria-label="אפשרויות מיון">${labels.map(([key, label]) => `<button data-sort="${key}" class="${activeSort === key ? "active" : ""}">${label}</button>`).join("")}</div>`;
+    }
+    function taskGroupTitle(task, sortMode = state.allSort) {
+      if (sortMode === "category") return cat(task.category).label;
+      if (sortMode === "owner") return task.owner;
+      return "";
+    }
+    function renderTaskList(tasks, showOwner, emptyText, sortMode = state.allSort) {
+      if (!tasks.length) return `<div class="empty">${emptyText}</div>`;
+      if (!["category", "owner"].includes(sortMode)) {
+        return tasks.map(t => listRow(t, showOwner)).join("");
+      }
+      const groups = [];
+      tasks.forEach(task => {
+        const title = taskGroupTitle(task, sortMode);
+        const last = groups[groups.length - 1];
+        if (!last || last.title !== title) groups.push({ title, tasks: [] });
+        groups[groups.length - 1].tasks.push(task);
+      });
+      return groups.map(group => `
+        <div class="list-group">
+          <h3 class="list-group-title">${escapeHtml(group.title)}</h3>
+          ${group.tasks.map(t => listRow(t, showOwner)).join("")}
+        </div>`).join("");
+    }
+    function listScreen(title, tasks, showOwner, subtitle = "", sortable = false, showCreate = false, sortContext = "personal") {
+      const sortMode = currentSort(sortContext);
       return `
         <section class="hero">
           ${state.role === "manager" && state.view !== "all" && state.view !== "done" ? `<button class="back" data-nav="management">${lineIcon("back")} חזרה</button>` : ""}
           <h1>${title}</h1>
           ${subtitle ? `<p class="muted">${subtitle}</p>` : ""}
-          ${sortable ? sortControls() : ""}
+          ${sortable ? sortControls(sortContext) : ""}
         </section>
         <section class="list">
-          ${tasks.length ? tasks.map(t => listRow(t, showOwner)).join("") : `<div class="empty">אין משימות להצגה.</div>`}
+          ${sortable ? renderTaskList(tasks, showOwner, "אין משימות להצגה.", sortMode) : tasks.length ? tasks.map(t => listRow(t, showOwner)).join("") : `<div class="empty">אין משימות להצגה.</div>`}
         </section>
         ${showCreate ? `<section class="section"><button class="mgmt-row wide" data-nav="create"><span><strong>יצירת משימה חדשה</strong><span class="muted">הוספה מהירה למשימות שלי</span></span><span class="row-left-icon">${lineIcon("add")}</span></button></section>` : ""}`;
     }
@@ -1488,7 +1622,7 @@
               <span class="age-meta">${ageLabel(t.created_at)}</span>
             </div>
           </div>
-          ${t.status !== "done" ? `<button class="complete-row" type="button" data-status="${t.id}:done">${lineIcon("done")} הושלם</button>` : ""}
+          ${t.status !== "done" ? `<button class="complete-row" type="button" data-status="${t.id}:done" aria-label="סמן כהושלם">${lineIcon("done")}<span class="complete-label">סמן<br>כהושלם</span></button>` : ""}
         </div>`;
     }
     function detailScreen(id) {
@@ -1501,7 +1635,7 @@
         : `<div class="detail-title-row"><h1>${t.title}</h1><button class="icon" id="editTitle" aria-label="עריכת שם">${lineIcon("edit")}</button></div>`;
       const notesBlock = state.editingNotes
         ? `<div class="detail-edit-panel"><textarea id="notesInput">${escapeHtml(t.notes)}</textarea><div class="detail-actions"><button class="primary" id="saveNotes">שמור</button><button id="cancelNotes">ביטול</button></div></div>`
-        : `<p>${t.notes || "אין הערות."}</p><div class="detail-actions"><button class="soft" id="editNotes">ערוך</button></div>`;
+        : `<p class="linked-text">${t.notes ? renderLinkedText(t.notes) : "אין הערות."}</p><div class="detail-actions"><button class="soft" id="editNotes">ערוך</button></div>`;
       return `
         <section class="detail-head">
           <button class="back" data-nav="${validBackRoute(state.lastList) ? state.lastList : "all"}">${lineIcon("back")} חזרה</button>
@@ -1549,7 +1683,7 @@
             <h2>עדכונים</h2>
             <div class="detail-row-main">
               <div class="updates">
-                ${t.updates.length ? t.updates.map(u => `<div class="update-item"><strong>${u.by}:</strong><br>${u.text}</div>`).join("") : `<p class="muted">אין עדכונים עדיין.</p>`}
+                ${t.updates.length ? t.updates.map(u => `<div class="update-item"><strong>${escapeHtml(u.by)}:</strong><br><span class="linked-text">${renderLinkedText(u.text)}</span></div>`).join("") : `<p class="muted">אין עדכונים עדיין.</p>`}
               </div>
               <div class="detail-actions"><button class="soft" id="addUpdate">+ עדכון</button></div>
             </div>
@@ -1572,7 +1706,7 @@
         </section>
         <section class="management-tiles">
           <button class="mgmt-row" data-nav="filter:progress"><strong>משימות בתהליך</strong><div class="big">${progress}</div></button>
-          <button class="mgmt-row" data-nav="done"><strong>משימות שהושלמו</strong><div class="big">${done}</div></button>
+          <button class="mgmt-row" data-nav="filter:done"><strong>משימות שהושלמו</strong><div class="big">${done}</div></button>
         </section>
         <section class="section">
           <h2>קטגוריות</h2>
@@ -1707,7 +1841,7 @@
           due_date: status === "done" ? null : task.due === "done" ? isoDateFromOffset(0) : task.due_date,
           dueLabel: status === "done" ? "הושלם · היום" : task.due === "done" ? "היום · שלישי" : task.dueLabel
         });
-        toast(status === "done" ? "המשימה סומנה כהושלמה" : "הסטטוס עודכן");
+        toast(status === "done" ? "✓ המשימה סומנה כהושלמה" : "הסטטוס עודכן");
       }));
       document.querySelectorAll("[data-tomorrow]").forEach(el => el.addEventListener("click", e => {
         const id = e.currentTarget.dataset.tomorrow;
@@ -1972,6 +2106,22 @@
     }
     function escapeHtml(text) {
       return String(text).replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;" }[ch]));
+    }
+    function renderLinkedText(text) {
+      return escapeHtml(text).replace(/\bhttps?:\/\/[^\s<]+/g, (match) => {
+        let url = match;
+        let suffix = "";
+        while (/[),.;:!?]$/.test(url)) {
+          suffix = `${url.slice(-1)}${suffix}`;
+          url = url.slice(0, -1);
+        }
+        try {
+          new URL(url.replace(/&amp;/g, "&"));
+        } catch {
+          return match;
+        }
+        return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>${suffix}`;
+      });
     }
     $("userMode").addEventListener("click", () => { if (!lockedRole) { state.role = "user"; save(); navigate("all"); } });
     $("managerMode").addEventListener("click", () => { if (!lockedRole) { state.role = "manager"; save(); navigate("management"); } });
