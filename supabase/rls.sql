@@ -211,54 +211,64 @@ before insert or update on public.task_updates
 for each row
 execute function public.validate_task_update_references();
 
+drop policy if exists "members can read their organizations" on public.organizations;
 create policy "members can read their organizations"
 on public.organizations
 for select
 using (public.is_org_member(id));
 
+drop policy if exists "users can read profiles in their organization" on public.profiles;
 create policy "users can read profiles in their organization"
 on public.profiles
 for select
 using (id = auth.uid() or public.shares_organization(id));
 
+drop policy if exists "users can create their own profile" on public.profiles;
 create policy "users can create their own profile"
 on public.profiles
 for insert
 with check (id = auth.uid());
 
+drop policy if exists "users can update their own profile" on public.profiles;
 create policy "users can update their own profile"
 on public.profiles
 for update
 using (id = auth.uid())
 with check (id = auth.uid());
 
+drop policy if exists "members can read organization memberships" on public.organization_members;
 create policy "members can read organization memberships"
 on public.organization_members
 for select
 using (public.is_org_member(organization_id));
 
+drop policy if exists "managers can manage organization memberships" on public.organization_members;
 create policy "managers can manage organization memberships"
 on public.organization_members
 for all
 using (public.is_org_manager(organization_id))
 with check (public.is_org_manager(organization_id));
 
+drop policy if exists "members can read active categories" on public.categories;
 create policy "members can read active categories"
 on public.categories
 for select
 using (is_active = true and public.is_org_member(organization_id));
 
+drop policy if exists "managers can manage categories" on public.categories;
 create policy "managers can manage categories"
 on public.categories
 for all
 using (public.is_org_manager(organization_id))
 with check (public.is_org_manager(organization_id));
 
+drop policy if exists "users can read own tasks and managers can read all" on public.tasks;
 create policy "users can read own tasks and managers can read all"
 on public.tasks
 for select
 using (assignee_id = auth.uid() or public.is_org_manager(organization_id));
 
+drop policy if exists "users can create own tasks" on public.tasks;
 create policy "users can create own tasks"
 on public.tasks
 for insert
@@ -268,6 +278,7 @@ with check (
   and public.is_org_member(organization_id)
 );
 
+drop policy if exists "managers can create tasks for organization members" on public.tasks;
 create policy "managers can create tasks for organization members"
 on public.tasks
 for insert
@@ -283,6 +294,7 @@ with check (
   )
 );
 
+drop policy if exists "users can update own tasks" on public.tasks;
 create policy "users can update own tasks"
 on public.tasks
 for update
@@ -292,27 +304,32 @@ with check (
   and public.is_org_member(organization_id)
 );
 
+drop policy if exists "managers can update all tasks" on public.tasks;
 create policy "managers can update all tasks"
 on public.tasks
 for update
 using (public.is_org_manager(organization_id))
 with check (public.is_org_manager(organization_id));
 
+drop policy if exists "users can delete own tasks" on public.tasks;
 create policy "users can delete own tasks"
 on public.tasks
 for delete
 using (assignee_id = auth.uid());
 
+drop policy if exists "managers can delete all tasks" on public.tasks;
 create policy "managers can delete all tasks"
 on public.tasks
 for delete
 using (public.is_org_manager(organization_id));
 
+drop policy if exists "users can read updates for accessible tasks" on public.task_updates;
 create policy "users can read updates for accessible tasks"
 on public.task_updates
 for select
 using (public.can_access_task(task_id));
 
+drop policy if exists "users can add updates to accessible tasks" on public.task_updates;
 create policy "users can add updates to accessible tasks"
 on public.task_updates
 for insert
@@ -322,21 +339,25 @@ with check (
   and public.is_org_member(organization_id)
 );
 
+drop policy if exists "managers can delete updates" on public.task_updates;
 create policy "managers can delete updates"
 on public.task_updates
 for delete
 using (public.is_org_manager(organization_id));
 
+drop policy if exists "users can read own preferences" on public.user_preferences;
 create policy "users can read own preferences"
 on public.user_preferences
 for select
 using (user_id = auth.uid());
 
+drop policy if exists "users can create own preferences" on public.user_preferences;
 create policy "users can create own preferences"
 on public.user_preferences
 for insert
 with check (user_id = auth.uid());
 
+drop policy if exists "users can update own preferences" on public.user_preferences;
 create policy "users can update own preferences"
 on public.user_preferences
 for update

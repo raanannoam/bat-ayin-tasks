@@ -8,6 +8,7 @@ It does not connect the frontend, replace localStorage, or add Google Auth.
 - `schema.sql` creates the tables, constraints, and indexes.
 - `rls.sql` enables row level security, helper functions, policies, and task triggers.
 - `seed.sql` seeds the default organization, categories, and known-member placeholders.
+- `smoke-test.sql` provides a rollback-safe manual SQL smoke test for RLS behavior.
 
 ## Run Order
 
@@ -16,6 +17,10 @@ In the Supabase SQL editor, run:
 1. `schema.sql`
 2. `rls.sql`
 3. `seed.sql`
+
+For RLS smoke testing, create three temporary users in Supabase Authentication,
+replace the placeholder UUIDs in `smoke-test.sql`, then run `smoke-test.sql`.
+The smoke test uses a transaction and ends with `rollback`.
 
 ## Seed Notes
 
@@ -68,4 +73,3 @@ Tzvi / manager can manage all tasks and the broader organizational picture.
 - invitations
 - workspace switching
 - billing
-
