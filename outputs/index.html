@@ -144,28 +144,6 @@
     }
     .brand strong { font-size: .98rem; }
     .brand span { color: var(--muted); font-size: .8rem; }
-    .role-switch {
-      display: inline-grid;
-      grid-template-columns: 1fr 1fr;
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      overflow: hidden;
-      background: var(--surface);
-      min-width: 142px;
-    }
-    .role-switch button {
-      border: 0;
-      border-radius: 0;
-      padding: .52rem .65rem;
-      min-height: 36px;
-      background: transparent;
-      color: var(--muted);
-      font-weight: 700;
-    }
-    .role-switch button.active {
-      background: var(--accent);
-      color: #fff;
-    }
     .mockup-notice {
       margin: -8px 0 14px;
       padding: 7px 10px;
@@ -184,6 +162,18 @@
     .muted { color: var(--muted); }
     .hero {
       padding: 22px 2px 16px;
+    }
+    .screen-title {
+      color: var(--muted);
+      font-size: .92rem;
+      font-weight: 740;
+      line-height: 1.25;
+    }
+    .screen-subtitle {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: .9rem;
+      line-height: 1.35;
     }
     .hero .count {
       margin-top: 14px;
@@ -1048,7 +1038,6 @@
     }
     [data-theme="dark"] .bottom-nav button.active,
     [data-theme="dark"] .sort-bar button.active,
-    [data-theme="dark"] .role-switch button.active,
     [data-theme="dark"] .segmented button.active {
       background: linear-gradient(180deg, rgba(167,240,112,.18) 0%, rgba(167,240,112,.11) 100%);
       border-color: rgba(167,240,112,.18);
@@ -1161,10 +1150,6 @@
         <strong>משימות ישיבת בת עין</strong>
         <span id="roleLabel">מצב משתמש רגיל</span>
       </div>
-      <div class="role-switch" aria-label="בחירת מצב">
-        <button id="userMode" type="button">עדינה</button>
-        <button id="managerMode" type="button">צבי</button>
-      </div>
     </header>
     <div class="mockup-notice">מוקאפ לבדיקה • הנתונים נשמרים רק במכשיר זה</div>
     <main id="app" aria-live="polite"></main>
@@ -1248,6 +1233,10 @@
       ["progress", "בתהליך"],
       ["done", "הושלם"]
     ];
+    const priorityButtons = [
+      ["normal", "רגילה"],
+      ["high", "גבוהה"]
+    ];
     function startOfToday() {
       const date = new Date();
       date.setHours(0, 0, 0, 0);
@@ -1297,9 +1286,17 @@
     }
 
     const params = new URLSearchParams(location.search);
-    const lockedRole = params.get("mockup") === "manager" ? "manager" : params.get("mockup") === "user" ? "user" : null;
-    document.body.classList.toggle("locked-role", Boolean(lockedRole));
-    const initialRole = lockedRole || localStorage.getItem("beit-role") || "user";
+    const handoffRole = (() => {
+      try {
+        const role = sessionStorage.getItem("beit-mockup-role");
+        sessionStorage.removeItem("beit-mockup-role");
+        return role;
+      } catch {
+        return null;
+      }
+    })();
+    const requestedRole = params.get("mockup") || handoffRole;
+    const initialRole = requestedRole === "manager" ? "manager" : "user";
 
     const state = {
       role: initialRole,
@@ -1342,7 +1339,6 @@
 
     function save() {
       localStorage.setItem("beit-tasks", JSON.stringify(state.tasks));
-      if (!lockedRole) localStorage.setItem("beit-role", state.role);
       localStorage.setItem("beit-prefs", JSON.stringify(state.prefs));
     }
     function toast(text) {
@@ -1387,6 +1383,9 @@
     }
     function personalTasks(tasks) {
       return tasks.filter(t => t.owner === personalOwner());
+    }
+    function managementPeople() {
+      return people.filter(person => person !== personalOwner());
     }
     function canAccessTask(task) {
       return Boolean(task) && (state.role === "manager" || task.owner === "עדינה");
@@ -1463,10 +1462,7 @@
       return true;
     }
     function render() {
-      $("userMode").classList.toggle("active", state.role === "user");
-      $("managerMode").classList.toggle("active", state.role === "manager");
       $("roleLabel").textContent = state.role === "manager" ? "מצב צבי / מנהל" : "מצב משתמש רגיל";
-      document.querySelector(".role-switch").style.display = lockedRole ? "none" : "";
       const normalized = normalizeView(state.view);
       if (normalized !== state.view) {
         setRoute(normalized, true);
@@ -1487,24 +1483,24 @@
       if (view === "management") return managementScreen();
       if (view === "all") return openTasksScreen();
       if (view === "today") return openTasksScreen();
-      if (view === "done") return listScreen("הושלם", sortTasks(personalTasks(state.tasks).filter(t => t.status === "done"), currentSort("personal")), state.role === "manager", "", true, false, "personal");
+      if (view === "done") return listScreen("הושלם", sortTasks(personalTasks(state.tasks).filter(t => t.status === "done"), currentSort("personal")), state.role === "manager", state.role === "manager" ? "המשימות שלי" : "", true, false, "personal");
       if (view === "prefs") return prefsScreen();
       if (view === "create") return createScreen();
       if (view.startsWith("task:")) return detailScreen(view.split(":")[1]);
       if (view.startsWith("person:")) {
         const person = decodeURIComponent(view.split(":")[1]);
         const tasks = sortTasks(state.tasks.filter(t => t.owner === person && t.status !== "done"), currentSort("person"));
-        return listScreen(person, tasks, true, `${tasks.length} משימות`, true, false, "person");
+        return listScreen(person, tasks, true, "משימות לפי מבצע", true, false, "person");
       }
       if (view.startsWith("category:")) {
         const category = decodeURIComponent(view.split(":")[1]);
         const c = cat(category);
         const tasks = sortTasks(state.tasks.filter(t => t.category === category && t.status !== "done"), currentSort("category"));
-        return listScreen(`${lineIcon(c.icon)} ${c.label}`, tasks, true, "", true, false, "category");
+        return listScreen(c.label, tasks, true, "משימות לפי קטגוריה", true, false, "category");
       }
-      if (view.startsWith("filter:done")) return listScreen("משימות שהושלמו", sortTasks(state.tasks.filter(t => t.status === "done"), currentSort("org")), true, `${state.tasks.filter(t => t.status === "done").length} משימות`, true, false, "org");
-      if (view.startsWith("filter:progress")) return listScreen("משימות בתהליך", sortTasks(state.tasks.filter(t => t.status === "progress"), currentSort("org")), true, "", true, false, "org");
-      if (view.startsWith("filter:open")) return listScreen("משימות בתהליך", sortTasks(state.tasks.filter(t => t.status === "progress"), currentSort("org")), true, "", true, false, "org");
+      if (view.startsWith("filter:done")) return listScreen("משימות שהושלמו", sortTasks(state.tasks.filter(t => t.status === "done"), currentSort("org")), true, "כל הארגון", true, false, "org");
+      if (view.startsWith("filter:progress")) return listScreen("משימות בתהליך", sortTasks(state.tasks.filter(t => t.status === "progress"), currentSort("org")), true, "כל הארגון", true, false, "org");
+      if (view.startsWith("filter:open")) return listScreen("משימות בתהליך", sortTasks(state.tasks.filter(t => t.status === "progress"), currentSort("org")), true, "כל הארגון", true, false, "org");
       return openTasksScreen();
     }
     function openTasksScreen() {
@@ -1515,7 +1511,8 @@
       const showOwner = state.role === "manager";
       return `
         <section class="hero">
-          <h1>משימות פתוחות</h1>
+          <h1>משימות</h1>
+          <p class="screen-subtitle">${state.role === "manager" ? "פתוחות · המשימות שלי" : "פתוחות"}</p>
           ${sortControls("personal")}
         </section>
         <section class="task-group highlight">
@@ -1529,7 +1526,7 @@
         ${state.role === "user" ? `<section class="section"><button class="mgmt-row wide" data-nav="create"><span><strong>יצירת משימה חדשה</strong><span class="muted">הוספה מהירה למשימות שלי</span></span><span class="row-left-icon">${lineIcon("add")}</span></button></section>` : ""}`;
     }
     function taskCard(t) {
-      const c = cat(t.category), s = statusMeta[t.status];
+      const c = cat(t.category);
       return `
         <article class="task-card" data-open="${t.id}">
           <header>
@@ -1598,7 +1595,7 @@
         <section class="hero">
           ${state.role === "manager" && state.view !== "all" && state.view !== "done" ? `<button class="back" data-nav="management">${lineIcon("back")} חזרה</button>` : ""}
           <h1>${title}</h1>
-          ${subtitle ? `<p class="muted">${subtitle}</p>` : ""}
+          ${subtitle ? `<p class="screen-subtitle">${subtitle}</p>` : ""}
           ${sortable ? sortControls(sortContext) : ""}
         </section>
         <section class="list">
@@ -1638,11 +1635,10 @@
         : `<p class="linked-text">${t.notes ? renderLinkedText(t.notes) : "אין הערות."}</p><div class="detail-actions"><button class="soft" id="editNotes">ערוך</button></div>`;
       return `
         <section class="detail-head">
+          <div class="screen-title">פרטי משימה</div>
           <button class="back" data-nav="${validBackRoute(state.lastList) ? state.lastList : "all"}">${lineIcon("back")} חזרה</button>
           <div class="detail-meta-strip">
             <span class="category">${lineIcon(c.icon)} ${c.label}</span>
-            <span class="status-line status-badge">${lineIcon(s.icon)} ${s.label}</span>
-            <span class="age-meta">${ageLabel(t.created_at)}</span>
           </div>
           ${titleBlock}
         </section>
@@ -1651,7 +1647,8 @@
             <h2>סטטוס</h2>
             <div class="detail-row-main">
               <div class="segmented">${statusButtons.map(([key,label]) => `<button data-status="${t.id}:${key}" class="${t.status === key ? "active" : ""}">${label}</button>`).join("")}</div>
-              <p class="muted">עדיפות: ${priorityLabel(t.priority)}</p>
+              <p class="muted">עדיפות</p>
+              <div class="segmented">${priorityButtons.map(([key,label]) => `<button data-priority="${t.id}:${key}" class="${t.priority === key ? "active" : ""}">${label}</button>`).join("")}</div>
             </div>
           </div>
           <div class="detail-row">
@@ -1700,9 +1697,11 @@
     function managementScreen() {
       const progress = state.tasks.filter(t => t.status === "progress").length;
       const done = state.tasks.filter(t => t.status === "done").length;
+      const assignees = managementPeople();
       return `
         <section class="hero">
           <h1>ניהול</h1>
+          <p class="screen-subtitle">תמונת מצב ארגונית</p>
         </section>
         <section class="management-tiles">
           <button class="mgmt-row" data-nav="filter:progress"><strong>משימות בתהליך</strong><div class="big">${progress}</div></button>
@@ -1714,7 +1713,7 @@
         </section>
         <section class="section">
           <h2>מבצעים</h2>
-          <div class="management-list">${people.map(p => `<button class="management-list-row" data-nav="person:${encodeURIComponent(p)}"><span class="name">${p}</span><span class="icon-box">${lineIcon("user")}</span></button>`).join("")}</div>
+          <div class="management-list">${assignees.map(p => `<button class="management-list-row" data-nav="person:${encodeURIComponent(p)}"><span class="name">${p}</span><span class="icon-box">${lineIcon("user")}</span></button>`).join("")}</div>
         </section>
         <section class="section">
           <button class="mgmt-row create-row" data-nav="create"><strong>יצירת משימה חדשה</strong><span class="row-left-icon">${lineIcon("add")}</span></button>
@@ -1842,6 +1841,18 @@
           dueLabel: status === "done" ? "הושלם · היום" : task.due === "done" ? "היום · שלישי" : task.dueLabel
         });
         toast(status === "done" ? "✓ המשימה סומנה כהושלמה" : "הסטטוס עודכן");
+      }));
+      document.querySelectorAll("[data-priority]").forEach(el => el.addEventListener("click", e => {
+        e.stopPropagation();
+        const [id, priority] = e.currentTarget.dataset.priority.split(":");
+        const task = getTask(id);
+        if (!canAccessTask(task)) {
+          navigate("all");
+          toast("אין הרשאה למשימה זו");
+          return;
+        }
+        updateTask(id, { priority });
+        toast("הדחיפות עודכנה");
       }));
       document.querySelectorAll("[data-tomorrow]").forEach(el => el.addEventListener("click", e => {
         const id = e.currentTarget.dataset.tomorrow;
@@ -2123,8 +2134,6 @@
         return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>${suffix}`;
       });
     }
-    $("userMode").addEventListener("click", () => { if (!lockedRole) { state.role = "user"; save(); navigate("all"); } });
-    $("managerMode").addEventListener("click", () => { if (!lockedRole) { state.role = "manager"; save(); navigate("management"); } });
     window.addEventListener("hashchange", () => {
       state.view = location.hash.replace("#", "") || defaultRoute();
       render();

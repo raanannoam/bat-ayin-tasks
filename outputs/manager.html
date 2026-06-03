@@ -3,12 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>מוקאפ צבי / מנהל</title>
-  <script>
-    location.replace("index.html?mockup=manager#management");
-  </script>
+  <title>מוקאפ מנהל - משימות ישיבת בת עין</title>
 </head>
 <body>
-  <a href="index.html?mockup=manager#management">פתח מוקאפ צבי / מנהל</a>
+  <p>פותח מוקאפ מנהל...</p>
+  <script>
+    try {
+      sessionStorage.setItem("beit-mockup-role", "manager");
+    } catch {}
+    location.replace("index.html#management");
+  </script>
+  <noscript>
+    <a href="index.html?mockup=manager#management">פתיחת מוקאפ מנהל</a>
+  </noscript>
 </body>
 </html>
