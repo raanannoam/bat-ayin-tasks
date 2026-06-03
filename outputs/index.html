@@ -387,8 +387,9 @@
     }
     .detail-head {
       display: grid;
-      gap: 12px;
-      padding-top: 6px;
+      gap: 10px;
+      padding: 4px 0 16px;
+      border-bottom: 1px solid var(--line);
     }
     .back {
       justify-self: start;
@@ -402,7 +403,7 @@
     }
     .detail-title-row {
       display: flex;
-      gap: 8px;
+      gap: 10px;
       align-items: start;
       justify-content: space-between;
     }
@@ -410,9 +411,94 @@
       flex: 1;
       line-height: 1.2;
     }
+    .detail-meta-strip {
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
     .detail-block {
-      padding: 14px 0;
+      padding: 0;
       border-top: 1px solid var(--line);
+    }
+    .detail-panel {
+      display: grid;
+      gap: 0;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+      background: color-mix(in srgb, var(--surface) 86%, transparent);
+      box-shadow: 0 1px 4px rgba(0,0,0,.025);
+      margin-top: 12px;
+    }
+    .detail-row {
+      display: grid;
+      grid-template-columns: 92px 1fr;
+      gap: 12px;
+      align-items: start;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    .detail-row:last-child {
+      border-bottom: 0;
+    }
+    .detail-row h2 {
+      margin: 0;
+      color: var(--muted);
+      font-size: .9rem;
+      font-weight: 720;
+    }
+    .detail-row-main {
+      display: grid;
+      gap: 8px;
+      min-width: 0;
+    }
+    .detail-row-main > p {
+      line-height: 1.5;
+    }
+    .detail-row-main .segmented {
+      margin-top: 0;
+      gap: 6px;
+      padding: 3px;
+      border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+      border-radius: 11px;
+      background: color-mix(in srgb, var(--surface) 50%, transparent);
+    }
+    .detail-row-main .segmented button {
+      flex: 1;
+      min-width: 78px;
+      min-height: 34px;
+      padding: .38rem .58rem;
+      border-radius: 8px;
+      border-color: transparent;
+      background: transparent;
+      color: var(--muted);
+      font-size: .88rem;
+      font-weight: 640;
+      box-shadow: none;
+    }
+    .detail-row-main .segmented button.active {
+      background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+      border-color: color-mix(in srgb, var(--accent) 18%, transparent);
+      color: var(--accent);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent);
+    }
+    .detail-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .detail-actions button {
+      min-height: 34px;
+      padding: .42rem .66rem;
+      border-radius: 10px;
+      font-size: .88rem;
+      font-weight: 640;
+      box-shadow: none;
+    }
+    .detail-edit-panel {
+      display: grid;
+      gap: 8px;
     }
     .segmented {
       display: flex;
@@ -460,9 +546,14 @@
     .update-item {
       background: var(--surface);
       border: 1px solid var(--line);
-      border-radius: 16px;
+      border-radius: 10px;
       padding: 14px;
       box-shadow: 0 2px 8px rgba(0,0,0,.03);
+    }
+    .detail-row .update-item {
+      background: color-mix(in srgb, var(--surface) 72%, transparent);
+      box-shadow: none;
+      padding: 10px 12px;
     }
     .management-tiles {
       display: grid;
@@ -881,11 +972,18 @@
     [data-theme="dark"] .task-card,
     [data-theme="dark"] .list-row,
     [data-theme="dark"] .mgmt-row,
+    [data-theme="dark"] .detail-panel,
     [data-theme="dark"] .update-item,
     [data-theme="dark"] .chip {
       background: #3A3F3A;
       border-color: var(--line);
       box-shadow: 0 1px 1px rgba(0,0,0,.035);
+    }
+    [data-theme="dark"] .detail-row {
+      border-color: var(--line);
+    }
+    [data-theme="dark"] .detail-row .update-item {
+      background: rgba(255,255,255,.022);
     }
     [data-theme="dark"] .status-badge {
       background: rgba(255,255,255,.035);
@@ -916,13 +1014,15 @@
     }
     [data-theme="dark"] #createForm .chip,
     [data-theme="dark"] #createForm .segmented,
-    [data-theme="dark"] #createForm .sort-bar {
+    [data-theme="dark"] #createForm .sort-bar,
+    [data-theme="dark"] .detail-row-main .segmented {
       background: rgba(255,255,255,.018);
       border-color: rgba(255,255,255,.06);
       box-shadow: none;
     }
     [data-theme="dark"] #createForm .chip:has(input:checked),
-    [data-theme="dark"] #createForm .segmented button.active {
+    [data-theme="dark"] #createForm .segmented button.active,
+    [data-theme="dark"] .detail-row-main .segmented button.active {
       background: rgba(167,240,112,.095);
       border-color: rgba(167,240,112,.18);
       color: var(--accent);
@@ -1397,50 +1497,63 @@
       const c = cat(t.category), s = statusMeta[t.status];
       const overdue = isOverdue(t);
       const titleBlock = state.editingTitle
-        ? `<input id="titleInput" value="${escapeHtml(t.title)}"><div class="quick-actions"><button class="primary" id="saveTitle">שמור</button><button id="cancelTitle">ביטול</button></div>`
+        ? `<div class="detail-edit-panel"><input id="titleInput" value="${escapeHtml(t.title)}"><div class="detail-actions"><button class="primary" id="saveTitle">שמור</button><button id="cancelTitle">ביטול</button></div></div>`
         : `<div class="detail-title-row"><h1>${t.title}</h1><button class="icon" id="editTitle" aria-label="עריכת שם">${lineIcon("edit")}</button></div>`;
       const notesBlock = state.editingNotes
-        ? `<textarea id="notesInput">${escapeHtml(t.notes)}</textarea><div class="quick-actions"><button class="primary" id="saveNotes">שמור</button><button id="cancelNotes">ביטול</button></div>`
-        : `<p>${t.notes || "אין הערות."}</p><button class="soft" id="editNotes">ערוך</button>`;
+        ? `<div class="detail-edit-panel"><textarea id="notesInput">${escapeHtml(t.notes)}</textarea><div class="detail-actions"><button class="primary" id="saveNotes">שמור</button><button id="cancelNotes">ביטול</button></div></div>`
+        : `<p>${t.notes || "אין הערות."}</p><div class="detail-actions"><button class="soft" id="editNotes">ערוך</button></div>`;
       return `
         <section class="detail-head">
           <button class="back" data-nav="${validBackRoute(state.lastList) ? state.lastList : "all"}">${lineIcon("back")} חזרה</button>
-          <div class="category">${lineIcon(c.icon)} ${c.label}</div>
+          <div class="detail-meta-strip">
+            <span class="category">${lineIcon(c.icon)} ${c.label}</span>
+            <span class="status-line status-badge">${lineIcon(s.icon)} ${s.label}</span>
+            <span class="age-meta">${ageLabel(t.created_at)}</span>
+          </div>
           ${titleBlock}
         </section>
-        <section class="detail-block">
-          <h2>סטטוס</h2>
-          <p class="status-line status-badge">${lineIcon(s.icon)} ${s.label}</p>
-          <div class="segmented">${statusButtons.map(([key,label]) => `<button data-status="${t.id}:${key}" class="${t.status === key ? "active" : ""}">${label}</button>`).join("")}</div>
-          <p class="muted" style="margin-top:10px;">עדיפות: ${priorityLabel(t.priority)}</p>
-        </section>
-        <section class="detail-block">
-          <h2>יעד</h2>
-          <p class="due ${overdue ? "overdue" : ""}">${taskDueLabel(t)}</p>
-          <div class="segmented">
-            <button data-tomorrow="${t.id}">העבר למחר</button>
-            <button id="pickDate">שנה תאריך</button>
+        <section class="detail-panel">
+          <div class="detail-row">
+            <h2>סטטוס</h2>
+            <div class="detail-row-main">
+              <div class="segmented">${statusButtons.map(([key,label]) => `<button data-status="${t.id}:${key}" class="${t.status === key ? "active" : ""}">${label}</button>`).join("")}</div>
+              <p class="muted">עדיפות: ${priorityLabel(t.priority)}</p>
+            </div>
           </div>
-          <div id="dateChooser" style="display:none; margin-top:10px;">
-            <input id="dateInput" type="date">
-            <div class="quick-actions"><button class="primary" id="saveDate">שמור תאריך</button></div>
+          <div class="detail-row">
+            <h2>יעד</h2>
+            <div class="detail-row-main">
+              <p class="due ${overdue ? "overdue" : ""}">${taskDueLabel(t)}</p>
+              <div class="detail-actions">
+                <button data-tomorrow="${t.id}">העבר למחר</button>
+                <button id="pickDate">שנה תאריך</button>
+              </div>
+              <div id="dateChooser" style="display:none;">
+                <input id="dateInput" type="date">
+                <div class="detail-actions" style="margin-top:8px;"><button class="primary" id="saveDate">שמור תאריך</button></div>
+              </div>
+            </div>
           </div>
-        </section>
-        <section class="detail-block">
-          <h2>נוצרה:</h2>
-          <p>${formatHebrewDate(t.created_at)}</p>
-          <p class="age-meta" style="margin-top:6px;">${ageLabel(t.created_at)}</p>
-        </section>
-        <section class="detail-block">
-          <h2>הערות</h2>
-          ${notesBlock}
-        </section>
-        <section class="detail-block">
-          <h2>עדכונים</h2>
-          <div class="updates">
-            ${t.updates.length ? t.updates.map(u => `<div class="update-item"><strong>${u.by}:</strong><br>${u.text}</div>`).join("") : `<p class="muted">אין עדכונים עדיין.</p>`}
+          <div class="detail-row">
+            <h2>נוצרה</h2>
+            <div class="detail-row-main">
+              <p>${formatHebrewDate(t.created_at)}</p>
+              <p class="age-meta">${ageLabel(t.created_at)}</p>
+            </div>
           </div>
-          <button class="soft" id="addUpdate" style="margin-top:10px;">+ עדכון</button>
+          <div class="detail-row">
+            <h2>הערות</h2>
+            <div class="detail-row-main">${notesBlock}</div>
+          </div>
+          <div class="detail-row">
+            <h2>עדכונים</h2>
+            <div class="detail-row-main">
+              <div class="updates">
+                ${t.updates.length ? t.updates.map(u => `<div class="update-item"><strong>${u.by}:</strong><br>${u.text}</div>`).join("") : `<p class="muted">אין עדכונים עדיין.</p>`}
+              </div>
+              <div class="detail-actions"><button class="soft" id="addUpdate">+ עדכון</button></div>
+            </div>
+          </div>
         </section>`;
     }
     function missingTaskScreen() {
