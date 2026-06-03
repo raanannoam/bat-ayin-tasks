@@ -87,6 +87,10 @@ begin
     return new;
   end if;
 
+  if old.organization_id <> new.organization_id then
+    raise exception 'regular users cannot move tasks between organizations';
+  end if;
+
   if old.assignee_id <> auth.uid() or new.assignee_id <> old.assignee_id then
     raise exception 'regular users cannot reassign tasks';
   end if;
