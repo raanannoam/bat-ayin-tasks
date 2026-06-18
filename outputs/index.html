@@ -374,6 +374,132 @@
       display: block;
       line-height: 1.12;
     }
+    .supplier-progress {
+      display: grid;
+      gap: 7px;
+      margin-top: 8px;
+    }
+    .supplier-steps {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 6px;
+    }
+    .supplier-step {
+      --step-color: var(--accent);
+      position: relative;
+      overflow: hidden;
+      min-height: 38px;
+      padding: .42rem .35rem;
+      border-radius: 10px;
+      border: 1px solid color-mix(in srgb, var(--step-color) 20%, var(--line));
+      background: color-mix(in srgb, var(--step-color) 7%, var(--surface));
+      color: var(--muted);
+      font-size: .78rem;
+      font-weight: 700;
+      text-align: center;
+      box-shadow: none;
+    }
+    .supplier-step::before,
+    .supplier-check::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 4px;
+      background: var(--step-color);
+      opacity: .72;
+    }
+    .supplier-step.done {
+      border-color: color-mix(in srgb, var(--step-color) 44%, var(--line));
+      background: color-mix(in srgb, var(--step-color) 13%, var(--surface));
+      color: color-mix(in srgb, var(--step-color) 80%, var(--text));
+    }
+    .step-order { --step-color: var(--soft-blue); }
+    .step-received { --step-color: var(--sand); }
+    .step-payment { --step-color: var(--status-progress); }
+    .step-invoice { --step-color: var(--status-done); }
+    .supplier-step small {
+      color: inherit;
+      font-weight: 540;
+    }
+    .supplier-checklist {
+      display: grid;
+      gap: 8px;
+    }
+    .supplier-check {
+      --step-color: var(--accent);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-height: 46px;
+      padding: .65rem .78rem;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--surface) 76%, transparent);
+      box-shadow: none;
+      cursor: pointer;
+    }
+    .supplier-check.done {
+      border-color: color-mix(in srgb, var(--step-color) 42%, var(--line));
+      color: color-mix(in srgb, var(--step-color) 82%, var(--text));
+      background: color-mix(in srgb, var(--step-color) 9%, var(--surface));
+    }
+    .supplier-check.step-order { --step-color: var(--soft-blue); }
+    .supplier-check.step-received { --step-color: var(--sand); }
+    .supplier-check.step-payment { --step-color: var(--status-progress); }
+    .supplier-check.step-invoice { --step-color: var(--status-done); }
+    .supplier-check-text {
+      display: grid;
+      gap: 2px;
+    }
+    .supplier-check-date {
+      color: var(--muted);
+      font-size: .82rem;
+      font-weight: 500;
+    }
+    .supplier-step-date-input {
+      width: 150px;
+      min-width: 0;
+      padding: .45rem .5rem;
+      border-radius: 9px;
+      font-size: .86rem;
+    }
+    .supplier-step-date-native {
+      position: absolute;
+      left: 12px;
+      bottom: 8px;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .supplier-check input[type="checkbox"],
+    .supplier-assignee input {
+      width: 16px;
+      height: 16px;
+      min-height: 0;
+      margin: 0;
+      accent-color: var(--accent);
+      box-shadow: none;
+    }
+    .supplier-links {
+      display: grid;
+      gap: 6px;
+    }
+    .supplier-link-preview {
+      margin-top: 8px;
+    }
+    .supplier-link {
+      display: block;
+      padding: .58rem .7rem;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+      overflow-wrap: anywhere;
+    }
     .dot { font-size: .9rem; }
     .dot.progress { color: var(--status-progress); }
     .dot.done { color: var(--status-done); }
@@ -394,8 +520,8 @@
       box-shadow: 0 2px 8px rgba(0,0,0,.04), inset 0 1px 0 rgba(255,255,255,.65);
       z-index: 20;
     }
-    .bottom-nav.manager { grid-template-columns: repeat(4, 1fr); }
-    .bottom-nav.user { grid-template-columns: repeat(3, 1fr); }
+    .bottom-nav.manager { grid-template-columns: repeat(5, 1fr); }
+    .bottom-nav.user { grid-template-columns: repeat(4, 1fr); }
     .bottom-nav button {
       border: 0;
       background: transparent;
@@ -722,19 +848,30 @@
       box-shadow: 0 1px 4px rgba(0,0,0,.025);
     }
     .management-list-row {
+      --row-color: var(--accent);
+      position: relative;
+      overflow: hidden;
       width: 100%;
       min-height: 54px;
       display: grid;
-      grid-template-columns: 1fr 38px;
+      grid-template-columns: 1fr auto;
       align-items: center;
       gap: 14px;
-      padding: 9px 18px 9px 10px;
+      padding: 9px 18px;
       border: 0;
       border-radius: 0;
       border-bottom: 1px solid var(--line);
-      background: transparent;
+      background: color-mix(in srgb, var(--row-color) 4%, transparent);
       text-align: right;
       box-shadow: none;
+    }
+    .management-list-row::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 0 auto;
+      width: 4px;
+      background: var(--row-color);
+      opacity: .72;
     }
     .management-list-row:last-child {
       border-bottom: 0;
@@ -757,6 +894,24 @@
       place-items: center;
       color: var(--accent);
       background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+    }
+    .management-count {
+      justify-self: end;
+      min-width: 34px;
+      padding: .24rem .52rem;
+      border: 1px solid color-mix(in srgb, var(--row-color) 26%, var(--line));
+      border-radius: 999px;
+      color: color-mix(in srgb, var(--row-color) 78%, var(--text));
+      background: color-mix(in srgb, var(--row-color) 9%, var(--surface));
+      font-size: .82rem;
+      font-weight: 760;
+      text-align: center;
+    }
+    .management-count.zero {
+      color: var(--muted);
+      border-color: color-mix(in srgb, var(--line) 82%, transparent);
+      background: color-mix(in srgb, var(--surface-strong) 24%, var(--surface));
+      font-weight: 620;
     }
     #createForm {
       display: grid;
@@ -1238,6 +1393,10 @@
       const value = safeParseStorage("beit-tasks", null);
       return Array.isArray(value) ? value : starterTasks;
     }
+    function safeSuppliersStorage() {
+      const value = safeParseStorage("beit-suppliers", null);
+      return Array.isArray(value) ? value : starterSuppliers;
+    }
     function safeObjectStorage(key, fallback) {
       const value = safeParseStorage(key, fallback);
       return value && typeof value === "object" && !Array.isArray(value) ? value : fallback;
@@ -1314,10 +1473,52 @@
       { id: "t10", title: "בדיקת מלאי", category: "kitchen", owner: "חיה", due: "tomorrow", dueLabel: "מחר · רביעי", status: "progress", notes: "לבדוק שמן, קמח ותבלינים", updates: [] }
     ];
 
+    const supplierSteps = [
+      { id: "order", label: "הזמנה" },
+      { id: "received", label: "קבלה" },
+      { id: "payment", label: "תשלום" },
+      { id: "invoice", label: "קבלת חשבונית" }
+    ];
+    const starterSuppliers = [
+      {
+        id: "s1",
+        supplier: "ספק ירקות",
+        description: "הזמנת ירקות לשבת",
+        amount: "₪680",
+        due_date: isoDateFromOffset(1),
+        notes: "לוודא כמויות מול המטבח לפני תשלום.",
+        document_notes: "חשבונית תתווסף אחרי קבלת הסחורה.",
+        links: ["https://example.com/order-vegetables"],
+        assignees: ["עדינה"],
+        allAssignees: false,
+        steps: { order: true, received: false, payment: false, invoice: false },
+        step_dates: { order: isoDateFromOffset(0), received: "", payment: "", invoice: "" },
+        created_at: isoDateFromOffset(0)
+      },
+      {
+        id: "s2",
+        supplier: "ציוד תחזוקה",
+        description: "רכישת כבלים וציוד לאולם",
+        amount: "",
+        due_date: "",
+        notes: "מיועד לכל צוות הניהול.",
+        document_notes: "צילום מסך הצעת מחיר נשמר בינתיים בהערות.",
+        links: [],
+        assignees: [],
+        allAssignees: true,
+        steps: { order: true, received: true, payment: false, invoice: false },
+        step_dates: { order: isoDateFromOffset(-1), received: isoDateFromOffset(0), payment: "", invoice: "" },
+        created_at: isoDateFromOffset(-1)
+      }
+    ];
+
     const dataVersion = "mockup-v3";
     if (localStorage.getItem("beit-version") !== dataVersion) {
       localStorage.setItem("beit-tasks", JSON.stringify(starterTasks));
       localStorage.setItem("beit-version", dataVersion);
+    }
+    if (!localStorage.getItem("beit-suppliers")) {
+      localStorage.setItem("beit-suppliers", JSON.stringify(starterSuppliers));
     }
 
     const params = new URLSearchParams(location.search);
@@ -1350,7 +1551,9 @@
       peopleToDelete: [],
       allSort: "date",
       draftDate: "",
+      supplierPrefill: "",
       tasks: safeTasksStorage(),
+      suppliers: safeSuppliersStorage(),
       prefs: safeObjectStorage("beit-prefs", { dark: false, text: "רגיל" })
     };
     function normalizeUpdate(update, taskIndex, updateIndex) {
@@ -1377,6 +1580,32 @@
       };
     }
     state.tasks = state.tasks.map(normalizeTask);
+    function normalizeSupplier(item, index) {
+      const steps = supplierSteps.reduce((acc, step) => {
+        acc[step.id] = Boolean(item.steps && item.steps[step.id]);
+        return acc;
+      }, {});
+      const step_dates = supplierSteps.reduce((acc, step) => {
+        acc[step.id] = item.step_dates && item.step_dates[step.id] ? item.step_dates[step.id] : "";
+        return acc;
+      }, {});
+      return {
+        id: item.id || `s${Date.now()}-${index}`,
+        supplier: item.supplier || "ספק ללא שם",
+        description: item.description || "",
+        amount: item.amount || "",
+        due_date: item.due_date || "",
+        notes: item.notes || "",
+        document_notes: item.document_notes || "",
+        links: Array.isArray(item.links) ? item.links : [],
+        assignees: Array.isArray(item.assignees) ? item.assignees : [],
+        allAssignees: Boolean(item.allAssignees),
+        steps,
+        step_dates,
+        created_at: item.created_at || isoDateFromOffset(-index)
+      };
+    }
+    state.suppliers = state.suppliers.map(normalizeSupplier);
 
     document.body.dataset.theme = state.prefs.dark ? "dark" : "";
 
@@ -1385,6 +1614,7 @@
 
     function save() {
       localStorage.setItem("beit-tasks", JSON.stringify(state.tasks));
+      localStorage.setItem("beit-suppliers", JSON.stringify(state.suppliers));
       localStorage.setItem("beit-prefs", JSON.stringify(state.prefs));
     }
     function toast(text) {
@@ -1443,11 +1673,44 @@
       const task = getTask(id);
       return canAccessTask(task) ? task : null;
     }
+    function supplierProgress(item) {
+      const done = supplierSteps.filter(step => item.steps[step.id]).length;
+      return { done, total: supplierSteps.length, complete: done === supplierSteps.length };
+    }
+    function canAccessSupplier(item) {
+      return Boolean(item) && (state.role === "manager" || item.allAssignees || item.assignees.includes(personalOwner()));
+    }
+    function visibleSuppliers() {
+      return state.suppliers.filter(canAccessSupplier).sort((a, b) => {
+        const aDone = supplierProgress(a).complete ? 1 : 0;
+        const bDone = supplierProgress(b).complete ? 1 : 0;
+        return aDone - bDone || (a.due_date || "9999").localeCompare(b.due_date || "9999") || a.supplier.localeCompare(b.supplier, "he");
+      });
+    }
+    function getSupplier(id) {
+      return state.suppliers.find(item => item.id === id);
+    }
+    function getVisibleSupplier(id) {
+      const item = getSupplier(id);
+      return canAccessSupplier(item) ? item : null;
+    }
+    function updateSupplier(id, updater) {
+      const item = getSupplier(id);
+      if (!canAccessSupplier(item)) {
+        navigate("suppliers");
+        toast("אין הרשאה להזמנה זו");
+        return false;
+      }
+      state.suppliers = state.suppliers.map(current => current.id === id ? updater(current) : current);
+      save();
+      render();
+      return true;
+    }
     function validBackRoute(view) {
       if (state.role === "manager") {
-        return ["all", "done", "management"].includes(view) || view.startsWith("person:") || view.startsWith("category:") || view.startsWith("filter:");
+        return ["all", "done", "management", "suppliers"].includes(view) || view.startsWith("person:") || view.startsWith("category:") || view.startsWith("filter:");
       }
-      return ["all", "done"].includes(view);
+      return ["all", "done", "suppliers"].includes(view);
     }
     function defaultRoute() {
       return state.role === "manager" ? "management" : "all";
@@ -1455,11 +1718,11 @@
     function normalizeView(view) {
       if (!view || view === "today") return defaultRoute();
       if (state.role === "user") {
-        if (["all", "done", "prefs", "create"].includes(view) || view.startsWith("task:")) return view;
+        if (["all", "done", "prefs", "create", "suppliers", "supplier-create"].includes(view) || view.startsWith("task:") || view.startsWith("supplier:")) return view;
         return "all";
       }
-      if (["management", "all", "done", "prefs", "create"].includes(view)) return view;
-      if (view.startsWith("task:") || view.startsWith("person:") || view.startsWith("category:") || view.startsWith("filter:")) return view;
+      if (["management", "all", "done", "prefs", "create", "suppliers", "supplier-create"].includes(view)) return view;
+      if (view.startsWith("task:") || view.startsWith("supplier:") || view.startsWith("person:") || view.startsWith("category:") || view.startsWith("filter:")) return view;
       return "management";
     }
     function setRoute(view, replace = false) {
@@ -1492,6 +1755,7 @@
       state.deletingPerson = false;
       state.peopleToDelete = [];
       const normalized = normalizeView(view);
+      if (normalized !== "supplier-create") state.supplierPrefill = "";
       if (!normalized.startsWith("task:") && validBackRoute(normalized)) state.lastList = normalized;
       setRoute(normalized);
       render();
@@ -1522,6 +1786,13 @@
           toast("אין הרשאה למשימה זו");
         }
       }
+      if (state.view.startsWith("supplier:")) {
+        const supplier = getSupplier(state.view.split(":")[1]);
+        if (supplier && !canAccessSupplier(supplier)) {
+          setRoute("suppliers", true);
+          toast("אין הרשאה להזמנה זו");
+        }
+      }
       app.innerHTML = route();
       renderNav();
       bindPage();
@@ -1534,7 +1805,10 @@
       if (view === "done") return listScreen("הושלם", sortTasks(personalTasks(state.tasks).filter(t => t.status === "done"), currentSort("personal")), state.role === "manager", state.role === "manager" ? "המשימות שלי" : "", true, false, "personal");
       if (view === "prefs") return prefsScreen();
       if (view === "create") return createScreen();
+      if (view === "suppliers") return suppliersScreen();
+      if (view === "supplier-create") return supplierCreateScreen();
       if (view.startsWith("task:")) return detailScreen(view.split(":")[1]);
+      if (view.startsWith("supplier:")) return supplierDetailScreen(view.split(":")[1]);
       if (view.startsWith("person:")) {
         const person = decodeURIComponent(view.split(":")[1]);
         const tasks = sortTasks(state.tasks.filter(t => t.owner === person && t.status !== "done"), currentSort("person"));
@@ -1769,6 +2043,14 @@
       const progress = state.tasks.filter(t => t.status === "progress").length;
       const done = state.tasks.filter(t => t.status === "done").length;
       const assignees = managementPeople();
+      const openTasks = state.tasks.filter(t => t.status !== "done");
+      const categoryOpenCount = (id) => openTasks.filter(t => t.category === id).length;
+      const personOpenCount = (person) => openTasks.filter(t => t.owner === person).length;
+      const countBadge = (count) => `<span class="management-count ${count ? "" : "zero"}">${count}</span>`;
+      const categoryColors = ["var(--status-done)", "var(--soft-blue)", "var(--sand)", "var(--status-progress)", "var(--accent)", "var(--danger)"];
+      const personColors = ["var(--accent)", "var(--soft-blue)", "var(--status-progress)", "var(--sand)", "var(--status-done)", "var(--danger)"];
+      const categoryColor = (category, index) => categoryColors[index % categoryColors.length];
+      const personColor = (person, index) => personColors[index % personColors.length];
       return `
         <section class="hero">
           <h1>ניהול</h1>
@@ -1780,15 +2062,142 @@
         </section>
         <section class="section">
           <h2>קטגוריות</h2>
-          <div class="management-list">${categories.slice(0,5).map(c => `<button class="management-list-row" data-nav="category:${c.id}"><span class="name">${c.label}</span><span class="icon-box">${lineIcon(c.icon)}</span></button>`).join("")}</div>
+          <div class="management-list">${categories.slice(0,5).map((c, index) => `<button class="management-list-row" style="--row-color: ${categoryColor(c, index)}" data-nav="category:${c.id}"><span class="name">${c.label}</span>${countBadge(categoryOpenCount(c.id))}</button>`).join("")}</div>
         </section>
         <section class="section">
           <h2>מבצעים</h2>
-          <div class="management-list">${assignees.map(p => `<button class="management-list-row" data-nav="person:${encodeURIComponent(p)}"><span class="name">${p}</span><span class="icon-box">${lineIcon("user")}</span></button>`).join("")}</div>
+          <div class="management-list">${assignees.map((p, index) => `<button class="management-list-row" style="--row-color: ${personColor(p, index)}" data-nav="person:${encodeURIComponent(p)}"><span class="name">${p}</span>${countBadge(personOpenCount(p))}</button>`).join("")}</div>
         </section>
         <section class="section">
           <button class="mgmt-row create-row" data-nav="create"><strong>יצירת משימה חדשה</strong><span class="row-left-icon">${lineIcon("add")}</span></button>
         </section>`;
+    }
+    function supplierStepsMarkup(item) {
+      return `<div class="supplier-steps">${supplierSteps.map(step => {
+        const date = item.step_dates[step.id];
+        return `<span class="supplier-step step-${step.id} ${item.steps[step.id] ? "done" : ""}">${item.steps[step.id] ? "✓ " : ""}${step.label}${date ? `<br><small>${formatHebrewDate(date)}</small>` : ""}</span>`;
+      }).join("")}</div>`;
+    }    function supplierRow(item) {
+      const progress = supplierProgress(item);
+      const assignees = item.allAssignees ? "כולם" : item.assignees.join(", ") || "ללא שיוך";
+      return `
+        <div class="list-row ${progress.complete ? "completed" : ""}" data-open-supplier="${item.id}" role="button" tabindex="0">
+          <div class="list-row-content">
+            <div class="category">${lineIcon("money")} ספקים / רכש</div>
+            <div class="task-title">${escapeHtml(item.supplier)}</div>
+            <div class="row-meta">
+              <span>${escapeHtml(item.description || "ללא תיאור")}</span>
+              ${item.amount ? `<span>סכום: ${escapeHtml(item.amount)}</span>` : ""}
+              ${item.due_date ? `<span class="due">יעד: ${formatHebrewDate(item.due_date)}</span>` : ""}
+              <span class="person-line">${lineIcon("user")} ${escapeHtml(assignees)}</span>
+              <span>${progress.done}/${progress.total} שלבים</span>
+            </div>
+            <div class="supplier-progress">${supplierStepsMarkup(item)}</div>
+          </div>
+        </div>`;
+    }
+    function supplierQuickNames(items) {
+      return [...new Set(items.map(item => item.supplier).filter(Boolean))].sort((a, b) => a.localeCompare(b, "he")).slice(0, 6);
+    }
+    function suppliersScreen() {
+      const items = visibleSuppliers();
+      const quickNames = supplierQuickNames(items);
+      const open = items.filter(item => !supplierProgress(item).complete).length;
+      const done = items.length - open;
+      return `
+        <section class="hero">
+          <h1>ספקים / רכש</h1>
+          <p class="screen-subtitle">ניהול הזמנות, תשלומים וחשבוניות</p>
+        </section>
+        <section class="section">
+          <h2>ספקים</h2>
+          <div class="chips">
+            ${quickNames.length ? quickNames.map(name => `<button class="chip" type="button" data-supplier-new="${escapeHtml(name)}">${escapeHtml(name)}</button>`).join("") : `<span class="muted">עדיין אין ספקים ברשימה.</span>`}
+          </div>
+        </section>        <section class="management-tiles">
+          <button class="mgmt-row"><strong>פתוחות</strong><div class="big">${open}</div></button>
+          <button class="mgmt-row"><strong>הושלמו</strong><div class="big">${done}</div></button>
+        </section>
+        <section class="list">
+          ${items.length ? items.map(supplierRow).join("") : `<div class="empty">אין הזמנות ספקים להצגה.</div>`}
+        </section>
+        <section class="section">
+          <button class="mgmt-row create-row" data-nav="supplier-create"><strong>הזמנת ספק חדשה</strong><span class="row-left-icon">${lineIcon("add")}</span></button>
+        </section>`;
+    }
+    function supplierDetailScreen(id) {
+      const item = getVisibleSupplier(id);
+      if (!item) {
+        return `<section class="hero"><button class="back" data-nav="suppliers">${lineIcon("back")} חזרה</button><h1>ההזמנה לא נמצאה</h1></section>`;
+      }
+      const progress = supplierProgress(item);
+      const assignees = item.allAssignees ? "כולם" : item.assignees.join(", ") || "ללא שיוך";
+      return `
+        <section class="detail-head">
+          <div class="screen-title">פרטי ספק / הזמנה</div>
+          <button class="back" data-nav="suppliers">${lineIcon("back")} חזרה</button>
+          <div class="detail-meta-strip"><span class="category">${lineIcon("money")} ספקים / רכש</span></div>
+          <div class="detail-title-row"><h1>${escapeHtml(item.supplier)}</h1></div>
+          <p class="screen-subtitle">${escapeHtml(item.description || "ללא תיאור הזמנה")}</p>
+        </section>
+        <section class="detail-panel">
+          <div class="detail-row">
+            <h2>שלבי מעקב</h2>
+            <div class="detail-row-main">
+              <p class="muted">${progress.done} מתוך ${progress.total} שלבים הושלמו</p>
+              <div class="supplier-checklist">
+                ${supplierSteps.map(step => `<div class="supplier-check step-${step.id} ${item.steps[step.id] ? "done" : ""}" data-supplier-date-trigger="${item.id}:${step.id}" role="button" tabindex="0"><span class="supplier-check-text"><strong>${step.label}</strong><span class="supplier-check-date">${item.step_dates[step.id] ? formatHebrewDate(item.step_dates[step.id]) : "ללא תאריך"}</span></span><input type="checkbox" data-supplier-step="${item.id}:${step.id}" aria-label="${step.label}" ${item.steps[step.id] ? "checked" : ""}><input class="supplier-step-date-native" type="date" data-supplier-step-date="${item.id}:${step.id}" value="${escapeHtml(item.step_dates[step.id] || "")}"></div>`).join("")}
+              </div>
+              <div class="detail-actions"><button class="soft" data-supplier-all="${item.id}">סמן הכל</button></div>
+            </div>
+          </div>
+          <div class="detail-row">
+            <h2>פרטים</h2>
+            <div class="detail-row-main">
+              ${item.amount ? `<p>סכום: ${escapeHtml(item.amount)}</p>` : `<p class="muted">סכום לא ידוע.</p>`}
+              <p>${item.due_date ? `תאריך יעד / ביצוע: ${formatHebrewDate(item.due_date)}` : "אין תאריך יעד."}</p>
+              <p>שיוך: ${escapeHtml(assignees)}</p>
+            </div>
+          </div>
+          <div class="detail-row">
+            <h2>הערות</h2>
+            <div class="detail-row-main"><p class="linked-text">${item.notes ? renderLinkedText(item.notes) : "אין הערות."}</p></div>
+          </div>
+          <div class="detail-row">
+            <h2>קישורים / מסמכים</h2>
+            <div class="detail-row-main">
+              ${item.links.length ? `<div class="supplier-links">${item.links.map(link => `<a class="supplier-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(link)}</a>`).join("")}</div>` : `<p class="muted">אין קישורים עדיין.</p>`}
+              <p class="linked-text" style="margin-top:10px;">${item.document_notes ? renderLinkedText(item.document_notes) : "אפשר לרשום כאן שם מסמך, צילום מסך או מיקום זמני עד חיבור Supabase Storage."}</p>
+            </div>
+          </div>
+        </section>`;
+    }
+    function supplierAssigneePickerMarkup() {
+      return `
+        <div class="chips">
+          <label class="chip supplier-assignee"><input name="supplierAll" type="checkbox" value="all"> כולם</label>
+          ${people.map(person => `<label class="chip supplier-assignee"><input name="supplierAssignee" type="checkbox" value="${escapeHtml(person)}"> ${escapeHtml(person)}</label>`).join("")}
+        </div>`;
+    }
+    function supplierCreateScreen() {
+      return `
+        <section class="hero">
+          <button class="back" data-nav="suppliers">${lineIcon("back")} חזרה</button>
+          <h1>הזמנת ספק חדשה</h1>
+          <p class="screen-subtitle">מעקב רכש פשוט: הזמנה, קבלה, תשלום וחשבונית</p>
+        </section>
+        <form id="supplierForm">
+          <div class="form-group"><h2>שם הספק</h2><input id="supplierName" required value="${escapeHtml(state.supplierPrefill)}" placeholder="לדוגמה: ספק ירקות"></div>
+          <div class="form-group"><h2>תיאור ההזמנה / הרכישה</h2><textarea id="supplierDescription" required placeholder="מה מזמינים?"></textarea></div>
+          <div class="form-group"><h2>סכום</h2><input id="supplierAmount" placeholder="אם ידוע, לדוגמה ₪680"></div>
+          <div class="form-group"><h2>תאריך יעד / ביצוע</h2><div class="supplier-check" data-supplier-due-date-trigger role="button" tabindex="0"><span class="supplier-check-text"><strong>תאריך יעד / ביצוע</strong><span class="supplier-check-date" id="supplierDateLabel">בחר תאריך</span></span><input class="supplier-step-date-native" id="supplierDate" type="date"></div></div>
+          <div class="form-group"><h2>תאריכי שלבים</h2><div class="supplier-checklist">${supplierSteps.map(step => `<div class="supplier-check step-${step.id}" data-new-step-date-trigger="${step.id}" role="button" tabindex="0"><span class="supplier-check-text"><strong>${step.label}</strong><span class="supplier-check-date" id="newStepDateLabel-${step.id}">בחר תאריך</span></span><input class="supplier-step-date-native" id="newStepDate-${step.id}" type="date" data-new-step-date="${step.id}"></div>`).join("")}</div></div>
+          <div class="form-group"><h2>שיוך משתמשים</h2>${supplierAssigneePickerMarkup()}</div>
+          <div class="form-group"><h2>קישורים</h2><textarea id="supplierLinks" placeholder="קישור אחד בכל שורה"></textarea><div id="supplierLinksPreview" class="supplier-links supplier-link-preview"></div></div>
+          <div class="form-group"><h2>מסמכים / צילום מסך</h2><textarea id="supplierDocuments" placeholder="תיאור מסמך, שם קובץ או מקום זמני. בהמשך אפשר לחבר ל-Supabase Storage."></textarea></div>
+          <div class="form-group"><h2>הערות</h2><textarea id="supplierNotes" placeholder="הערות פנימיות"></textarea></div>
+          <button class="primary" type="submit" style="width:100%;">צור הזמנת ספק</button>
+        </form>`;
     }
     function prefsScreen() {
       const clearPrompt = state.clearAllStep === 0
@@ -1875,14 +2284,18 @@
     }
     function renderNav() {
       const items = state.role === "manager"
-        ? [["management","ניהול","settings"],["all","משימות פתוחות","list"],["done","הושלם","done"],["prefs","העדפות","preferences"]]
-        : [["all","משימות פתוחות","list"],["done","הושלם","done"],["prefs","העדפות","preferences"]];
+        ? [["management","ניהול","settings"],["all","משימות","list"],["suppliers","ספקים","money"],["done","הושלם","done"],["prefs","העדפות","preferences"]]
+        : [["all","משימות","list"],["suppliers","ספקים","money"],["done","הושלם","done"],["prefs","העדפות","preferences"]];
       const nav = $("bottomNav");
       nav.className = `bottom-nav ${state.role === "manager" ? "manager" : "user"}`;
       nav.innerHTML = items.map(([view,label,iconName]) => `<button data-nav="${view}" class="${state.view === view ? "active" : ""}"><span>${lineIcon(iconName)}</span><span>${label}</span></button>`).join("");
     }
     function bindPage() {
       document.querySelectorAll("[data-nav]").forEach(el => el.addEventListener("click", e => navigate(e.currentTarget.dataset.nav)));
+      document.querySelectorAll("[data-supplier-new]").forEach(el => el.addEventListener("click", e => {
+        state.supplierPrefill = e.currentTarget.dataset.supplierNew || "";
+        navigate("supplier-create");
+      }));
       document.querySelectorAll("[data-sort]").forEach(el => el.addEventListener("click", e => {
         state.allSort = e.currentTarget.dataset.sort;
         render();
@@ -1896,6 +2309,147 @@
         e.preventDefault();
         navigate(`task:${e.currentTarget.dataset.open}`);
       }));
+      document.querySelectorAll("[data-open-supplier]").forEach(el => el.addEventListener("click", e => {
+        navigate(`supplier:${e.currentTarget.dataset.openSupplier}`);
+      }));
+      document.querySelectorAll("[data-open-supplier]").forEach(el => el.addEventListener("keydown", e => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        navigate(`supplier:${e.currentTarget.dataset.openSupplier}`);
+      }));
+      function openSupplierStepDate(container) {
+        const input = container.querySelector("[data-supplier-step-date]");
+        if (!input) return;
+        if (typeof input.showPicker === "function") input.showPicker();
+        else input.focus();
+      }
+      document.querySelectorAll("[data-supplier-date-trigger]").forEach(el => {
+        el.addEventListener("click", e => {
+          if (e.target.closest("input[type='checkbox']")) return;
+          openSupplierStepDate(e.currentTarget);
+        });
+        el.addEventListener("keydown", e => {
+          if (e.key !== "Enter" && e.key !== " ") return;
+          e.preventDefault();
+          openSupplierStepDate(e.currentTarget);
+        });
+      });      function openSupplierDueDate() {
+        const input = $("supplierDate");
+        if (!input) return;
+        if (typeof input.showPicker === "function") input.showPicker();
+        else input.focus();
+      }
+      document.querySelectorAll("[data-supplier-due-date-trigger]").forEach(el => {
+        el.addEventListener("click", openSupplierDueDate);
+        el.addEventListener("keydown", e => {
+          if (e.key !== "Enter" && e.key !== " ") return;
+          e.preventDefault();
+          openSupplierDueDate();
+        });
+      });
+      $("supplierDate")?.addEventListener("change", e => {
+        const label = $("supplierDateLabel");
+        if (label) label.textContent = e.currentTarget.value ? formatHebrewDate(e.currentTarget.value) : "בחר תאריך";
+        e.currentTarget.closest(".supplier-check")?.classList.toggle("done", Boolean(e.currentTarget.value));
+      });      function openNewSupplierStepDate(container) {
+        const input = container.querySelector("[data-new-step-date]");
+        if (!input) return;
+        if (typeof input.showPicker === "function") input.showPicker();
+        else input.focus();
+      }
+      document.querySelectorAll("[data-new-step-date-trigger]").forEach(el => {
+        el.addEventListener("click", e => openNewSupplierStepDate(e.currentTarget));
+        el.addEventListener("keydown", e => {
+          if (e.key !== "Enter" && e.key !== " ") return;
+          e.preventDefault();
+          openNewSupplierStepDate(e.currentTarget);
+        });
+      });
+      document.querySelectorAll("[data-new-step-date]").forEach(el => el.addEventListener("change", e => {
+        const step = e.currentTarget.dataset.newStepDate;
+        const label = $(`newStepDateLabel-${step}`);
+        if (label) label.textContent = e.currentTarget.value ? formatHebrewDate(e.currentTarget.value) : "בחר תאריך";
+        e.currentTarget.closest(".supplier-check")?.classList.toggle("done", Boolean(e.currentTarget.value));
+      }));      document.querySelectorAll("[data-supplier-step]").forEach(el => el.addEventListener("change", e => {
+        const [id, step] = e.currentTarget.dataset.supplierStep.split(":");
+        updateSupplier(id, item => ({ ...item, steps: { ...item.steps, [step]: e.currentTarget.checked } }));
+        toast("שלב ההזמנה עודכן");
+      }));
+      document.querySelectorAll("[data-supplier-step-date]").forEach(el => el.addEventListener("change", e => {
+        const [id, step] = e.currentTarget.dataset.supplierStepDate.split(":");
+        const value = e.currentTarget.value;
+        updateSupplier(id, item => ({
+          ...item,
+          steps: { ...item.steps, [step]: value ? true : item.steps[step] },
+          step_dates: { ...item.step_dates, [step]: value }
+        }));
+        toast("תאריך השלב נשמר");
+      }));
+      document.querySelectorAll("[data-supplier-all]").forEach(el => el.addEventListener("click", e => {
+        const id = e.currentTarget.dataset.supplierAll;
+        const today = isoDateFromOffset(0);
+        const allSteps = supplierSteps.reduce((acc, step) => ({ ...acc, [step.id]: true }), {});
+        updateSupplier(id, item => ({
+          ...item,
+          steps: allSteps,
+          step_dates: supplierSteps.reduce((acc, step) => ({ ...acc, [step.id]: item.step_dates[step.id] || today }), {})
+        }));
+        toast("כל שלבי ההזמנה סומנו");
+      }));      $("supplierForm")?.addEventListener("change", e => {
+        if (e.target.name !== "supplierAll") return;
+        document.querySelectorAll('input[name="supplierAssignee"]').forEach(input => {
+          input.disabled = e.target.checked;
+          if (e.target.checked) input.checked = false;
+        });
+      });
+      function updateSupplierLinksPreview() {
+        const preview = $("supplierLinksPreview");
+        const input = $("supplierLinks");
+        if (!preview || !input) return;
+        const links = input.value.split(/\s+/).map(value => value.trim()).filter(value => /^https?:\/\//i.test(value));
+        preview.innerHTML = links.length
+          ? links.map(link => `<a class="supplier-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(link)}</a>`).join("")
+          : `<p class="muted">קישורים שיודבקו כאן יופיעו כהיפרלינקים.</p>`;
+      }
+      $("supplierLinks")?.addEventListener("input", updateSupplierLinksPreview);
+      $("supplierLinks")?.addEventListener("paste", () => setTimeout(updateSupplierLinksPreview, 0));
+      updateSupplierLinksPreview();      $("supplierForm")?.addEventListener("submit", e => {
+        e.preventDefault();
+        const allAssignees = Boolean(document.querySelector('input[name="supplierAll"]')?.checked);
+        const assignees = allAssignees ? [] : [...document.querySelectorAll('input[name="supplierAssignee"]:checked')].map(input => input.value);
+        if (!allAssignees && !assignees.length) {
+          toast("בחר שיוך או כולם");
+          return;
+        }
+        const links = $("supplierLinks").value.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+        const stepDates = supplierSteps.reduce((acc, step) => {
+          acc[step.id] = $(`newStepDate-${step.id}`)?.value || "";
+          return acc;
+        }, {});
+        const initialSteps = supplierSteps.reduce((acc, step) => {
+          acc[step.id] = Boolean(stepDates[step.id]);
+          return acc;
+        }, {});
+        const item = normalizeSupplier({
+          id: `s${Date.now()}`,
+          supplier: $("supplierName").value.trim(),
+          description: $("supplierDescription").value.trim(),
+          amount: $("supplierAmount").value.trim(),
+          due_date: $("supplierDate").value,
+          notes: $("supplierNotes").value.trim(),
+          document_notes: $("supplierDocuments").value.trim(),
+          links,
+          assignees,
+          allAssignees,
+          steps: initialSteps,
+          step_dates: stepDates,
+          created_at: isoDateFromOffset(0)
+        }, 0);
+        state.suppliers = [item, ...state.suppliers];
+        save();
+        toast("הזמנת הספק נוצרה");
+        navigate(`supplier:${item.id}`);
+      });
       document.querySelectorAll("[data-status]").forEach(el => el.addEventListener("click", e => {
         e.stopPropagation();
         const [id, status] = e.currentTarget.dataset.status.split(":");
