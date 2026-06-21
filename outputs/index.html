@@ -1512,8 +1512,48 @@
     ];
 
     const dataVersion = "mockup-v3";
+    const SUPABASE_URL = "https://your-project.supabase.co";
+    const SUPABASE_ANON_KEY = "your-supabase-anon-key";
     const DATA_BACKEND = "local";
     const repositoryAdapters = {};
+
+    function isSupabasePlaceholder(value) {
+      if (!value || typeof value !== "string") return true;
+      return value.includes("your-project") || value.includes("your-supabase-anon-key");
+    }
+    function createSupabaseClientSafe() {
+      try {
+        if (isSupabasePlaceholder(SUPABASE_URL) || isSupabasePlaceholder(SUPABASE_ANON_KEY)) {
+          return null;
+        }
+        if (!window.supabase || typeof window.supabase.createClient !== "function") {
+          console.warn("Supabase client library is not available.");
+          return null;
+        }
+        return window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      } catch (error) {
+        console.warn("Supabase client initialization failed.", error);
+        return null;
+      }
+    }
+    const supabaseClient = createSupabaseClientSafe();
+    async function testSupabaseConnection() {
+      try {
+        if (!supabaseClient) {
+          return { ok: false, reason: "Supabase is not configured." };
+        }
+        const { error } = await supabaseClient.from("tasks").select("id").limit(1);
+        if (error) {
+          console.warn("Supabase connection test failed.", error);
+          return { ok: false, error };
+        }
+        return { ok: true };
+      } catch (error) {
+        console.warn("Supabase connection test failed.", error);
+        return { ok: false, error };
+      }
+    }
+    window.testSupabaseConnection = testSupabaseConnection;
 
     const params = new URLSearchParams(location.search);
     const handoffRole = (() => {
