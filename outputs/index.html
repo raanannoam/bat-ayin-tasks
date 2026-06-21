@@ -1396,14 +1396,6 @@
       const value = safeParseStorage(key, []);
       return Array.isArray(value) ? value : [];
     }
-    function safeTasksStorage() {
-      const value = safeParseStorage("beit-tasks", null);
-      return Array.isArray(value) ? value : starterTasks;
-    }
-    function safeSuppliersStorage() {
-      const value = safeParseStorage("beit-suppliers", null);
-      return Array.isArray(value) ? value : starterSuppliers;
-    }
     function safeObjectStorage(key, fallback) {
       const value = safeParseStorage(key, fallback);
       return value && typeof value === "object" && !Array.isArray(value) ? value : fallback;
@@ -1520,13 +1512,8 @@
     ];
 
     const dataVersion = "mockup-v3";
-    if (localStorage.getItem("beit-version") !== dataVersion) {
-      localStorage.setItem("beit-tasks", JSON.stringify(starterTasks));
-      localStorage.setItem("beit-version", dataVersion);
-    }
-    if (!localStorage.getItem("beit-suppliers")) {
-      localStorage.setItem("beit-suppliers", JSON.stringify(starterSuppliers));
-    }
+    const DATA_BACKEND = "local";
+    const repositoryAdapters = {};
 
     const params = new URLSearchParams(location.search);
     const handoffRole = (() => {
@@ -1580,7 +1567,12 @@
     }
     const localTasksAdapter = {
       loadTasks() {
-        return safeTasksStorage().map(normalizeTask);
+        if (localStorage.getItem("beit-version") !== dataVersion) {
+          localStorage.setItem("beit-tasks", JSON.stringify(starterTasks));
+          localStorage.setItem("beit-version", dataVersion);
+        }
+        const value = safeParseStorage("beit-tasks", null);
+        return (Array.isArray(value) ? value : starterTasks).map(normalizeTask);
       },
       saveTasks(tasks) {
         localStorage.setItem("beit-tasks", JSON.stringify(tasks));
@@ -1621,8 +1613,10 @@
         });
       }
     };
+    repositoryAdapters.local = { taskAdapter: localTasksAdapter };
+    const taskAdapter = repositoryAdapters[DATA_BACKEND].taskAdapter;
     function loadTasks() {
-      return localTasksAdapter.loadTasks();
+      return taskAdapter.loadTasks();
     }
     const state = {
       role: initialRole,
@@ -1674,7 +1668,11 @@
     }
     const localSuppliersAdapter = {
       loadSuppliers() {
-        return safeSuppliersStorage().map(normalizeSupplier);
+        if (!localStorage.getItem("beit-suppliers")) {
+          localStorage.setItem("beit-suppliers", JSON.stringify(starterSuppliers));
+        }
+        const value = safeParseStorage("beit-suppliers", null);
+        return (Array.isArray(value) ? value : starterSuppliers).map(normalizeSupplier);
       },
       saveSuppliers(suppliers) {
         localStorage.setItem("beit-suppliers", JSON.stringify(suppliers));
@@ -1709,8 +1707,10 @@
         }));
       }
     };
+    repositoryAdapters.local.supplierAdapter = localSuppliersAdapter;
+    const supplierAdapter = repositoryAdapters[DATA_BACKEND].supplierAdapter;
     function loadSuppliers() {
-      return localSuppliersAdapter.loadSuppliers();
+      return supplierAdapter.loadSuppliers();
     }
     state.suppliers = loadSuppliers();
 
@@ -1720,8 +1720,8 @@
     const app = $("app");
 
     function save() {
-      localTasksAdapter.saveTasks(state.tasks);
-      localSuppliersAdapter.saveSuppliers(state.suppliers);
+      taskAdapter.saveTasks(state.tasks);
+      supplierAdapter.saveSuppliers(state.suppliers);
       localStorage.setItem("beit-prefs", JSON.stringify(state.prefs));
     }
     function toast(text) {
@@ -1823,12 +1823,12 @@
         toast("אין הרשאה להזמנה זו");
         return false;
       }
-      state.suppliers = localSuppliersAdapter.updateSupplierOrder(state.suppliers, id, updater);
+      state.suppliers = supplierAdapter.updateSupplierOrder(state.suppliers, id, updater);
       render();
       return true;
     }
     function createSupplierOrder(item) {
-      state.suppliers = localSuppliersAdapter.createSupplierOrder(state.suppliers, item);
+      state.suppliers = supplierAdapter.createSupplierOrder(state.suppliers, item);
       return item;
     }
     function deleteSupplierOrderSoft(id) {
@@ -1838,7 +1838,7 @@
         toast("אין הרשאה להזמנה זו");
         return false;
       }
-      state.suppliers = localSuppliersAdapter.deleteSupplierOrderSoft(state.suppliers, id, personalOwner());
+      state.suppliers = supplierAdapter.deleteSupplierOrderSoft(state.suppliers, id, personalOwner());
       render();
       return true;
     }
@@ -1852,7 +1852,7 @@
         toast("אין הרשאה להזמנה זו");
         return false;
       }
-      state.suppliers = localSuppliersAdapter.updateSupplierStage(state.suppliers, id, step, checked, dateValue);
+      state.suppliers = supplierAdapter.updateSupplierStage(state.suppliers, id, step, checked, dateValue);
       render();
       return true;
     }
@@ -1863,7 +1863,7 @@
         toast("אין הרשאה להזמנה זו");
         return false;
       }
-      state.suppliers = localSuppliersAdapter.markAllSupplierStages(state.suppliers, id);
+      state.suppliers = supplierAdapter.markAllSupplierStages(state.suppliers, id);
       render();
       return true;
     }
@@ -1924,7 +1924,7 @@
       resetScroll();
     }
     function createTask(task) {
-      state.tasks = localTasksAdapter.createTask(state.tasks, task);
+      state.tasks = taskAdapter.createTask(state.tasks, task);
       return task;
     }
     function updateTask(id, patch) {
@@ -1941,7 +1941,7 @@
           return false;
         }
       }
-      state.tasks = localTasksAdapter.updateTask(state.tasks, id, patch);
+      state.tasks = taskAdapter.updateTask(state.tasks, id, patch);
       render();
       return true;
     }
@@ -1951,7 +1951,7 @@
         toast("רק מנהל יכול למחוק משימה");
         return false;
       }
-      state.tasks = localTasksAdapter.deleteTaskSoft(state.tasks, id, personalOwner());
+      state.tasks = taskAdapter.deleteTaskSoft(state.tasks, id, personalOwner());
       render();
       return true;
     }
@@ -1962,7 +1962,7 @@
         toast("אין הרשאה למשימה זו");
         return false;
       }
-      state.tasks = localTasksAdapter.completeTask(state.tasks, id);
+      state.tasks = taskAdapter.completeTask(state.tasks, id);
       render();
       return true;
     }
@@ -1977,7 +1977,7 @@
         toast("רק מנהל יכול להחזיר משימה לתהליך");
         return false;
       }
-      state.tasks = localTasksAdapter.reopenTask(state.tasks, id);
+      state.tasks = taskAdapter.reopenTask(state.tasks, id);
       render();
       return true;
     }
@@ -2862,7 +2862,7 @@
           render();
           return;
         }
-        state.tasks = [];
+        state.tasks = taskAdapter.saveTasks([]);
         state.clearAllStep = 0;
         save();
         render();
@@ -2932,7 +2932,7 @@
         localStorage.setItem("beit-categories", JSON.stringify(custom));
         categories = loadCategories();
         const fallbackCategory = categories[0]?.id || "uncategorized";
-        state.tasks = state.tasks.map(t => ids.includes(t.category) ? { ...t, category: fallbackCategory } : t);
+        state.tasks = taskAdapter.saveTasks(state.tasks.map(t => ids.includes(t.category) ? { ...t, category: fallbackCategory } : t));
         state.deletingCategory = false;
         state.categoriesToDelete = [];
         save();
@@ -3002,7 +3002,7 @@
         localStorage.setItem("beit-people", JSON.stringify(custom));
         people = loadPeople();
         const fallbackOwner = people[0] || "ללא מבצע";
-        state.tasks = state.tasks.map(t => names.includes(t.owner) ? { ...t, owner: fallbackOwner } : t);
+        state.tasks = taskAdapter.saveTasks(state.tasks.map(t => names.includes(t.owner) ? { ...t, owner: fallbackOwner } : t));
         state.deletingPerson = false;
         state.peopleToDelete = [];
         save();
