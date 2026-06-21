@@ -1541,29 +1541,6 @@
     const requestedRole = params.get("mockup") || handoffRole;
     const initialRole = requestedRole === "manager" ? "manager" : "user";
 
-    const state = {
-      role: initialRole,
-      view: location.hash.replace("#", "") || (initialRole === "manager" ? "management" : "all"),
-      lastList: "all",
-      editingNotes: false,
-      editingTitle: false,
-      addingUpdate: false,
-      editingUpdateIndex: null,
-      clearAllStep: 0,
-      addingCategory: false,
-      deletingCategory: false,
-      categoriesToDelete: [],
-      addingPerson: false,
-      deletingPerson: false,
-      peopleToDelete: [],
-      showDoneArchive: false,
-      allSort: "date",
-      draftDate: "",
-      supplierPrefill: "",
-      tasks: safeTasksStorage(),
-      suppliers: safeSuppliersStorage(),
-      prefs: safeObjectStorage("beit-prefs", { dark: false, text: "רגיל" })
-    };
     function normalizeUpdate(update, taskIndex, updateIndex) {
       return {
         by: update.by || "עדינה",
@@ -1601,7 +1578,75 @@
         updates
       };
     }
-    state.tasks = state.tasks.map(normalizeTask);
+    const localTasksAdapter = {
+      loadTasks() {
+        return safeTasksStorage().map(normalizeTask);
+      },
+      saveTasks(tasks) {
+        localStorage.setItem("beit-tasks", JSON.stringify(tasks));
+        return tasks;
+      },
+      createTask(tasks, task) {
+        return this.saveTasks([task, ...tasks]);
+      },
+      updateTask(tasks, id, patch) {
+        return this.saveTasks(tasks.map(task => task.id === id ? { ...task, ...patch } : task));
+      },
+      deleteTaskSoft(tasks, id, deletedBy) {
+        return this.updateTask(tasks, id, { deleted_at: isoDateFromOffset(0), deleted_by: deletedBy });
+      },
+      completeTask(tasks, id) {
+        const task = tasks.find(item => item.id === id);
+        if (!task) return tasks;
+        return this.updateTask(tasks, id, {
+          status: "done",
+          due: "done",
+          due_date: null,
+          dueLabel: "הושלם · היום",
+          completed_at: isoDateFromOffset(0),
+          reminder: { ...task.reminder, enabled: false }
+        });
+      },
+      reopenTask(tasks, id) {
+        const task = tasks.find(item => item.id === id);
+        if (!task) return tasks;
+        const dueDate = task.due === "done" ? isoDateFromOffset(0) : task.due_date;
+        return this.updateTask(tasks, id, {
+          status: "progress",
+          due: task.due === "done" ? "today" : task.due,
+          due_date: dueDate,
+          dueLabel: task.due === "done" ? "היום · שלישי" : task.dueLabel,
+          completed_at: null,
+          reminder: defaultTaskReminder({ ...task, due_date: dueDate })
+        });
+      }
+    };
+    function loadTasks() {
+      return localTasksAdapter.loadTasks();
+    }
+    const state = {
+      role: initialRole,
+      view: location.hash.replace("#", "") || (initialRole === "manager" ? "management" : "all"),
+      lastList: "all",
+      editingNotes: false,
+      editingTitle: false,
+      addingUpdate: false,
+      editingUpdateIndex: null,
+      clearAllStep: 0,
+      addingCategory: false,
+      deletingCategory: false,
+      categoriesToDelete: [],
+      addingPerson: false,
+      deletingPerson: false,
+      peopleToDelete: [],
+      showDoneArchive: false,
+      allSort: "date",
+      draftDate: "",
+      supplierPrefill: "",
+      tasks: loadTasks(),
+      suppliers: safeSuppliersStorage(),
+      prefs: safeObjectStorage("beit-prefs", { dark: false, text: "רגיל" })
+    };
     function normalizeSupplier(item, index) {
       const steps = supplierSteps.reduce((acc, step) => {
         acc[step.id] = Boolean(item.steps && item.steps[step.id]);
@@ -1635,7 +1680,7 @@
     const app = $("app");
 
     function save() {
-      localStorage.setItem("beit-tasks", JSON.stringify(state.tasks));
+      localTasksAdapter.saveTasks(state.tasks);
       localStorage.setItem("beit-suppliers", JSON.stringify(state.suppliers));
       localStorage.setItem("beit-prefs", JSON.stringify(state.prefs));
     }
@@ -1799,6 +1844,10 @@
       render();
       resetScroll();
     }
+    function createTask(task) {
+      state.tasks = localTasksAdapter.createTask(state.tasks, task);
+      return task;
+    }
     function updateTask(id, patch) {
       const task = getTask(id);
       if (!canAccessTask(task)) {
@@ -1813,8 +1862,43 @@
           return false;
         }
       }
-      state.tasks = state.tasks.map(t => t.id === id ? { ...t, ...patch } : t);
-      save();
+      state.tasks = localTasksAdapter.updateTask(state.tasks, id, patch);
+      render();
+      return true;
+    }
+    function deleteTaskSoft(id) {
+      const task = getTask(id);
+      if (!canDeleteTask(task)) {
+        toast("רק מנהל יכול למחוק משימה");
+        return false;
+      }
+      state.tasks = localTasksAdapter.deleteTaskSoft(state.tasks, id, personalOwner());
+      render();
+      return true;
+    }
+    function completeTask(id) {
+      const task = getTask(id);
+      if (!canAccessTask(task)) {
+        navigate("all");
+        toast("אין הרשאה למשימה זו");
+        return false;
+      }
+      state.tasks = localTasksAdapter.completeTask(state.tasks, id);
+      render();
+      return true;
+    }
+    function reopenTask(id) {
+      const task = getTask(id);
+      if (!canAccessTask(task)) {
+        navigate("all");
+        toast("אין הרשאה למשימה זו");
+        return false;
+      }
+      if (state.role !== "manager") {
+        toast("רק מנהל יכול להחזיר משימה לתהליך");
+        return false;
+      }
+      state.tasks = localTasksAdapter.reopenTask(state.tasks, id);
       render();
       return true;
     }
@@ -2546,15 +2630,8 @@
           toast("רק מנהל יכול להחזיר משימה לתהליך");
           return;
         }
-        updateTask(id, {
-          status,
-          due: status === "done" ? "done" : task.due === "done" ? "today" : task.due,
-          due_date: status === "done" ? null : task.due === "done" ? isoDateFromOffset(0) : task.due_date,
-          dueLabel: status === "done" ? "הושלם · היום" : task.due === "done" ? "היום · שלישי" : task.dueLabel,
-          completed_at: status === "done" ? isoDateFromOffset(0) : null,
-          reminder: status === "done" ? { ...task.reminder, enabled: false } : defaultTaskReminder({ ...task, due_date: task.due === "done" ? isoDateFromOffset(0) : task.due_date })
-        });
-        toast(status === "done" ? "✓ המשימה סומנה כהושלמה" : "הסטטוס עודכן");
+        const changed = status === "done" ? completeTask(id) : task.status === "done" ? reopenTask(id) : updateTask(id, { status });
+        if (changed) toast(status === "done" ? "✓ המשימה סומנה כהושלמה" : "הסטטוס עודכן");
       }));
       $("toggleDoneArchive")?.addEventListener("click", () => {
         if (state.role !== "manager") return;
@@ -2579,9 +2656,10 @@
           return;
         }
         if (!confirm("למחוק את המשימה? המחיקה רכה ותסתיר אותה מהרשימות.")) return;
-        updateTask(id, { deleted_at: isoDateFromOffset(0), deleted_by: personalOwner() });
-        toast("המשימה נמחקה");
-        navigate(state.lastList || "management");
+        if (deleteTaskSoft(id)) {
+          toast("המשימה נמחקה");
+          navigate(state.lastList || "management");
+        }
       });
       document.querySelectorAll("[data-priority]").forEach(el => el.addEventListener("click", e => {
         e.stopPropagation();
@@ -2909,8 +2987,7 @@
           notes: $("newNotes").value,
           updates: []
         };
-        state.tasks = [task, ...state.tasks];
-        save();
+        createTask(task);
         toast("המשימה נוצרה");
         navigate(`task:${task.id}`);
       });
