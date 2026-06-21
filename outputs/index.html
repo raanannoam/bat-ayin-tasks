@@ -3,7 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#F7F3EA">
+  <meta name="theme-color" content="#566B4F">
+  <meta name="background-color" content="#F7F3EA">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="משימות ישיבה">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
   <title>משימות ישיבת בת עין</title>
   <style>
     :root {
@@ -2816,6 +2823,34 @@
     });
     if (!location.hash) location.hash = defaultRoute();
     render();
+
+    function registerServiceWorker() {
+      if (!("serviceWorker" in navigator)) return;
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (refreshing) return;
+        refreshing = true;
+        window.location.reload();
+      });
+      navigator.serviceWorker.register("./service-worker.js").then((registration) => {
+        registration.addEventListener("updatefound", () => {
+          const worker = registration.installing;
+          if (!worker) return;
+          worker.addEventListener("statechange", () => {
+            if (worker.state === "installed" && navigator.serviceWorker.controller) {
+              worker.postMessage({ type: "SKIP_WAITING" });
+            }
+          });
+        });
+        if (navigator.serviceWorker.controller) {
+          registration.update();
+        }
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible") registration.update();
+        });
+      }).catch(() => {});
+    }
+    registerServiceWorker();
   </script>
 </body>
 </html>
