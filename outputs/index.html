@@ -1644,7 +1644,7 @@
       draftDate: "",
       supplierPrefill: "",
       tasks: loadTasks(),
-      suppliers: safeSuppliersStorage(),
+      suppliers: [],
       prefs: safeObjectStorage("beit-prefs", { dark: false, text: "רגיל" })
     };
     function normalizeSupplier(item, index) {
@@ -1672,7 +1672,47 @@
         created_at: item.created_at || isoDateFromOffset(-index)
       };
     }
-    state.suppliers = state.suppliers.map(normalizeSupplier);
+    const localSuppliersAdapter = {
+      loadSuppliers() {
+        return safeSuppliersStorage().map(normalizeSupplier);
+      },
+      saveSuppliers(suppliers) {
+        localStorage.setItem("beit-suppliers", JSON.stringify(suppliers));
+        return suppliers;
+      },
+      createSupplierOrder(suppliers, item) {
+        return this.saveSuppliers([item, ...suppliers]);
+      },
+      updateSupplierOrder(suppliers, id, patchOrUpdater) {
+        return this.saveSuppliers(suppliers.map(item => {
+          if (item.id !== id) return item;
+          return typeof patchOrUpdater === "function" ? patchOrUpdater(item) : { ...item, ...patchOrUpdater };
+        }));
+      },
+      deleteSupplierOrderSoft(suppliers, id, deletedBy) {
+        return this.updateSupplierOrder(suppliers, id, { deleted_at: isoDateFromOffset(0), deleted_by: deletedBy });
+      },
+      updateSupplierStage(suppliers, id, step, checked, dateValue = null) {
+        return this.updateSupplierOrder(suppliers, id, item => ({
+          ...item,
+          steps: { ...item.steps, [step]: dateValue ? true : checked },
+          step_dates: dateValue === null ? item.step_dates : { ...item.step_dates, [step]: dateValue }
+        }));
+      },
+      markAllSupplierStages(suppliers, id) {
+        const today = isoDateFromOffset(0);
+        const allSteps = supplierSteps.reduce((acc, step) => ({ ...acc, [step.id]: true }), {});
+        return this.updateSupplierOrder(suppliers, id, item => ({
+          ...item,
+          steps: allSteps,
+          step_dates: supplierSteps.reduce((acc, step) => ({ ...acc, [step.id]: item.step_dates[step.id] || today }), {})
+        }));
+      }
+    };
+    function loadSuppliers() {
+      return localSuppliersAdapter.loadSuppliers();
+    }
+    state.suppliers = loadSuppliers();
 
     document.body.dataset.theme = state.prefs.dark ? "dark" : "";
 
@@ -1681,7 +1721,7 @@
 
     function save() {
       localTasksAdapter.saveTasks(state.tasks);
-      localStorage.setItem("beit-suppliers", JSON.stringify(state.suppliers));
+      localSuppliersAdapter.saveSuppliers(state.suppliers);
       localStorage.setItem("beit-prefs", JSON.stringify(state.prefs));
     }
     function toast(text) {
@@ -1783,8 +1823,47 @@
         toast("אין הרשאה להזמנה זו");
         return false;
       }
-      state.suppliers = state.suppliers.map(current => current.id === id ? updater(current) : current);
-      save();
+      state.suppliers = localSuppliersAdapter.updateSupplierOrder(state.suppliers, id, updater);
+      render();
+      return true;
+    }
+    function createSupplierOrder(item) {
+      state.suppliers = localSuppliersAdapter.createSupplierOrder(state.suppliers, item);
+      return item;
+    }
+    function deleteSupplierOrderSoft(id) {
+      const item = getSupplier(id);
+      if (!canAccessSupplier(item)) {
+        navigate("suppliers");
+        toast("אין הרשאה להזמנה זו");
+        return false;
+      }
+      state.suppliers = localSuppliersAdapter.deleteSupplierOrderSoft(state.suppliers, id, personalOwner());
+      render();
+      return true;
+    }
+    function updateSupplierOrder(id, patchOrUpdater) {
+      return updateSupplier(id, patchOrUpdater);
+    }
+    function updateSupplierStage(id, step, checked, dateValue = null) {
+      const item = getSupplier(id);
+      if (!canAccessSupplier(item)) {
+        navigate("suppliers");
+        toast("אין הרשאה להזמנה זו");
+        return false;
+      }
+      state.suppliers = localSuppliersAdapter.updateSupplierStage(state.suppliers, id, step, checked, dateValue);
+      render();
+      return true;
+    }
+    function markAllSupplierStages(id) {
+      const item = getSupplier(id);
+      if (!canAccessSupplier(item)) {
+        navigate("suppliers");
+        toast("אין הרשאה להזמנה זו");
+        return false;
+      }
+      state.suppliers = localSuppliersAdapter.markAllSupplierStages(state.suppliers, id);
       render();
       return true;
     }
@@ -2538,29 +2617,17 @@
         e.currentTarget.closest(".supplier-check")?.classList.toggle("done", Boolean(e.currentTarget.value));
       }));      document.querySelectorAll("[data-supplier-step]").forEach(el => el.addEventListener("change", e => {
         const [id, step] = e.currentTarget.dataset.supplierStep.split(":");
-        updateSupplier(id, item => ({ ...item, steps: { ...item.steps, [step]: e.currentTarget.checked } }));
-        toast("שלב ההזמנה עודכן");
+        if (updateSupplierStage(id, step, e.currentTarget.checked)) toast("שלב ההזמנה עודכן");
       }));
       document.querySelectorAll("[data-supplier-step-date]").forEach(el => el.addEventListener("change", e => {
         const [id, step] = e.currentTarget.dataset.supplierStepDate.split(":");
         const value = e.currentTarget.value;
-        updateSupplier(id, item => ({
-          ...item,
-          steps: { ...item.steps, [step]: value ? true : item.steps[step] },
-          step_dates: { ...item.step_dates, [step]: value }
-        }));
-        toast("תאריך השלב נשמר");
+        const current = getSupplier(id);
+        if (updateSupplierStage(id, step, value ? true : Boolean(current?.steps[step]), value)) toast("תאריך השלב נשמר");
       }));
       document.querySelectorAll("[data-supplier-all]").forEach(el => el.addEventListener("click", e => {
         const id = e.currentTarget.dataset.supplierAll;
-        const today = isoDateFromOffset(0);
-        const allSteps = supplierSteps.reduce((acc, step) => ({ ...acc, [step.id]: true }), {});
-        updateSupplier(id, item => ({
-          ...item,
-          steps: allSteps,
-          step_dates: supplierSteps.reduce((acc, step) => ({ ...acc, [step.id]: item.step_dates[step.id] || today }), {})
-        }));
-        toast("כל שלבי ההזמנה סומנו");
+        if (markAllSupplierStages(id)) toast("כל שלבי ההזמנה סומנו");
       }));      $("supplierForm")?.addEventListener("change", e => {
         if (e.target.name !== "supplierAll") return;
         document.querySelectorAll('input[name="supplierAssignee"]').forEach(input => {
@@ -2611,8 +2678,7 @@
           step_dates: stepDates,
           created_at: isoDateFromOffset(0)
         }, 0);
-        state.suppliers = [item, ...state.suppliers];
-        save();
+        createSupplierOrder(item);
         toast("הזמנת הספק נוצרה");
         navigate(`supplier:${item.id}`);
       });
