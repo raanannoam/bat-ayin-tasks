@@ -1556,6 +1556,7 @@
       addingPerson: false,
       deletingPerson: false,
       peopleToDelete: [],
+      showDoneArchive: false,
       allSort: "date",
       draftDate: "",
       supplierPrefill: "",
@@ -1567,7 +1568,17 @@
       return {
         by: update.by || "עדינה",
         text: update.text || "",
-        created_at: update.created_at || isoDateFromOffset(-(taskIndex + updateIndex + 1))
+        created_at: update.created_at || isoDateFromOffset(-(taskIndex + updateIndex + 1)),
+        notify_participants: Boolean(update.notify_participants),
+        notification_status: update.notification_status || "pending"
+      };
+    }
+    function defaultTaskReminder(task) {
+      return {
+        enabled: Boolean(task.due_date),
+        timing: "before_due",
+        amount: 1,
+        unit: "day"
       };
     }
     function normalizeTask(task, index) {
@@ -1583,6 +1594,10 @@
         ...task,
         due_date: dueDate,
         due: task.due || (dueDate ? "date" : "none"),
+        completed_at: task.status === "done" ? task.completed_at || task.created_at || isoDateFromOffset(-(index + 1)) : null,
+        deleted_at: task.deleted_at || null,
+        deleted_by: task.deleted_by || null,
+        reminder: task.reminder || defaultTaskReminder({ ...task, due_date: dueDate }),
         updates
       };
     }
@@ -1670,8 +1685,23 @@
     function managementPeople() {
       return people.filter(person => person !== personalOwner());
     }
+    function activeTasks(tasks = state.tasks) {
+      return tasks.filter(t => !t.deleted_at);
+    }
+    function isArchivedDone(task) {
+      return task.status === "done" && daysBetween(task.completed_at || task.created_at) >= 90;
+    }
+    function visibleDoneTasks(tasks = state.tasks, includeArchive = false) {
+      return activeTasks(tasks).filter(t => t.status === "done" && (includeArchive || !isArchivedDone(t)));
+    }
+    function canEditTaskContent(task) {
+      return canAccessTask(task) && task.status !== "done" && !task.deleted_at;
+    }
+    function canDeleteTask(task) {
+      return Boolean(task) && state.role === "manager" && !task.deleted_at;
+    }
     function canAccessTask(task) {
-      return Boolean(task) && (state.role === "manager" || task.owner === "עדינה");
+      return Boolean(task) && !task.deleted_at && (state.role === "manager" || task.owner === "עדינה");
     }
     function getTask(id) {
       return state.tasks.find(x => x.id === id);
@@ -1743,7 +1773,7 @@
       }
     }
     function openTasks() {
-      return state.tasks.filter(t => t.status !== "done");
+      return activeTasks().filter(t => t.status !== "done");
     }
     function resetScroll() {
       window.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -1762,6 +1792,7 @@
       state.deletingPerson = false;
       state.peopleToDelete = [];
       const normalized = normalizeView(view);
+      if (normalized !== "done" && !normalized.startsWith("filter:done")) state.showDoneArchive = false;
       if (normalized !== "supplier-create") state.supplierPrefill = "";
       if (!normalized.startsWith("task:") && validBackRoute(normalized)) state.lastList = normalized;
       setRoute(normalized);
@@ -1774,6 +1805,13 @@
         navigate("all");
         toast("אין הרשאה למשימה זו");
         return false;
+      }
+      if (task.status === "done" && !patch.deleted_at) {
+        const restoring = state.role === "manager" && patch.status === "progress";
+        if (!restoring) {
+          toast("משימה שהושלמה נעולה לעריכה");
+          return false;
+        }
       }
       state.tasks = state.tasks.map(t => t.id === id ? { ...t, ...patch } : t);
       save();
@@ -1809,7 +1847,7 @@
       if (view === "management") return managementScreen();
       if (view === "all") return openTasksScreen();
       if (view === "today") return openTasksScreen();
-      if (view === "done") return listScreen("הושלם", sortTasks(personalTasks(state.tasks).filter(t => t.status === "done"), currentSort("personal")), state.role === "manager", state.role === "manager" ? "המשימות שלי" : "", true, false, "personal");
+      if (view === "done") return doneScreen();
       if (view === "prefs") return prefsScreen();
       if (view === "create") return createScreen();
       if (view === "suppliers") return suppliersScreen();
@@ -1818,23 +1856,31 @@
       if (view.startsWith("supplier:")) return supplierDetailScreen(view.split(":")[1]);
       if (view.startsWith("person:")) {
         const person = decodeURIComponent(view.split(":")[1]);
-        const tasks = sortTasks(state.tasks.filter(t => t.owner === person && t.status !== "done"), currentSort("person"));
+        const tasks = sortTasks(activeTasks().filter(t => t.owner === person && t.status !== "done"), currentSort("person"));
         return listScreen(person, tasks, true, "משימות לפי מבצע", true, false, "person");
       }
       if (view.startsWith("category:")) {
         const category = decodeURIComponent(view.split(":")[1]);
         const c = cat(category);
-        const tasks = sortTasks(state.tasks.filter(t => t.category === category && t.status !== "done"), currentSort("category"));
+        const tasks = sortTasks(activeTasks().filter(t => t.category === category && t.status !== "done"), currentSort("category"));
         return listScreen(c.label, tasks, true, "משימות לפי קטגוריה", true, false, "category");
       }
-      if (view.startsWith("filter:done")) return listScreen("משימות שהושלמו", sortTasks(state.tasks.filter(t => t.status === "done"), currentSort("org")), true, "כל הארגון", true, false, "org");
-      if (view.startsWith("filter:progress")) return listScreen("משימות בתהליך", sortTasks(state.tasks.filter(t => t.status === "progress"), currentSort("org")), true, "כל הארגון", true, false, "org");
-      if (view.startsWith("filter:open")) return listScreen("משימות בתהליך", sortTasks(state.tasks.filter(t => t.status === "progress"), currentSort("org")), true, "כל הארגון", true, false, "org");
+      if (view.startsWith("filter:done")) return listScreen("משימות שהושלמו", sortTasks(visibleDoneTasks(state.tasks, state.showDoneArchive), currentSort("org")), true, state.showDoneArchive ? "כל הארגון · כולל ארכיון" : "כל הארגון", true, false, "org");
+      if (view.startsWith("filter:progress")) return listScreen("משימות בתהליך", sortTasks(activeTasks().filter(t => t.status === "progress"), currentSort("org")), true, "כל הארגון", true, false, "org");
+      if (view.startsWith("filter:open")) return listScreen("משימות בתהליך", sortTasks(activeTasks().filter(t => t.status === "progress"), currentSort("org")), true, "כל הארגון", true, false, "org");
       return openTasksScreen();
+    }
+    function doneScreen() {
+      const includeArchive = state.role === "manager" && state.showDoneArchive;
+      const tasks = sortTasks(personalTasks(visibleDoneTasks(state.tasks, includeArchive)), currentSort("personal"));
+      const archiveToggle = state.role === "manager"
+        ? `<section class="section"><button class="mgmt-row wide" type="button" id="toggleDoneArchive"><span><strong>${state.showDoneArchive ? "הסתר ארכיון" : "הצג ארכיון"}</strong><span class="muted">משימות שהושלמו לפני יותר מ־90 יום</span></span><span class="row-left-icon">${lineIcon("done")}</span></button></section>`
+        : "";
+      return `${listScreen("הושלם", tasks, state.role === "manager", state.role === "manager" ? (state.showDoneArchive ? "המשימות שלי · כולל ארכיון" : "המשימות שלי") : "", true, false, "personal")}${archiveToggle}`;
     }
     function openTasksScreen() {
       const sortMode = currentSort("personal");
-      const tasks = sortTasks(personalTasks(state.tasks).filter(t => t.status !== "done"), sortMode);
+      const tasks = sortTasks(personalTasks(activeTasks()).filter(t => t.status !== "done"), sortMode);
       const todayTasks = tasks.filter(t => taskDueRank(t) <= 1);
       const otherTasks = tasks.filter(t => taskDueRank(t) > 1);
       const showOwner = state.role === "manager";
@@ -1871,6 +1917,8 @@
     }
     function sortTasks(tasks, sortMode = state.allSort) {
       return [...tasks].sort((a, b) => {
+        const priorityDiff = (a.priority === "high" ? 0 : 1) - (b.priority === "high" ? 0 : 1);
+        if (priorityDiff) return priorityDiff;
         if (sortMode === "category") {
           return cat(a.category).label.localeCompare(cat(b.category).label, "he") || taskDueRank(a) - taskDueRank(b) || taskDueLabel(a).localeCompare(taskDueLabel(b), "he") || a.title.localeCompare(b.title, "he");
         }
@@ -1961,7 +2009,7 @@
           </div>
         </div>`;
     }
-    function renderUpdateItem(update, index) {
+    function renderUpdateItem(update, index, editable = true) {
       if (state.editingUpdateIndex === index) {
         return `<div class="update-item">${updateEditorMarkup("editUpdateInput", update.text, "saveEditedUpdate", "cancelEditedUpdate")}</div>`;
       }
@@ -1969,7 +2017,7 @@
         <div class="update-item">
           <div class="update-head">
             <span class="update-meta">${escapeHtml(update.by)} · ${relativeAgeLabel(update.created_at)}</span>
-            <button class="update-edit" type="button" data-edit-update="${index}">ערוך</button>
+            ${editable ? `<button class="update-edit" type="button" data-edit-update="${index}">ערוך</button>` : ""}
           </div>
           <div class="linked-text">${renderLinkedText(update.text)}</div>
         </div>`;
@@ -1979,12 +2027,27 @@
       if (!t) return missingTaskScreen();
       const c = cat(t.category);
       const overdue = isOverdue(t);
+      const canEdit = canEditTaskContent(t);
+      const canRestore = state.role === "manager" && t.status === "done";
       const titleBlock = state.editingTitle
         ? `<div class="detail-edit-panel"><input id="titleInput" value="${escapeHtml(t.title)}"><div class="detail-actions"><button class="primary" id="saveTitle">שמור</button><button id="cancelTitle">ביטול</button></div></div>`
-        : `<div class="detail-title-row"><h1>${t.title}</h1><button class="icon" id="editTitle" aria-label="עריכת שם">${lineIcon("edit")}</button></div>`;
+        : `<div class="detail-title-row"><h1>${t.title}</h1>${canEdit ? `<button class="icon" id="editTitle" aria-label="עריכת שם">${lineIcon("edit")}</button>` : ""}</div>`;
       const notesBlock = state.editingNotes
         ? `<div class="detail-edit-panel"><textarea id="notesInput">${escapeHtml(t.notes)}</textarea><div class="detail-actions"><button class="primary" id="saveNotes">שמור</button><button id="cancelNotes">ביטול</button></div></div>`
-        : `<p class="linked-text">${t.notes ? renderLinkedText(t.notes) : "אין הערות."}</p><div class="detail-actions"><button class="soft" id="editNotes">ערוך</button></div>`;
+        : `<p class="linked-text">${t.notes ? renderLinkedText(t.notes) : "אין הערות."}</p>${canEdit ? `<div class="detail-actions"><button class="soft" id="editNotes">ערוך</button></div>` : ""}`;
+      const categoryOptions = categories.map(item => `<option value="${item.id}" ${item.id === t.category ? "selected" : ""}>${escapeHtml(item.label)}</option>`).join("");
+      const categoryBlock = canEdit
+        ? `<div class="detail-actions"><select id="taskCategorySelect">${categoryOptions}</select><button class="primary" id="saveTaskCategory">שמור קטגוריה</button></div>`
+        : `<p>${lineIcon(c.icon)} ${c.label}</p>`;
+      const statusBlock = canEdit || canRestore
+        ? `<div class="segmented">${statusButtons.map(([key,label]) => `<button data-status="${t.id}:${key}" class="${t.status === key ? "active" : ""}" ${t.status === "done" && key === "done" ? "disabled" : ""}>${label}</button>`).join("")}</div>`
+        : `<p>${statusMeta[t.status].label}</p>`;
+      const priorityBlock = canEdit
+        ? `<p class="muted">עדיפות</p><div class="segmented">${priorityButtons.map(([key,label]) => `<button data-priority="${t.id}:${key}" class="${t.priority === key ? "active" : ""}">${label}</button>`).join("")}</div>`
+        : `<p class="muted">עדיפות ${priorityLabel(t.priority)}</p>`;
+      const deleteBlock = canDeleteTask(t)
+        ? `<section class="detail-panel danger-zone"><div class="detail-row"><h2>מחיקה</h2><div class="detail-row-main"><p class="muted">מחיקה רכה: המשימה תוסתר מהרשימות ולא תימחק לצמיתות.</p><button class="danger" id="deleteTask" type="button">מחק משימה</button></div></div></section>`
+        : "";
       return `
         <section class="detail-head">
           <div class="screen-title">פרטי משימה</div>
@@ -1998,23 +2061,33 @@
           <div class="detail-row">
             <h2>סטטוס</h2>
             <div class="detail-row-main">
-              <div class="segmented">${statusButtons.map(([key,label]) => `<button data-status="${t.id}:${key}" class="${t.status === key ? "active" : ""}">${label}</button>`).join("")}</div>
-              <p class="muted">עדיפות</p>
-              <div class="segmented">${priorityButtons.map(([key,label]) => `<button data-priority="${t.id}:${key}" class="${t.priority === key ? "active" : ""}">${label}</button>`).join("")}</div>
+              ${statusBlock}
+              ${priorityBlock}
             </div>
+          </div>
+          <div class="detail-row">
+            <h2>קטגוריה</h2>
+            <div class="detail-row-main">${categoryBlock}</div>
           </div>
           <div class="detail-row">
             <h2>יעד</h2>
             <div class="detail-row-main">
               <p class="due ${overdue ? "overdue" : ""}">${taskDueLabel(t)}</p>
-              <div class="detail-actions">
+              ${canEdit ? `<div class="detail-actions">
                 <button data-tomorrow="${t.id}">העבר למחר</button>
                 <button id="pickDate">שנה תאריך</button>
-              </div>
-              <div id="dateChooser" style="display:none;">
+              </div>` : ""}
+              ${canEdit ? `<div id="dateChooser" style="display:none;">
                 <input id="dateInput" type="date">
                 <div class="detail-actions" style="margin-top:8px;"><button class="primary" id="saveDate">שמור תאריך</button></div>
-              </div>
+              </div>` : ""}
+            </div>
+          </div>
+          <div class="detail-row">
+            <h2>התראה</h2>
+            <div class="detail-row-main">
+              <p>${t.reminder?.enabled ? "ברירת מחדל: התראה לפני תאריך היעד" : "אין תאריך יעד להתראה כרגע"}</p>
+              <p class="muted">המבנה מוכן לבחירת שעה לפני / כמה שעות לפני / יום לפני / כמה ימים לפני.</p>
             </div>
           </div>
           <div class="detail-row">
@@ -2032,12 +2105,13 @@
             <h2>עדכונים</h2>
             <div class="detail-row-main">
               <div class="updates">
-                ${t.updates.length ? t.updates.map(renderUpdateItem).join("") : `<p class="muted">אין עדכונים עדיין.</p>`}
+                ${t.updates.length ? t.updates.map((update, index) => renderUpdateItem(update, index, canEdit)).join("") : `<p class="muted">אין עדכונים עדיין.</p>`}
               </div>
-              ${state.addingUpdate ? updateEditorMarkup("newUpdateInput") : `<div class="detail-actions"><button class="soft" id="addUpdate">+ הוסף עדכון</button></div>`}
+              ${canEdit ? (state.addingUpdate ? updateEditorMarkup("newUpdateInput") : `<div class="detail-actions"><button class="soft" id="addUpdate">+ הוסף עדכון</button></div>`) : `<p class="muted">משימה שהושלמה נעולה לקריאה בלבד.</p>`}
             </div>
           </div>
-        </section>`;
+        </section>
+        ${deleteBlock}`;
     }
     function missingTaskScreen() {
       return `
@@ -2047,10 +2121,11 @@
         </section>`;
     }
     function managementScreen() {
-      const progress = state.tasks.filter(t => t.status === "progress").length;
-      const done = state.tasks.filter(t => t.status === "done").length;
+      const visibleTasks = activeTasks();
+      const progress = visibleTasks.filter(t => t.status === "progress").length;
+      const done = visibleDoneTasks(visibleTasks).length;
       const assignees = managementPeople();
-      const openTasks = state.tasks.filter(t => t.status !== "done");
+      const openTasks = visibleTasks.filter(t => t.status !== "done");
       const categoryOpenCount = (id) => openTasks.filter(t => t.category === id).length;
       const personOpenCount = (person) => openTasks.filter(t => t.owner === person).length;
       const countBadge = (count) => `<span class="management-count ${count ? "" : "zero"}">${count}</span>`;
@@ -2466,21 +2541,55 @@
           toast("אין הרשאה למשימה זו");
           return;
         }
+        if (task.status === "done" && status !== "progress") return;
+        if (task.status === "done" && status === "progress" && state.role !== "manager") {
+          toast("רק מנהל יכול להחזיר משימה לתהליך");
+          return;
+        }
         updateTask(id, {
           status,
           due: status === "done" ? "done" : task.due === "done" ? "today" : task.due,
           due_date: status === "done" ? null : task.due === "done" ? isoDateFromOffset(0) : task.due_date,
-          dueLabel: status === "done" ? "הושלם · היום" : task.due === "done" ? "היום · שלישי" : task.dueLabel
+          dueLabel: status === "done" ? "הושלם · היום" : task.due === "done" ? "היום · שלישי" : task.dueLabel,
+          completed_at: status === "done" ? isoDateFromOffset(0) : null,
+          reminder: status === "done" ? { ...task.reminder, enabled: false } : defaultTaskReminder({ ...task, due_date: task.due === "done" ? isoDateFromOffset(0) : task.due_date })
         });
         toast(status === "done" ? "✓ המשימה סומנה כהושלמה" : "הסטטוס עודכן");
       }));
+      $("toggleDoneArchive")?.addEventListener("click", () => {
+        if (state.role !== "manager") return;
+        state.showDoneArchive = !state.showDoneArchive;
+        render();
+      });
+      $("saveTaskCategory")?.addEventListener("click", () => {
+        const id = state.view.split(":")[1];
+        const task = getTask(id);
+        if (!canEditTaskContent(task)) {
+          toast("משימה שהושלמה נעולה לעריכה");
+          return;
+        }
+        updateTask(id, { category: $("taskCategorySelect").value });
+        toast("הקטגוריה עודכנה");
+      });
+      $("deleteTask")?.addEventListener("click", () => {
+        const id = state.view.split(":")[1];
+        const task = getTask(id);
+        if (!canDeleteTask(task)) {
+          toast("רק מנהל יכול למחוק משימה");
+          return;
+        }
+        if (!confirm("למחוק את המשימה? המחיקה רכה ותסתיר אותה מהרשימות.")) return;
+        updateTask(id, { deleted_at: isoDateFromOffset(0), deleted_by: personalOwner() });
+        toast("המשימה נמחקה");
+        navigate(state.lastList || "management");
+      });
       document.querySelectorAll("[data-priority]").forEach(el => el.addEventListener("click", e => {
         e.stopPropagation();
         const [id, priority] = e.currentTarget.dataset.priority.split(":");
         const task = getTask(id);
-        if (!canAccessTask(task)) {
+        if (!canEditTaskContent(task)) {
           navigate("all");
-          toast("אין הרשאה למשימה זו");
+          toast("משימה שהושלמה נעולה לעריכה");
           return;
         }
         updateTask(id, { priority });
@@ -2489,21 +2598,21 @@
       document.querySelectorAll("[data-tomorrow]").forEach(el => el.addEventListener("click", e => {
         const id = e.currentTarget.dataset.tomorrow;
         const task = getTask(id);
-        if (!canAccessTask(task)) {
+        if (!canEditTaskContent(task)) {
           navigate("all");
-          toast("אין הרשאה למשימה זו");
+          toast("משימה שהושלמה נעולה לעריכה");
           return;
         }
-        updateTask(id, { due: "tomorrow", due_date: isoDateFromOffset(1), dueLabel: "מחר · רביעי" });
+        updateTask(id, { due: "tomorrow", due_date: isoDateFromOffset(1), dueLabel: "מחר · רביעי", reminder: defaultTaskReminder({ ...task, due_date: isoDateFromOffset(1) }) });
         toast("היעד עבר למחר");
       }));
       $("editNotes")?.addEventListener("click", () => { state.editingNotes = true; render(); });
       $("cancelNotes")?.addEventListener("click", () => { state.editingNotes = false; render(); });
       $("saveNotes")?.addEventListener("click", () => {
         const id = state.view.split(":")[1];
-        if (!canAccessTask(getTask(id))) {
+        if (!canEditTaskContent(getTask(id))) {
           navigate("all");
-          toast("אין הרשאה למשימה זו");
+          toast("משימה שהושלמה נעולה לעריכה");
           return;
         }
         state.editingNotes = false;
@@ -2514,9 +2623,9 @@
       $("cancelTitle")?.addEventListener("click", () => { state.editingTitle = false; render(); });
       $("saveTitle")?.addEventListener("click", () => {
         const id = state.view.split(":")[1];
-        if (!canAccessTask(getTask(id))) {
+        if (!canEditTaskContent(getTask(id))) {
           navigate("all");
-          toast("אין הרשאה למשימה זו");
+          toast("משימה שהושלמה נעולה לעריכה");
           return;
         }
         state.editingTitle = false;
@@ -2527,21 +2636,21 @@
       $("saveDate")?.addEventListener("click", () => {
         const input = $("dateInput").value;
         const id = state.view.split(":")[1];
-        if (!canAccessTask(getTask(id))) {
+        if (!canEditTaskContent(getTask(id))) {
           navigate("all");
-          toast("אין הרשאה למשימה זו");
+          toast("משימה שהושלמה נעולה לעריכה");
           return;
         }
         if (!input) return toast("בחר תאריך");
-        updateTask(id, { due: "date", due_date: input, dueLabel: formatHebrewDate(input) });
+        updateTask(id, { due: "date", due_date: input, dueLabel: formatHebrewDate(input), reminder: defaultTaskReminder({ ...getTask(id), due_date: input }) });
         toast("התאריך עודכן");
       });
       $("addUpdate")?.addEventListener("click", () => {
         const id = state.view.split(":")[1];
         const t = getTask(id);
-        if (!canAccessTask(t)) {
+        if (!canEditTaskContent(t)) {
           navigate("all");
-          toast("אין הרשאה למשימה זו");
+          toast("משימה שהושלמה נעולה לעריכה");
           return;
         }
         state.addingUpdate = true;
@@ -2555,15 +2664,15 @@
       $("saveUpdate")?.addEventListener("click", () => {
         const id = state.view.split(":")[1];
         const t = getTask(id);
-        if (!canAccessTask(t)) {
+        if (!canEditTaskContent(t)) {
           navigate("all");
-          toast("אין הרשאה למשימה זו");
+          toast("משימה שהושלמה נעולה לעריכה");
           return;
         }
         const text = $("newUpdateInput").value.trim();
         if (!text) return toast("כתוב עדכון");
         state.addingUpdate = false;
-        updateTask(id, { updates: [...t.updates, { by: state.role === "manager" ? "צבי" : "עדינה", text, created_at: isoDateFromOffset(0) }] });
+        updateTask(id, { updates: [...t.updates, { by: state.role === "manager" ? "צבי" : "עדינה", text, created_at: isoDateFromOffset(0), notify_participants: true, notification_status: "pending" }] });
         toast("נוסף עדכון");
       });
       document.querySelectorAll("[data-edit-update]").forEach(el => el.addEventListener("click", e => {
@@ -2580,9 +2689,9 @@
         const id = state.view.split(":")[1];
         const t = getTask(id);
         const index = state.editingUpdateIndex;
-        if (!canAccessTask(t)) {
+        if (!canEditTaskContent(t)) {
           navigate("all");
-          toast("אין הרשאה למשימה זו");
+          toast("משימה שהושלמה נעולה לעריכה");
           return;
         }
         if (!Number.isInteger(index) || !t.updates[index]) {
@@ -2788,6 +2897,15 @@
           priority: form.priority?.value || "normal",
           created_at: isoDateFromOffset(0),
           createdLabel: formatHebrewDate(isoDateFromOffset(0)),
+          completed_at: null,
+          deleted_at: null,
+          deleted_by: null,
+          reminder: {
+            enabled: Boolean(dueDate),
+            timing: "before_due",
+            amount: 1,
+            unit: "day"
+          },
           notes: $("newNotes").value,
           updates: []
         };
