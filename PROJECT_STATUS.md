@@ -3,8 +3,16 @@
 עדכון נכון לקומיט:
 
 ```text
-b41699d Prepare Supabase client configuration
+ea4ddc4 Add initial Supabase schema
 ```
+
+נתיב פרויקט:
+
+```text
+C:\Users\Noam\Projects\Bat-ayin-tasks
+```
+
+Git: אין remote מוגדר כרגע (אין `origin`).
 
 ## סקירה כללית
 
@@ -15,7 +23,7 @@ b41699d Prepare Supabase client configuration
 - האפליקציה עובדת כ־mockup/אפליקציה סטטית מתוך `outputs/index.html`.
 - ה־backend הפעיל הוא localStorage.
 - קיימת שכבת adapters למשימות ולספקים.
-- קיימת הכנה ראשונית ל־Supabase, אך אין עדיין מעבר נתונים או auth.
+- קיימת הכנה ראשונית ל־Supabase, כולל schema SQL ראשוני, אך אין עדיין מעבר נתונים או auth.
 - קיימת תשתית PWA בסיסית עם manifest, service worker ואייקונים.
 
 ## מודול משימות
@@ -127,12 +135,14 @@ const DATA_BACKEND = "local";
 מה כבר הוכן:
 
 - תיקיית `supabase` קיימת.
-- קיימים קבצי SQL:
-  - `schema.sql`
-  - `rls.sql`
-  - `seed.sql`
-  - `smoke-test.sql`
-- קיימת תשתית RLS ו־smoke test SQL לפי README.
+- קיימים הקבצים:
+  - `supabase/schema.sql`
+  - `supabase/rls.sql`
+  - `supabase/seed.sql`
+  - `supabase/smoke-test.sql`
+  - `supabase/README.md`
+- קיימת תשתית RLS ו־smoke test SQL לפי `supabase/README.md`.
+- קיים schema ראשוני (קומיט `ea4ddc4`).
 - נוספו placeholders:
   - `SUPABASE_URL`
   - `SUPABASE_ANON_KEY`
@@ -160,9 +170,12 @@ const DATA_BACKEND = "local";
 
 - `stable-before-supabase`
 - `stable-local-adapters`
+- `stable-supabase-client-prepared`
 
 קומיטים חשובים:
 
+- `ea4ddc4 Add initial Supabase schema`
+- `2041384 Add project documentation for future agents`
 - `b41699d Prepare Supabase client configuration`
 - `c73f0fe Centralize local data backend configuration`
 - `9e83304 Add local supplier data adapter`
@@ -186,6 +199,7 @@ const DATA_BACKEND = "local";
 פירוט:
 
 1. Supabase preparation
+   - schema SQL ראשוני כבר קיים (`ea4ddc4`).
    - להשלים קונפיג אמיתי במקום placeholders כאשר תהיה סביבה מוכנה.
    - להמשיך לשמור על `DATA_BACKEND = "local"` עד החלטה מפורשת.
 

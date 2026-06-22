@@ -20,7 +20,7 @@ git -c core.fsmonitor=false tag
 אין לבצע שום שינוי לפני אימות שנמצאים בפרויקט הנכון:
 
 ```text
-C:\Users\Noam\Documents\Codex\2026-06-01\files-mentioned-by-the-user-pasted
+C:\Users\Noam\Projects\Bat-ayin-tasks
 ```
 
 סימני זיהוי לפרויקט:
@@ -30,8 +30,15 @@ C:\Users\Noam\Documents\Codex\2026-06-01\files-mentioned-by-the-user-pasted
 - `outputs/service-worker.js`
 - תיקיית `supabase`
 
+## Git
+
+- HEAD נוכחי: `ea4ddc4 Add initial Supabase schema`
+- אין remote מוגדר כרגע (אין `origin`).
+
 ## קומיטים חשובים קיימים
 
+- `ea4ddc4 Add initial Supabase schema`
+- `2041384 Add project documentation for future agents`
 - `b41699d Prepare Supabase client configuration`
 - `c73f0fe Centralize local data backend configuration`
 - `9e83304 Add local supplier data adapter`
@@ -45,6 +52,7 @@ C:\Users\Noam\Documents\Codex\2026-06-01\files-mentioned-by-the-user-pasted
 
 - `stable-before-supabase`
 - `stable-local-adapters`
+- `stable-supabase-client-prepared`
 
 ## כללי עבודה
 
