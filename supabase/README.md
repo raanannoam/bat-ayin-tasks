@@ -30,14 +30,21 @@ The default organization is:
 ישיבת בת עין
 ```
 
-The categories match the current mockup:
+The categories match the current mockup. Each row includes a stable `slug`
+that maps to the app's `task.category` / `baseCategories[].id` values:
 
-- מטבח
-- תחזוקה
-- לימוד
-- כספים
-- אירועים
-- משרד
+| slug | name (label) | icon |
+|------|--------------|------|
+| `kitchen` | מטבח | kitchen |
+| `maintenance` | תחזוקה | maintenance |
+| `study` | לימוד | study |
+| `money` | כספים | money |
+| `events` | אירועים | events |
+| `office` | משרד | office |
+
+Custom categories added later should use their app id as the slug
+(for example `custom-1709123456789`). Slugs are unique per organization
+and must not change when the display name is edited.
 
 The known members are represented as placeholders in `seed.sql`:
 

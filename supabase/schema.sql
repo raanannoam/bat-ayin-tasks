@@ -33,6 +33,7 @@ create table if not exists public.organization_members (
 create table if not exists public.categories (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references public.organizations(id) on delete cascade,
+  slug text not null,
   name text not null,
   icon text not null default 'office',
   color text,
@@ -43,6 +44,7 @@ create table if not exists public.categories (
   deleted_at timestamptz,
   deleted_by uuid references public.profiles(id) on delete set null,
 
+  unique (organization_id, slug),
   unique (organization_id, name)
 );
 
@@ -163,6 +165,10 @@ create index if not exists organization_members_user_id_idx
 
 create index if not exists categories_organization_id_idx
   on public.categories (organization_id);
+
+create index if not exists categories_organization_slug_idx
+  on public.categories (organization_id, slug)
+  where deleted_at is null;
 
 create index if not exists categories_active_idx
   on public.categories (organization_id, is_active)
