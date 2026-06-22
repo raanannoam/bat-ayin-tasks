@@ -1,9 +1,9 @@
-insert into public.organizations (id, name)
+insert into bat_ayin.organizations (id, name)
 values ('00000000-0000-0000-0000-000000000001', 'ישיבת בת עין')
 on conflict (id) do update
 set name = excluded.name;
 
-insert into public.categories (id, organization_id, slug, name, icon, sort_order)
+insert into bat_ayin.categories (id, organization_id, slug, name, icon, sort_order)
 values
   ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'kitchen', 'מטבח', 'kitchen', 10),
   ('10000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'maintenance', 'תחזוקה', 'maintenance', 20),
@@ -27,7 +27,7 @@ with known_members(display_name, email, role) as (
     ('חיה', 'chaya@example.com', 'user'),
     ('צבי', 'tzvi@example.com', 'manager')
 )
-insert into public.organization_members (organization_id, user_id, role, is_active)
+insert into bat_ayin.organization_members (organization_id, user_id, role, is_active)
 select
   '00000000-0000-0000-0000-000000000001',
   p.id,

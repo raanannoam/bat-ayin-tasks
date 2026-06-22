@@ -1,14 +1,24 @@
 create extension if not exists pgcrypto;
 
-create table if not exists public.organizations (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  slug text unique,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  deleted_at timestamptz
-);
+-- Bat Ayin app tables live in bat_ayin; profiles stay shared in public.
+create schema if not exists bat_ayin;
 
+grant usage on schema bat_ayin to postgres, anon, authenticated, service_role;
+
+grant all on all tables in schema bat_ayin to postgres, service_role;
+grant select, insert, update, delete on all tables in schema bat_ayin to authenticated;
+grant select on all tables in schema bat_ayin to anon;
+
+alter default privileges in schema bat_ayin
+  grant all on tables to postgres, service_role;
+
+alter default privileges in schema bat_ayin
+  grant select, insert, update, delete on tables to authenticated;
+
+alter default privileges in schema bat_ayin
+  grant select on tables to anon;
+
+-- Shared identity table for all apps in this Supabase project.
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   display_name text not null,
@@ -19,8 +29,17 @@ create table if not exists public.profiles (
   deleted_at timestamptz
 );
 
-create table if not exists public.organization_members (
-  organization_id uuid not null references public.organizations(id) on delete cascade,
+create table if not exists bat_ayin.organizations (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  slug text unique,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz
+);
+
+create table if not exists bat_ayin.organization_members (
+  organization_id uuid not null references bat_ayin.organizations(id) on delete cascade,
   user_id uuid not null references public.profiles(id) on delete cascade,
   role text not null check (role in ('manager', 'user')),
   is_active boolean not null default true,
@@ -30,9 +49,9 @@ create table if not exists public.organization_members (
   primary key (organization_id, user_id)
 );
 
-create table if not exists public.categories (
+create table if not exists bat_ayin.categories (
   id uuid primary key default gen_random_uuid(),
-  organization_id uuid not null references public.organizations(id) on delete cascade,
+  organization_id uuid not null references bat_ayin.organizations(id) on delete cascade,
   slug text not null,
   name text not null,
   icon text not null default 'office',
@@ -48,10 +67,10 @@ create table if not exists public.categories (
   unique (organization_id, name)
 );
 
-create table if not exists public.tasks (
+create table if not exists bat_ayin.tasks (
   id uuid primary key default gen_random_uuid(),
-  organization_id uuid not null references public.organizations(id) on delete cascade,
-  category_id uuid references public.categories(id) on delete set null,
+  organization_id uuid not null references bat_ayin.organizations(id) on delete cascade,
+  category_id uuid references bat_ayin.categories(id) on delete set null,
   assignee_id uuid not null references public.profiles(id) on delete restrict,
   created_by uuid references public.profiles(id) on delete set null,
   deleted_by uuid references public.profiles(id) on delete set null,
@@ -75,10 +94,10 @@ create table if not exists public.tasks (
   )
 );
 
-create table if not exists public.task_updates (
+create table if not exists bat_ayin.task_updates (
   id uuid primary key default gen_random_uuid(),
-  organization_id uuid not null references public.organizations(id) on delete cascade,
-  task_id uuid not null references public.tasks(id) on delete cascade,
+  organization_id uuid not null references bat_ayin.organizations(id) on delete cascade,
+  task_id uuid not null references bat_ayin.tasks(id) on delete cascade,
   author_id uuid references public.profiles(id) on delete set null,
   body text not null,
   notify_participants boolean not null default false,
@@ -90,9 +109,9 @@ create table if not exists public.task_updates (
   deleted_by uuid references public.profiles(id) on delete set null
 );
 
-create table if not exists public.suppliers (
+create table if not exists bat_ayin.suppliers (
   id uuid primary key default gen_random_uuid(),
-  organization_id uuid not null references public.organizations(id) on delete cascade,
+  organization_id uuid not null references bat_ayin.organizations(id) on delete cascade,
   name text not null,
   notes text not null default '',
   created_at timestamptz not null default now(),
@@ -103,10 +122,10 @@ create table if not exists public.suppliers (
   unique (organization_id, name)
 );
 
-create table if not exists public.supplier_orders (
+create table if not exists bat_ayin.supplier_orders (
   id uuid primary key default gen_random_uuid(),
-  organization_id uuid not null references public.organizations(id) on delete cascade,
-  supplier_id uuid references public.suppliers(id) on delete set null,
+  organization_id uuid not null references bat_ayin.organizations(id) on delete cascade,
+  supplier_id uuid references bat_ayin.suppliers(id) on delete set null,
   created_by uuid references public.profiles(id) on delete set null,
   deleted_by uuid references public.profiles(id) on delete set null,
 
@@ -136,10 +155,10 @@ create table if not exists public.supplier_orders (
   check (all_assignees = true or cardinality(assignee_ids) > 0)
 );
 
-create table if not exists public.supplier_order_links (
+create table if not exists bat_ayin.supplier_order_links (
   id uuid primary key default gen_random_uuid(),
-  organization_id uuid not null references public.organizations(id) on delete cascade,
-  supplier_order_id uuid not null references public.supplier_orders(id) on delete cascade,
+  organization_id uuid not null references bat_ayin.organizations(id) on delete cascade,
+  supplier_order_id uuid not null references bat_ayin.supplier_orders(id) on delete cascade,
   url text,
   label text,
   link_type text not null default 'link'
@@ -153,7 +172,7 @@ create table if not exists public.supplier_order_links (
   check (url is not null or attachment_path is not null or label is not null)
 );
 
-create table if not exists public.user_preferences (
+create table if not exists bat_ayin.user_preferences (
   user_id uuid primary key references public.profiles(id) on delete cascade,
   dark_mode boolean not null default false,
   text_size text not null default 'regular',
@@ -161,70 +180,70 @@ create table if not exists public.user_preferences (
 );
 
 create index if not exists organization_members_user_id_idx
-  on public.organization_members (user_id);
+  on bat_ayin.organization_members (user_id);
 
 create index if not exists categories_organization_id_idx
-  on public.categories (organization_id);
+  on bat_ayin.categories (organization_id);
 
 create index if not exists categories_organization_slug_idx
-  on public.categories (organization_id, slug)
+  on bat_ayin.categories (organization_id, slug)
   where deleted_at is null;
 
 create index if not exists categories_active_idx
-  on public.categories (organization_id, is_active)
+  on bat_ayin.categories (organization_id, is_active)
   where deleted_at is null;
 
 create index if not exists tasks_organization_id_idx
-  on public.tasks (organization_id);
+  on bat_ayin.tasks (organization_id);
 
 create index if not exists tasks_assignee_id_idx
-  on public.tasks (assignee_id);
+  on bat_ayin.tasks (assignee_id);
 
 create index if not exists tasks_category_id_idx
-  on public.tasks (category_id);
+  on bat_ayin.tasks (category_id);
 
 create index if not exists tasks_due_date_idx
-  on public.tasks (due_date);
+  on bat_ayin.tasks (due_date);
 
 create index if not exists tasks_priority_due_date_idx
-  on public.tasks (organization_id, priority, due_date)
+  on bat_ayin.tasks (organization_id, priority, due_date)
   where deleted_at is null and status <> 'done';
 
 create index if not exists tasks_completed_archive_idx
-  on public.tasks (organization_id, completed_at)
+  on bat_ayin.tasks (organization_id, completed_at)
   where deleted_at is null and status = 'done';
 
 create index if not exists tasks_deleted_at_idx
-  on public.tasks (organization_id, deleted_at)
+  on bat_ayin.tasks (organization_id, deleted_at)
   where deleted_at is not null;
 
 create index if not exists task_updates_task_id_idx
-  on public.task_updates (task_id);
+  on bat_ayin.task_updates (task_id);
 
 create index if not exists task_updates_organization_id_idx
-  on public.task_updates (organization_id);
+  on bat_ayin.task_updates (organization_id);
 
 create index if not exists suppliers_organization_id_idx
-  on public.suppliers (organization_id);
+  on bat_ayin.suppliers (organization_id);
 
 create index if not exists suppliers_active_idx
-  on public.suppliers (organization_id, name)
+  on bat_ayin.suppliers (organization_id, name)
   where deleted_at is null;
 
 create index if not exists supplier_orders_organization_id_idx
-  on public.supplier_orders (organization_id);
+  on bat_ayin.supplier_orders (organization_id);
 
 create index if not exists supplier_orders_supplier_id_idx
-  on public.supplier_orders (supplier_id);
+  on bat_ayin.supplier_orders (supplier_id);
 
 create index if not exists supplier_orders_due_date_idx
-  on public.supplier_orders (due_date);
+  on bat_ayin.supplier_orders (due_date);
 
 create index if not exists supplier_orders_assignee_ids_idx
-  on public.supplier_orders using gin (assignee_ids);
+  on bat_ayin.supplier_orders using gin (assignee_ids);
 
 create index if not exists supplier_orders_open_idx
-  on public.supplier_orders (organization_id, due_date)
+  on bat_ayin.supplier_orders (organization_id, due_date)
   where deleted_at is null and (
     order_completed = false
     or received_completed = false
@@ -233,7 +252,7 @@ create index if not exists supplier_orders_open_idx
   );
 
 create index if not exists supplier_order_links_order_id_idx
-  on public.supplier_order_links (supplier_order_id);
+  on bat_ayin.supplier_order_links (supplier_order_id);
 
 create index if not exists supplier_order_links_organization_id_idx
-  on public.supplier_order_links (organization_id);
+  on bat_ayin.supplier_order_links (organization_id);
