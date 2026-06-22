@@ -4,6 +4,9 @@ alter table public.organization_members enable row level security;
 alter table public.categories enable row level security;
 alter table public.tasks enable row level security;
 alter table public.task_updates enable row level security;
+alter table public.suppliers enable row level security;
+alter table public.supplier_orders enable row level security;
+alter table public.supplier_order_links enable row level security;
 alter table public.user_preferences enable row level security;
 
 create or replace function public.is_org_member(target_organization_id uuid)
@@ -72,6 +75,47 @@ as $$
       and (
         t.assignee_id = auth.uid()
         or public.is_org_manager(t.organization_id)
+      )
+  );
+$$;
+
+create or replace function public.can_access_supplier_order(target_order_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.supplier_orders o
+    where o.id = target_order_id
+      and o.deleted_at is null
+      and public.is_org_member(o.organization_id)
+      and (
+        public.is_org_manager(o.organization_id)
+        or o.all_assignees
+        or auth.uid() = any(o.assignee_ids)
+      )
+  );
+$$;
+
+create or replace function public.can_update_supplier_order(target_order_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.supplier_orders o
+    where o.id = target_order_id
+      and o.deleted_at is null
+      and public.is_org_member(o.organization_id)
+      and (
+        public.is_org_manager(o.organization_id)
+        or auth.uid() = any(o.assignee_ids)
       )
   );
 $$;
@@ -211,6 +255,121 @@ before insert or update on public.task_updates
 for each row
 execute function public.validate_task_update_references();
 
+create or replace function public.prevent_regular_user_supplier_order_reassignment()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if public.is_org_manager(old.organization_id) then
+    return new;
+  end if;
+
+  if old.organization_id <> new.organization_id then
+    raise exception 'regular users cannot move supplier orders between organizations';
+  end if;
+
+  if old.all_assignees <> new.all_assignees
+     or old.assignee_ids <> new.assignee_ids then
+    raise exception 'regular users cannot reassign supplier orders';
+  end if;
+
+  if old.deleted_at is distinct from new.deleted_at then
+    raise exception 'regular users cannot soft delete supplier orders';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists prevent_regular_user_supplier_order_reassignment on public.supplier_orders;
+create trigger prevent_regular_user_supplier_order_reassignment
+before update on public.supplier_orders
+for each row
+execute function public.prevent_regular_user_supplier_order_reassignment();
+
+create or replace function public.validate_supplier_order_references()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  assignee_id uuid;
+begin
+  if new.supplier_id is not null and not exists (
+    select 1
+    from public.suppliers s
+    where s.id = new.supplier_id
+      and s.organization_id = new.organization_id
+      and s.deleted_at is null
+  ) then
+    raise exception 'supplier must belong to the order organization';
+  end if;
+
+  if new.created_by is not null and not exists (
+    select 1
+    from public.organization_members om
+    where om.organization_id = new.organization_id
+      and om.user_id = new.created_by
+      and om.is_active = true
+  ) then
+    raise exception 'supplier order creator must be an active organization member';
+  end if;
+
+  if new.all_assignees then
+    return new;
+  end if;
+
+  foreach assignee_id in array new.assignee_ids loop
+    if not exists (
+      select 1
+      from public.organization_members om
+      where om.organization_id = new.organization_id
+        and om.user_id = assignee_id
+        and om.is_active = true
+    ) then
+      raise exception 'supplier order assignee must be an active organization member';
+    end if;
+  end loop;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists validate_supplier_order_references on public.supplier_orders;
+create trigger validate_supplier_order_references
+before insert or update on public.supplier_orders
+for each row
+execute function public.validate_supplier_order_references();
+
+create or replace function public.validate_supplier_order_link_references()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not exists (
+    select 1
+    from public.supplier_orders o
+    where o.id = new.supplier_order_id
+      and o.organization_id = new.organization_id
+  ) then
+    raise exception 'supplier order link must belong to the same organization as its order';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists validate_supplier_order_link_references on public.supplier_order_links;
+create trigger validate_supplier_order_link_references
+before insert or update on public.supplier_order_links
+for each row
+execute function public.validate_supplier_order_link_references();
+
 drop policy if exists "members can read their organizations" on public.organizations;
 create policy "members can read their organizations"
 on public.organizations
@@ -344,6 +503,127 @@ create policy "managers can delete updates"
 on public.task_updates
 for delete
 using (public.is_org_manager(organization_id));
+
+drop policy if exists "members can read active suppliers" on public.suppliers;
+create policy "members can read active suppliers"
+on public.suppliers
+for select
+using (
+  deleted_at is null
+  and public.is_org_member(organization_id)
+);
+
+drop policy if exists "managers can manage suppliers" on public.suppliers;
+create policy "managers can manage suppliers"
+on public.suppliers
+for all
+using (public.is_org_manager(organization_id))
+with check (public.is_org_manager(organization_id));
+
+drop policy if exists "users can read accessible supplier orders" on public.supplier_orders;
+create policy "users can read accessible supplier orders"
+on public.supplier_orders
+for select
+using (
+  deleted_at is null
+  and public.is_org_member(organization_id)
+  and (
+    public.is_org_manager(organization_id)
+    or all_assignees
+    or auth.uid() = any(assignee_ids)
+  )
+);
+
+drop policy if exists "managers can create supplier orders" on public.supplier_orders;
+create policy "managers can create supplier orders"
+on public.supplier_orders
+for insert
+with check (
+  public.is_org_manager(organization_id)
+  and created_by = auth.uid()
+  and public.is_org_member(organization_id)
+);
+
+drop policy if exists "members can create assigned supplier orders" on public.supplier_orders;
+create policy "members can create assigned supplier orders"
+on public.supplier_orders
+for insert
+with check (
+  public.is_org_member(organization_id)
+  and created_by = auth.uid()
+  and (
+    all_assignees
+    or auth.uid() = any(assignee_ids)
+  )
+);
+
+drop policy if exists "users can update assigned supplier orders" on public.supplier_orders;
+create policy "users can update assigned supplier orders"
+on public.supplier_orders
+for update
+using (
+  deleted_at is null
+  and auth.uid() = any(assignee_ids)
+  and public.is_org_member(organization_id)
+)
+with check (
+  deleted_at is null
+  and auth.uid() = any(assignee_ids)
+  and public.is_org_member(organization_id)
+);
+
+drop policy if exists "managers can update all supplier orders" on public.supplier_orders;
+create policy "managers can update all supplier orders"
+on public.supplier_orders
+for update
+using (public.is_org_manager(organization_id))
+with check (public.is_org_manager(organization_id));
+
+drop policy if exists "managers can delete supplier orders" on public.supplier_orders;
+create policy "managers can delete supplier orders"
+on public.supplier_orders
+for delete
+using (public.is_org_manager(organization_id));
+
+drop policy if exists "users can read links for accessible supplier orders" on public.supplier_order_links;
+create policy "users can read links for accessible supplier orders"
+on public.supplier_order_links
+for select
+using (
+  deleted_at is null
+  and public.can_access_supplier_order(supplier_order_id)
+);
+
+drop policy if exists "users can add links to updatable supplier orders" on public.supplier_order_links;
+create policy "users can add links to updatable supplier orders"
+on public.supplier_order_links
+for insert
+with check (
+  public.can_update_supplier_order(supplier_order_id)
+  and public.is_org_member(organization_id)
+);
+
+drop policy if exists "users can update links on updatable supplier orders" on public.supplier_order_links;
+create policy "users can update links on updatable supplier orders"
+on public.supplier_order_links
+for update
+using (public.can_update_supplier_order(supplier_order_id))
+with check (
+  public.can_update_supplier_order(supplier_order_id)
+  and public.is_org_member(organization_id)
+);
+
+drop policy if exists "managers can delete supplier order links" on public.supplier_order_links;
+create policy "managers can delete supplier order links"
+on public.supplier_order_links
+for delete
+using (public.is_org_manager(organization_id));
+
+drop policy if exists "users can delete links on updatable supplier orders" on public.supplier_order_links;
+create policy "users can delete links on updatable supplier orders"
+on public.supplier_order_links
+for delete
+using (public.can_update_supplier_order(supplier_order_id));
 
 drop policy if exists "users can read own preferences" on public.user_preferences;
 create policy "users can read own preferences"
