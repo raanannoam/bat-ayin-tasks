@@ -1879,6 +1879,43 @@
         ));
       }
     };
+    const supabaseTasksWriteAdapter = {
+      async createTask(tasks, appTask) {
+        if (!supabaseClient) {
+          throw new Error("Supabase is not configured.");
+        }
+        const contextResult = await loadSupabaseTasksWriteContext(supabaseClient);
+        if (!contextResult.ok) {
+          throw new Error(contextResult.reason || contextResult.code || "Write context load failed.");
+        }
+        const mapperResult = mapAppTaskToSupabaseInsert(appTask, contextResult.ctx);
+        if (!mapperResult.ok) {
+          throw new Error(mapperResult.reason || mapperResult.code || "Task mapping failed.");
+        }
+        const { data, error } = await supabaseClient
+          .schema("bat_ayin")
+          .from("tasks")
+          .insert(mapperResult.payload)
+          .select()
+          .single();
+        if (error) throw error;
+        const readCtx = await loadSupabaseTasksReadContext(supabaseClient);
+        const createdTask = normalizeTask(mapDbTaskRowToApp(data, readCtx, []));
+        return [createdTask, ...(tasks || [])];
+      },
+      updateTask() {
+        throw new Error("Not implemented yet");
+      },
+      deleteTaskSoft() {
+        throw new Error("Not implemented yet");
+      },
+      completeTask() {
+        throw new Error("Not implemented yet");
+      },
+      reopenTask() {
+        throw new Error("Not implemented yet");
+      }
+    };
     async function testLoadSupabaseTasks() {
       try {
         if (!supabaseClient) {
@@ -2258,6 +2295,7 @@
     };
     repositoryAdapters.local = { taskAdapter: localTasksAdapter };
     repositoryAdapters.supabaseRead = { taskAdapter: supabaseTasksReadAdapter };
+    repositoryAdapters.supabaseWrite = { taskAdapter: supabaseTasksWriteAdapter };
     const taskAdapter = repositoryAdapters[DATA_BACKEND].taskAdapter;
     const tasksRepository = {
       createTask(tasks, task) {
