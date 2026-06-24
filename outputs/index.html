@@ -1606,6 +1606,149 @@
         updates
       };
     }
+
+    const DEFAULT_ORGANIZATION_ID = "00000000-0000-0000-0000-000000000001";
+    const NO_SUPABASE_AUTH_SESSION_REASON =
+      "No Supabase auth session. Sign in first or provide a temporary debug login method outside committed code.";
+
+    function toDateOnly(value) {
+      if (!value) return null;
+      return typeof value === "string" ? value.slice(0, 10) : null;
+    }
+    function deriveTaskDue(status, dueDate) {
+      if (status === "done") return "done";
+      if (!dueDate) return "none";
+      const due = dateFromIso(dueDate);
+      if (!due) return "none";
+      const diff = Math.round((due - startOfToday()) / 86400000);
+      if (diff === 0) return "today";
+      if (diff === 1) return "tomorrow";
+      return "date";
+    }
+    function buildCategorySlugById(rows) {
+      return new Map((rows || []).map(row => [row.id, row.slug]));
+    }
+    function buildProfileNameById(rows) {
+      return new Map((rows || []).map(row => [row.id, row.display_name]));
+    }
+    function groupTaskUpdatesByTaskId(rows) {
+      const grouped = new Map();
+      (rows || []).forEach(row => {
+        const list = grouped.get(row.task_id) || [];
+        list.push(row);
+        grouped.set(row.task_id, list);
+      });
+      return grouped;
+    }
+    async function loadSupabaseTasksReadContext(client) {
+      const batAyin = client.schema("bat_ayin");
+      const [categoriesResult, membersResult] = await Promise.all([
+        batAyin.from("categories")
+          .select("id, slug")
+          .eq("organization_id", DEFAULT_ORGANIZATION_ID)
+          .is("deleted_at", null),
+        batAyin.from("organization_members")
+          .select("user_id")
+          .eq("organization_id", DEFAULT_ORGANIZATION_ID)
+          .eq("is_active", true)
+      ]);
+      if (categoriesResult.error) throw categoriesResult.error;
+      if (membersResult.error) throw membersResult.error;
+      const userIds = [...new Set((membersResult.data || []).map(row => row.user_id))];
+      let profileRows = [];
+      if (userIds.length) {
+        const profilesResult = await client.from("profiles").select("id, display_name").in("id", userIds);
+        if (profilesResult.error) throw profilesResult.error;
+        profileRows = profilesResult.data || [];
+      }
+      return {
+        categorySlugById: buildCategorySlugById(categoriesResult.data),
+        profileNameById: buildProfileNameById(profileRows)
+      };
+    }
+    function mapDbTaskUpdateToApp(row, ctx) {
+      return {
+        by: ctx.profileNameById.get(row.author_id) || "לא ידוע",
+        text: row.body || "",
+        created_at: toDateOnly(row.created_at),
+        notify_participants: Boolean(row.notify_participants),
+        notification_status: row.notification_status || "pending"
+      };
+    }
+    function mapDbTaskRowToApp(row, ctx, updateRows) {
+      const dueDate = row.due_date || null;
+      return {
+        id: String(row.id),
+        title: row.title || "",
+        notes: row.notes || "",
+        status: row.status || "progress",
+        priority: row.priority || "normal",
+        category: ctx.categorySlugById.get(row.category_id) || "office",
+        owner: ctx.profileNameById.get(row.assignee_id) || "לא ידוע",
+        due_date: dueDate,
+        due: deriveTaskDue(row.status, dueDate),
+        reminder: row.reminder || { enabled: false },
+        created_at: toDateOnly(row.created_at),
+        completed_at: toDateOnly(row.completed_at),
+        deleted_at: null,
+        deleted_by: row.deleted_by ? ctx.profileNameById.get(row.deleted_by) || null : null,
+        updates: (updateRows || []).map(updateRow => mapDbTaskUpdateToApp(updateRow, ctx))
+      };
+    }
+    const supabaseTasksReadAdapter = {
+      async loadTasks() {
+        if (!supabaseClient) {
+          throw new Error("Supabase is not configured.");
+        }
+        const { data: authData, error: authError } = await supabaseClient.auth.getSession();
+        if (authError) throw authError;
+        if (!authData.session) {
+          throw new Error(NO_SUPABASE_AUTH_SESSION_REASON);
+        }
+        const batAyin = supabaseClient.schema("bat_ayin");
+        const ctx = await loadSupabaseTasksReadContext(supabaseClient);
+        const tasksResult = await batAyin.from("tasks")
+          .select("id, title, notes, status, priority, due_date, due_label, reminder, created_at, completed_at, deleted_at, category_id, assignee_id, deleted_by")
+          .eq("organization_id", DEFAULT_ORGANIZATION_ID)
+          .is("deleted_at", null)
+          .order("created_at", { ascending: false });
+        if (tasksResult.error) throw tasksResult.error;
+        const updatesResult = await batAyin.from("task_updates")
+          .select("task_id, author_id, body, created_at, notify_participants, notification_status")
+          .eq("organization_id", DEFAULT_ORGANIZATION_ID)
+          .is("deleted_at", null)
+          .order("created_at", { ascending: true });
+        if (updatesResult.error) throw updatesResult.error;
+        const updatesByTaskId = groupTaskUpdatesByTaskId(updatesResult.data);
+        return (tasksResult.data || []).map((row, index) => normalizeTask(
+          mapDbTaskRowToApp(row, ctx, updatesByTaskId.get(row.id) || []),
+          index
+        ));
+      }
+    };
+    async function testLoadSupabaseTasks() {
+      try {
+        if (!supabaseClient) {
+          return { ok: false, reason: "Supabase is not configured." };
+        }
+        const { data, error } = await supabaseClient.auth.getSession();
+        if (error) {
+          console.warn("[debug] testLoadSupabaseTasks auth check failed.", error);
+          return { ok: false, error };
+        }
+        if (!data.session) {
+          return { ok: false, reason: NO_SUPABASE_AUTH_SESSION_REASON };
+        }
+        const tasks = await supabaseTasksReadAdapter.loadTasks();
+        console.warn("[debug] Supabase tasks loaded:", tasks.length);
+        return { ok: true, count: tasks.length, tasks, source: "supabase" };
+      } catch (error) {
+        console.warn("[debug] testLoadSupabaseTasks failed.", error);
+        return { ok: false, reason: error?.message || String(error), error };
+      }
+    }
+    window.testLoadSupabaseTasks = testLoadSupabaseTasks;
+
     const localTasksAdapter = {
       loadTasks() {
         if (localStorage.getItem("beit-version") !== dataVersion) {
@@ -1655,6 +1798,7 @@
       }
     };
     repositoryAdapters.local = { taskAdapter: localTasksAdapter };
+    repositoryAdapters.supabaseRead = { taskAdapter: supabaseTasksReadAdapter };
     const taskAdapter = repositoryAdapters[DATA_BACKEND].taskAdapter;
     function loadTasks() {
       return taskAdapter.loadTasks();
