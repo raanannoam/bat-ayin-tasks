@@ -1349,6 +1349,7 @@
   <nav id="bottomNav" class="bottom-nav user" aria-label="ניווט ראשי"></nav>
   <div id="toast" class="toast" role="status"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script>
     function lineIcon(name) {
       const icons = {
@@ -1512,8 +1513,8 @@
     ];
 
     const dataVersion = "mockup-v3";
-    const SUPABASE_URL = "https://your-project.supabase.co";
-    const SUPABASE_ANON_KEY = "your-supabase-anon-key";
+    const SUPABASE_URL = "https://jxjxjvxbxpgvlarzbohm.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4anhqdnhieHBndmxhcnpib2htIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5NTgyNjUsImV4cCI6MjA5NTUzNDI2NX0.g1W8SJWTRc3FYeZJIVdLBTKcSfHVgfQQZ_brjRKest4";
     const DATA_BACKEND = "local";
     const repositoryAdapters = {};
 
@@ -1542,7 +1543,7 @@
         if (!supabaseClient) {
           return { ok: false, reason: "Supabase is not configured." };
         }
-        const { error } = await supabaseClient.from("tasks").select("id").limit(1);
+        const { error } = await supabaseClient.schema("bat_ayin").from("tasks").select("id").limit(1);
         if (error) {
           console.warn("Supabase connection test failed.", error);
           return { ok: false, error };
