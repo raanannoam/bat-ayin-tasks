@@ -2,10 +2,13 @@
   "name": "bat-ayin-tasks",
   "private": true,
   "scripts": {
-    "build": "tsc --noEmit"
+    "build": "tsc --noEmit",
+    "build:adapters": "node scripts/build-adapters.mjs",
+    "build:all": "npm run build && npm run build:adapters"
   },
   "devDependencies": {
     "@supabase/supabase-js": "^2.49.1",
+    "esbuild": "^0.25.0",
     "typescript": "^5.7.3"
   }
 }

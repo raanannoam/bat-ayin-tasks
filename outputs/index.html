@@ -1350,6 +1350,7 @@
   <div id="toast" class="toast" role="status"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="./adapters.js"></script>
   <script>
     function lineIcon(name) {
       const icons = {
@@ -1839,6 +1840,7 @@
         category: ctx.categorySlugById.get(row.category_id) || "office",
         owner: ctx.profileNameById.get(row.assignee_id) || "לא ידוע",
         due_date: dueDate,
+        dueLabel: row.due_label ?? null,
         due: deriveTaskDue(row.status, dueDate),
         reminder: row.reminder || { enabled: false },
         created_at: toDateOnly(row.created_at),
@@ -1848,74 +1850,11 @@
         updates: (updateRows || []).map(updateRow => mapDbTaskUpdateToApp(updateRow, ctx))
       };
     }
-    const supabaseTasksReadAdapter = {
-      async loadTasks() {
-        if (!supabaseClient) {
-          throw new Error("Supabase is not configured.");
-        }
-        const { data: authData, error: authError } = await supabaseClient.auth.getSession();
-        if (authError) throw authError;
-        if (!authData.session) {
-          throw new Error(NO_SUPABASE_AUTH_SESSION_REASON);
-        }
-        const batAyin = supabaseClient.schema("bat_ayin");
-        const ctx = await loadSupabaseTasksReadContext(supabaseClient);
-        const tasksResult = await batAyin.from("tasks")
-          .select("id, title, notes, status, priority, due_date, due_label, reminder, created_at, completed_at, deleted_at, category_id, assignee_id, deleted_by")
-          .eq("organization_id", DEFAULT_ORGANIZATION_ID)
-          .is("deleted_at", null)
-          .order("created_at", { ascending: false });
-        if (tasksResult.error) throw tasksResult.error;
-        const updatesResult = await batAyin.from("task_updates")
-          .select("task_id, author_id, body, created_at, notify_participants, notification_status")
-          .eq("organization_id", DEFAULT_ORGANIZATION_ID)
-          .is("deleted_at", null)
-          .order("created_at", { ascending: true });
-        if (updatesResult.error) throw updatesResult.error;
-        const updatesByTaskId = groupTaskUpdatesByTaskId(updatesResult.data);
-        return (tasksResult.data || []).map((row, index) => normalizeTask(
-          mapDbTaskRowToApp(row, ctx, updatesByTaskId.get(row.id) || []),
-          index
-        ));
-      }
-    };
-    const supabaseTasksWriteAdapter = {
-      async createTask(tasks, appTask) {
-        if (!supabaseClient) {
-          throw new Error("Supabase is not configured.");
-        }
-        const contextResult = await loadSupabaseTasksWriteContext(supabaseClient);
-        if (!contextResult.ok) {
-          throw new Error(contextResult.reason || contextResult.code || "Write context load failed.");
-        }
-        const mapperResult = mapAppTaskToSupabaseInsert(appTask, contextResult.ctx);
-        if (!mapperResult.ok) {
-          throw new Error(mapperResult.reason || mapperResult.code || "Task mapping failed.");
-        }
-        const { data, error } = await supabaseClient
-          .schema("bat_ayin")
-          .from("tasks")
-          .insert(mapperResult.payload)
-          .select()
-          .single();
-        if (error) throw error;
-        const readCtx = await loadSupabaseTasksReadContext(supabaseClient);
-        const createdTask = normalizeTask(mapDbTaskRowToApp(data, readCtx, []));
-        return [createdTask, ...(tasks || [])];
-      },
-      updateTask() {
-        throw new Error("Not implemented yet");
-      },
-      deleteTaskSoft() {
-        throw new Error("Not implemented yet");
-      },
-      completeTask() {
-        throw new Error("Not implemented yet");
-      },
-      reopenTask() {
-        throw new Error("Not implemented yet");
-      }
-    };
+    if (!BatAyinAdapters?.createSupabaseTasksAdapter || !BatAyinAdapters?.createSupabaseSuppliersAdapter) {
+      throw new Error("Adapters bundle failed to load.");
+    }
+    const supabaseTasksAdapter = BatAyinAdapters.createSupabaseTasksAdapter(supabaseClient);
+    const supabaseSuppliersAdapter = BatAyinAdapters.createSupabaseSuppliersAdapter();
     async function testLoadSupabaseTasks() {
       try {
         if (!supabaseClient) {
@@ -1929,7 +1868,7 @@
         if (!data.session) {
           return { ok: false, reason: NO_SUPABASE_AUTH_SESSION_REASON };
         }
-        const tasks = await supabaseTasksReadAdapter.loadTasks();
+        const tasks = await supabaseTasksAdapter.loadTasks();
         console.warn("[debug] Supabase tasks loaded:", tasks.length);
         return { ok: true, count: tasks.length, tasks, source: "supabase" };
       } catch (error) {
@@ -2294,8 +2233,12 @@
       }
     };
     repositoryAdapters.local = { taskAdapter: localTasksAdapter };
-    repositoryAdapters.supabaseRead = { taskAdapter: supabaseTasksReadAdapter };
-    repositoryAdapters.supabaseWrite = { taskAdapter: supabaseTasksWriteAdapter };
+    repositoryAdapters.supabase = {
+      taskAdapter: supabaseTasksAdapter,
+      supplierAdapter: supabaseSuppliersAdapter
+    };
+    repositoryAdapters.supabaseRead = { taskAdapter: supabaseTasksAdapter };
+    repositoryAdapters.supabaseWrite = { taskAdapter: supabaseTasksAdapter };
     const taskAdapter = repositoryAdapters[DATA_BACKEND].taskAdapter;
     const tasksRepository = {
       createTask(tasks, task) {

@@ -4,6 +4,7 @@ import { loadSupabaseTasksReadContext } from "./loadSupabaseTasksReadContext.js"
 import { loadSupabaseTasksWriteContext } from "./loadSupabaseTasksWriteContext.js";
 import { mapAppTaskToSupabaseInsert } from "./mapAppTaskToSupabaseInsert.js";
 import { mapDbTaskRowToApp } from "./mapDbTaskRowToApp.js";
+import { normalizeTask } from "../../shared/normalizeTask.js";
 
 const NOT_IMPLEMENTED = "Not implemented yet";
 
@@ -11,7 +12,7 @@ const NOT_IMPLEMENTED = "Not implemented yet";
 export type SupabaseTasksWriteAdapter = {
   createTask(tasks: AppTask[], appTask: AppTask): Promise<AppTask[]>;
   updateTask(tasks: AppTask[], id: string, patch: Partial<AppTask>): never;
-  deleteTask(tasks: AppTask[], id: string, deletedBy: string): never;
+  deleteTaskSoft(tasks: AppTask[], id: string, deletedBy: string): never;
   completeTask(tasks: AppTask[], id: string): never;
   reopenTask(tasks: AppTask[], id: string): never;
 };
@@ -45,13 +46,13 @@ export function createSupabaseTasksWriteAdapter(
         .single();
       if (error) throw error;
       const readCtx = await loadSupabaseTasksReadContext(client);
-      const createdTask = mapDbTaskRowToApp(data, readCtx);
+      const createdTask = normalizeTask(mapDbTaskRowToApp(data, readCtx));
       return [createdTask, ...(tasks || [])];
     },
     updateTask() {
       return throwNotImplemented();
     },
-    deleteTask() {
+    deleteTaskSoft() {
       return throwNotImplemented();
     },
     completeTask() {
