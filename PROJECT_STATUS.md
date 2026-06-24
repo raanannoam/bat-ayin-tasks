@@ -63,7 +63,7 @@ Git: אין remote מוגדר כרגע (אין `origin`).
 - מיון לפי תאריך, קטגוריה, מבצע ועדיפות.
 - נעילת עריכה למשימה שהושלמה, עם אפשרות ניהולית מתאימה.
 
-הנתונים נשמרים כיום ב־localStorage דרך `taskAdapter`.
+הנתונים נשמרים כיום ב־localStorage דרך `tasksRepository` → `taskAdapter` (local).
 
 ## מודול ספקים / רכש
 
@@ -130,16 +130,17 @@ const DATA_BACKEND = "local";
 רכיבים קיימים:
 
 - `repositoryAdapters`
+- `tasksRepository` — facade לכל CRUD/load/save של משימות (UI → repo → adapter)
 - `repositoryAdapters.local` — production path
 - `repositoryAdapters.supabaseRead` — debug read-only (לא מחובר ל־`DATA_BACKEND`)
-- `taskAdapter` / `supplierAdapter` — נבחרים לפי `DATA_BACKEND`
+- `taskAdapter` / `supplierAdapter` — backend פנימי; `taskAdapter` נקרא רק מתוך `tasksRepository`
 - `localTasksAdapter` / `localSuppliersAdapter`
 - `supabaseTasksReadAdapter` — `loadTasks()` async בלבד
 - `testLoadSupabaseTasks()` — debug בקונסול (`window.testLoadSupabaseTasks`)
 
 זרימת הנתונים הנוכחית:
 
-- משימות נטענות ונשמרות דרך `taskAdapter` (local).
+- משימות נטענות ונשמרות דרך `tasksRepository` → `taskAdapter` (local).
 - ספקים נטענים ונשמרים דרך `supplierAdapter` (local).
 - `DATA_BACKEND` בוחר adapter פעיל מתוך `repositoryAdapters`.
 - Supabase read path נפרד: `testLoadSupabaseTasks()` → `supabaseTasksReadAdapter` — **לא** מעדכן `state.tasks`.
@@ -147,7 +148,7 @@ const DATA_BACKEND = "local";
 הערה חשובה:
 
 - העדפות, קטגוריות ומשתמשים עדיין משתמשים בחלק מהמקומות ישירות ב־localStorage.
-- משימות וספקים כבר מרוכזים ב־adapters.
+- משימות מרוכזות ב־`tasksRepository` → adapters; ספקים ב־`supplierAdapter`.
 
 ## מצב Supabase
 

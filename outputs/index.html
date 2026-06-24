@@ -1641,8 +1641,14 @@
     function buildCategorySlugById(rows) {
       return new Map((rows || []).map(row => [row.id, row.slug]));
     }
+    function buildCategoryIdBySlug(rows) {
+      return new Map((rows || []).map(row => [row.slug, row.id]));
+    }
     function buildProfileNameById(rows) {
       return new Map((rows || []).map(row => [row.id, row.display_name]));
+    }
+    function buildProfileIdByName(rows) {
+      return new Map((rows || []).map(row => [row.display_name, row.id]));
     }
     function groupTaskUpdatesByTaskId(rows) {
       const grouped = new Map();
@@ -1677,6 +1683,140 @@
       return {
         categorySlugById: buildCategorySlugById(categoriesResult.data),
         profileNameById: buildProfileNameById(profileRows)
+      };
+    }
+    async function loadSupabaseTasksWriteContext(client) {
+      try {
+        if (!client) {
+          return { ok: false, reason: "Supabase is not configured.", code: "supabase_not_configured" };
+        }
+        const { data: authData, error: authError } = await client.auth.getSession();
+        if (authError) {
+          return {
+            ok: false,
+            reason: authError.message || "Auth check failed.",
+            code: "auth_check_failed",
+            error: authError
+          };
+        }
+        if (!authData.session) {
+          return { ok: false, reason: NO_SUPABASE_AUTH_SESSION_REASON, code: "auth_session_missing" };
+        }
+        const authUserId = authData.session.user.id;
+        const batAyin = client.schema("bat_ayin");
+        const [categoriesResult, membersResult] = await Promise.all([
+          batAyin.from("categories")
+            .select("id, slug")
+            .eq("organization_id", DEFAULT_ORGANIZATION_ID)
+            .eq("is_active", true)
+            .is("deleted_at", null),
+          batAyin.from("organization_members")
+            .select("user_id, role, is_active")
+            .eq("organization_id", DEFAULT_ORGANIZATION_ID)
+            .eq("is_active", true)
+        ]);
+        if (categoriesResult.error) {
+          return {
+            ok: false,
+            reason: categoriesResult.error.message || String(categoriesResult.error),
+            code: "categories_load_failed",
+            error: categoriesResult.error
+          };
+        }
+        if (membersResult.error) {
+          return {
+            ok: false,
+            reason: membersResult.error.message || String(membersResult.error),
+            code: "members_load_failed",
+            error: membersResult.error
+          };
+        }
+        const members = membersResult.data || [];
+        const currentMember = members.find(row => row.user_id === authUserId);
+        if (!currentMember) {
+          return {
+            ok: false,
+            reason: "Signed-in user is not an active member of this organization.",
+            code: "not_org_member"
+          };
+        }
+        const userIds = [...new Set(members.map(row => row.user_id))];
+        let profileRows = [];
+        if (userIds.length) {
+          const profilesResult = await client.from("profiles").select("id, display_name").in("id", userIds);
+          if (profilesResult.error) {
+            return {
+              ok: false,
+              reason: profilesResult.error.message || String(profilesResult.error),
+              code: "profiles_load_failed",
+              error: profilesResult.error
+            };
+          }
+          profileRows = profilesResult.data || [];
+        }
+        const profileNameById = buildProfileNameById(profileRows);
+        const profileIdByName = buildProfileIdByName(profileRows);
+        return {
+          ok: true,
+          ctx: {
+            organizationId: DEFAULT_ORGANIZATION_ID,
+            authUserId,
+            authUserRole: currentMember.role === "manager" ? "manager" : "user",
+            categoryIdBySlug: buildCategoryIdBySlug(categoriesResult.data),
+            profileIdByName,
+            profileNameById,
+            allowedAssigneeIds: new Set(userIds),
+            allowedOwnerNames: new Set(profileIdByName.keys())
+          }
+        };
+      } catch (error) {
+        return { ok: false, reason: error?.message || String(error), code: "unexpected_error", error };
+      }
+    }
+    function mapAppTaskToSupabaseInsert(appTask, writeCtx) {
+      const title = String(appTask?.title ?? "").trim();
+      if (!title) {
+        return { ok: false, code: "title_missing" };
+      }
+      const owner = appTask?.owner;
+      if (owner == null || String(owner).trim() === "") {
+        return { ok: false, code: "owner_missing", reason: "Task owner is required." };
+      }
+      const ownerName = String(owner).trim();
+      const assigneeId = writeCtx.profileIdByName.get(ownerName);
+      if (!assigneeId) {
+        return {
+          ok: false,
+          code: "owner_not_found",
+          reason: "Owner name does not exist in Supabase member map."
+        };
+      }
+      if (!writeCtx.allowedAssigneeIds.has(assigneeId)) {
+        return { ok: false, code: "owner_not_allowed" };
+      }
+      const category = appTask?.category;
+      let categoryId = null;
+      if (category && category !== "uncategorized") {
+        categoryId = writeCtx.categoryIdBySlug.get(category) ?? null;
+        if (!categoryId) {
+          return { ok: false, code: "category_not_found" };
+        }
+      }
+      return {
+        ok: true,
+        payload: {
+          organization_id: writeCtx.organizationId,
+          category_id: categoryId,
+          assignee_id: assigneeId,
+          created_by: writeCtx.authUserId,
+          title,
+          notes: appTask?.notes ?? "",
+          status: appTask?.status === "done" ? "done" : "progress",
+          priority: appTask?.priority === "high" ? "high" : "normal",
+          due_date: appTask?.dueDate ?? null,
+          due_label: appTask?.dueLabel ?? null,
+          reminder: appTask?.reminder ?? { enabled: false }
+        }
       };
     }
     function mapDbTaskUpdateToApp(row, ctx) {
@@ -1762,6 +1902,312 @@
     }
     window.testLoadSupabaseTasks = testLoadSupabaseTasks;
 
+    async function testLoadSupabaseTaskUpdates() {
+      try {
+        if (!supabaseClient) {
+          return { ok: false, reason: "Supabase is not configured." };
+        }
+        const { data: authData, error: authError } = await supabaseClient.auth.getSession();
+        if (authError) {
+          console.warn("[debug] testLoadSupabaseTaskUpdates auth check failed.", authError);
+          return { ok: false, reason: authError.message || "Auth check failed.", error: authError };
+        }
+        if (!authData.session) {
+          return { ok: false, reason: NO_SUPABASE_AUTH_SESSION_REASON };
+        }
+        const batAyin = supabaseClient.schema("bat_ayin");
+        const { data, error } = await batAyin
+          .from("task_updates")
+          .select("id, task_id, body, created_at, author_id")
+          .eq("organization_id", DEFAULT_ORGANIZATION_ID)
+          .order("created_at", { ascending: false })
+          .limit(20);
+        if (error) {
+          console.warn("[debug] testLoadSupabaseTaskUpdates failed.", error);
+          return { ok: false, reason: error.message || String(error), error };
+        }
+        const rows = data || [];
+        const uniqueTaskIds = [...new Set(rows.map(row => row.task_id))];
+        console.warn("[debug] Supabase task_updates count:", rows.length);
+        console.warn("[debug] Supabase task_updates first row:", rows[0] ?? null);
+        console.warn("[debug] Supabase task_updates unique task_id list:", uniqueTaskIds);
+        return { ok: true, count: rows.length, rows, uniqueTaskIds, source: "supabase" };
+      } catch (error) {
+        console.warn("[debug] testLoadSupabaseTaskUpdates failed.", error);
+        return { ok: false, reason: error?.message || String(error), error };
+      }
+    }
+    window.testLoadSupabaseTaskUpdates = testLoadSupabaseTaskUpdates;
+
+    async function testLoadSupabaseTaskLifecycleStats() {
+      try {
+        if (!supabaseClient) {
+          return { ok: false, reason: "Supabase is not configured." };
+        }
+        const { data: authData, error: authError } = await supabaseClient.auth.getSession();
+        if (authError) {
+          console.warn("[debug] testLoadSupabaseTaskLifecycleStats auth check failed.", authError);
+          return { ok: false, reason: authError.message || "Auth check failed.", error: authError };
+        }
+        if (!authData.session) {
+          return { ok: false, reason: NO_SUPABASE_AUTH_SESSION_REASON };
+        }
+        const batAyin = supabaseClient.schema("bat_ayin");
+        const orgFilter = query => query.eq("organization_id", DEFAULT_ORGANIZATION_ID);
+        const totalResult = await orgFilter(batAyin.from("tasks").select("id", { count: "exact", head: true }));
+        if (totalResult.error) throw totalResult.error;
+        const completedResult = await orgFilter(
+          batAyin.from("tasks").select("id", { count: "exact", head: true }).not("completed_at", "is", null)
+        );
+        if (completedResult.error) throw completedResult.error;
+        const deletedResult = await orgFilter(
+          batAyin.from("tasks").select("id", { count: "exact", head: true }).not("deleted_at", "is", null)
+        );
+        if (deletedResult.error) throw deletedResult.error;
+        const total = totalResult.count ?? 0;
+        const completed = completedResult.count ?? 0;
+        const deleted = deletedResult.count ?? 0;
+        console.warn("[debug] Supabase tasks total count:", total);
+        console.warn("[debug] Supabase tasks completed count:", completed);
+        console.warn("[debug] Supabase tasks deleted count:", deleted);
+        return { ok: true, total, completed, deleted };
+      } catch (error) {
+        console.warn("[debug] testLoadSupabaseTaskLifecycleStats failed.", error);
+        return { ok: false, reason: error?.message || String(error), error };
+      }
+    }
+    window.testLoadSupabaseTaskLifecycleStats = testLoadSupabaseTaskLifecycleStats;
+
+    async function testLoadSupabaseCategories() {
+      try {
+        if (!supabaseClient) {
+          return { ok: false, reason: "Supabase is not configured." };
+        }
+        const { data: authData, error: authError } = await supabaseClient.auth.getSession();
+        if (authError) {
+          console.warn("[debug] testLoadSupabaseCategories auth check failed.", authError);
+          return { ok: false, reason: authError.message || "Auth check failed.", error: authError };
+        }
+        if (!authData.session) {
+          return { ok: false, reason: NO_SUPABASE_AUTH_SESSION_REASON };
+        }
+        const batAyin = supabaseClient.schema("bat_ayin");
+        const { data, error } = await batAyin
+          .from("categories")
+          .select("id, name, created_at")
+          .eq("organization_id", DEFAULT_ORGANIZATION_ID)
+          .order("name", { ascending: true });
+        if (error) {
+          console.warn("[debug] testLoadSupabaseCategories failed.", error);
+          return { ok: false, reason: error.message || String(error), error };
+        }
+        const categories = data || [];
+        const names = categories.map(category => category.name);
+        console.warn("[debug] Supabase categories count:", categories.length);
+        console.warn("[debug] Supabase categories first category:", categories[0] ?? null);
+        console.warn("[debug] Supabase categories name list:", names);
+        console.warn("[debug] Supabase categories all records:", categories);
+        console.warn("[debug] Supabase categories id + name:", categories.map(category => ({ id: category.id, name: category.name })));
+        return { ok: true, count: categories.length, categories, names };
+      } catch (error) {
+        console.warn("[debug] testLoadSupabaseCategories failed.", error);
+        return { ok: false, reason: error?.message || String(error), error };
+      }
+    }
+    window.testLoadSupabaseCategories = testLoadSupabaseCategories;
+
+    async function testSupabaseReadStateIsolation() {
+      try {
+        const tasksBefore = state.tasks;
+        const beforeLength = tasksBefore.length;
+        await testLoadSupabaseTasks();
+        const tasksAfter = state.tasks;
+        const afterLength = tasksAfter.length;
+        const sameReference = tasksBefore === tasksAfter;
+        const sameLength = beforeLength === afterLength;
+        console.warn("[debug] Supabase read state isolation sameReference:", sameReference);
+        console.warn("[debug] Supabase read state isolation sameLength:", sameLength);
+        console.warn("[debug] Supabase read state isolation beforeLength:", beforeLength);
+        console.warn("[debug] Supabase read state isolation afterLength:", afterLength);
+        return { ok: true, sameReference, sameLength, beforeLength, afterLength };
+      } catch (error) {
+        console.warn("[debug] testSupabaseReadStateIsolation failed.", error);
+        return { ok: false, reason: error?.message || String(error), error };
+      }
+    }
+    window.testSupabaseReadStateIsolation = testSupabaseReadStateIsolation;
+
+    async function testLoadSupabaseProfiles() {
+      try {
+        if (!supabaseClient) {
+          return { ok: false, reason: "Supabase is not configured." };
+        }
+        const { data: authData, error: authError } = await supabaseClient.auth.getSession();
+        if (authError) {
+          console.warn("[debug] testLoadSupabaseProfiles auth check failed.", authError);
+          return { ok: false, reason: authError.message || "Auth check failed.", error: authError };
+        }
+        if (!authData.session) {
+          return { ok: false, reason: NO_SUPABASE_AUTH_SESSION_REASON };
+        }
+        const batAyin = supabaseClient.schema("bat_ayin");
+        const membersResult = await batAyin
+          .from("organization_members")
+          .select("user_id, is_active")
+          .eq("organization_id", DEFAULT_ORGANIZATION_ID);
+        if (membersResult.error) throw membersResult.error;
+        const members = membersResult.data || [];
+        const userIds = [...new Set(members.map(row => row.user_id))];
+        let profiles = [];
+        if (userIds.length) {
+          const profilesResult = await supabaseClient.from("profiles").select("id, display_name").in("id", userIds);
+          if (profilesResult.error) throw profilesResult.error;
+          profiles = profilesResult.data || [];
+        }
+        const profileNameById = new Map(profiles.map(row => [row.id, row.display_name]));
+        const userIdToDisplayName = Object.fromEntries(
+          userIds.map(userId => [userId, profileNameById.get(userId) ?? null])
+        );
+        console.warn("[debug] Supabase organization members count:", members.length);
+        console.warn("[debug] Supabase profiles count:", profiles.length);
+        console.warn("[debug] Supabase user_id -> display_name mapping:", userIdToDisplayName);
+        return { ok: true, members, profiles };
+      } catch (error) {
+        console.warn("[debug] testLoadSupabaseProfiles failed.", error);
+        return { ok: false, reason: error?.message || String(error), error };
+      }
+    }
+    window.testLoadSupabaseProfiles = testLoadSupabaseProfiles;
+
+    async function testLoadSupabaseTasksWriteContext() {
+      const result = await loadSupabaseTasksWriteContext(supabaseClient);
+      console.warn("[debug] testLoadSupabaseTasksWriteContext result:", result);
+      return result;
+    }
+    window.testLoadSupabaseTasksWriteContext = testLoadSupabaseTasksWriteContext;
+
+    async function testMapAppTaskToSupabaseInsert() {
+      const contextResult = await loadSupabaseTasksWriteContext(supabaseClient);
+      console.warn("[debug] testMapAppTaskToSupabaseInsert write context:", contextResult);
+      if (!contextResult.ok) {
+        return contextResult;
+      }
+      const sampleTask = {
+        title: "Debug Mapping Test",
+        owner: "צבי",
+        category: "office",
+        priority: "normal",
+        notes: "",
+        dueDate: null,
+        dueLabel: null,
+        reminder: { enabled: false }
+      };
+      const result = mapAppTaskToSupabaseInsert(sampleTask, contextResult.ctx);
+      console.warn("[debug] testMapAppTaskToSupabaseInsert sample task:", sampleTask);
+      console.warn("[debug] testMapAppTaskToSupabaseInsert mapper result:", result);
+      return result;
+    }
+    window.testMapAppTaskToSupabaseInsert = testMapAppTaskToSupabaseInsert;
+
+    async function testWriteSupabaseTaskFromApp() {
+      const sampleTask = {
+        title: "[DEBUG] Full Write Validation",
+        owner: "צבי",
+        category: "office",
+        priority: "normal",
+        notes: "",
+        dueDate: null,
+        dueLabel: null,
+        reminder: { enabled: false }
+      };
+      try {
+        const contextResult = await loadSupabaseTasksWriteContext(supabaseClient);
+        console.warn("[debug] testWriteSupabaseTaskFromApp write context:", contextResult);
+        if (!contextResult.ok) {
+          return contextResult;
+        }
+        const mapperResult = mapAppTaskToSupabaseInsert(sampleTask, contextResult.ctx);
+        console.warn("[debug] testWriteSupabaseTaskFromApp sample task:", sampleTask);
+        console.warn("[debug] testWriteSupabaseTaskFromApp mapper result:", mapperResult);
+        if (!mapperResult.ok) {
+          return mapperResult;
+        }
+        const payload = mapperResult.payload;
+        console.warn("[debug] testWriteSupabaseTaskFromApp insert payload:", payload);
+        const { data, error } = await supabaseClient
+          .schema("bat_ayin")
+          .from("tasks")
+          .insert(payload)
+          .select()
+          .single();
+        if (error) {
+          console.warn("[debug] testWriteSupabaseTaskFromApp insert failed.", error);
+          console.warn(
+            "[debug] testWriteSupabaseTaskFromApp RLS/trigger error:",
+            error.message,
+            error.code,
+            error.details,
+            error.hint
+          );
+          return { ok: false, reason: error.message || String(error), error };
+        }
+        console.warn("[debug] testWriteSupabaseTaskFromApp inserted row:", data);
+        return { ok: true, insertedTask: data };
+      } catch (error) {
+        console.warn("[debug] testWriteSupabaseTaskFromApp failed.", error);
+        return { ok: false, reason: error?.message || String(error), error };
+      }
+    }
+    window.testWriteSupabaseTaskFromApp = testWriteSupabaseTaskFromApp;
+
+    async function testCreateSupabaseTask() {
+      const DEBUG_ASSIGNEE_ID = "24fd1678-f13f-4e94-8afb-02887c315202";
+      const DEBUG_TASK_TITLE = "[DEBUG] Supabase Insert Validation";
+      try {
+        if (!supabaseClient) {
+          return { ok: false, reason: "Supabase is not configured." };
+        }
+        const { data: authData, error: authError } = await supabaseClient.auth.getSession();
+        if (authError) {
+          console.warn("[debug] testCreateSupabaseTask auth check failed.", authError);
+          return { ok: false, reason: authError.message || "Auth check failed.", error: authError };
+        }
+        if (!authData.session) {
+          return { ok: false, reason: NO_SUPABASE_AUTH_SESSION_REASON };
+        }
+        const payload = {
+          organization_id: DEFAULT_ORGANIZATION_ID,
+          assignee_id: DEBUG_ASSIGNEE_ID,
+          created_by: authData.session.user.id,
+          title: DEBUG_TASK_TITLE
+        };
+        console.warn("[debug] testCreateSupabaseTask insert payload:", payload);
+        const { data, error } = await supabaseClient
+          .schema("bat_ayin")
+          .from("tasks")
+          .insert(payload)
+          .select()
+          .single();
+        if (error) {
+          console.warn("[debug] testCreateSupabaseTask insert failed.", error);
+          console.warn(
+            "[debug] testCreateSupabaseTask RLS/trigger error:",
+            error.message,
+            error.code,
+            error.details,
+            error.hint
+          );
+          return { ok: false, reason: error.message || String(error), error };
+        }
+        console.warn("[debug] testCreateSupabaseTask inserted row:", data);
+        return { ok: true, insertedTask: data };
+      } catch (error) {
+        console.warn("[debug] testCreateSupabaseTask failed.", error);
+        return { ok: false, reason: error?.message || String(error), error };
+      }
+    }
+    window.testCreateSupabaseTask = testCreateSupabaseTask;
+
     const localTasksAdapter = {
       loadTasks() {
         if (localStorage.getItem("beit-version") !== dataVersion) {
@@ -1813,8 +2259,31 @@
     repositoryAdapters.local = { taskAdapter: localTasksAdapter };
     repositoryAdapters.supabaseRead = { taskAdapter: supabaseTasksReadAdapter };
     const taskAdapter = repositoryAdapters[DATA_BACKEND].taskAdapter;
+    const tasksRepository = {
+      createTask(tasks, task) {
+        return taskAdapter.createTask(tasks, task);
+      },
+      updateTask(tasks, id, patch) {
+        return taskAdapter.updateTask(tasks, id, patch);
+      },
+      completeTask(tasks, id) {
+        return taskAdapter.completeTask(tasks, id);
+      },
+      reopenTask(tasks, id) {
+        return taskAdapter.reopenTask(tasks, id);
+      },
+      deleteTaskSoft(tasks, id, deletedBy) {
+        return taskAdapter.deleteTaskSoft(tasks, id, deletedBy);
+      },
+      saveTasks(tasks) {
+        return taskAdapter.saveTasks(tasks);
+      },
+      loadTasks() {
+        return taskAdapter.loadTasks();
+      }
+    };
     function loadTasks() {
-      return taskAdapter.loadTasks();
+      return tasksRepository.loadTasks();
     }
     const state = {
       role: initialRole,
@@ -1918,7 +2387,7 @@
     const app = $("app");
 
     function save() {
-      taskAdapter.saveTasks(state.tasks);
+      tasksRepository.saveTasks(state.tasks);
       supplierAdapter.saveSuppliers(state.suppliers);
       localStorage.setItem("beit-prefs", JSON.stringify(state.prefs));
     }
@@ -2123,7 +2592,7 @@
       resetScroll();
     }
     function createTask(task) {
-      state.tasks = taskAdapter.createTask(state.tasks, task);
+      state.tasks = tasksRepository.createTask(state.tasks, task);
       return task;
     }
     function updateTask(id, patch) {
@@ -2140,7 +2609,7 @@
           return false;
         }
       }
-      state.tasks = taskAdapter.updateTask(state.tasks, id, patch);
+      state.tasks = tasksRepository.updateTask(state.tasks, id, patch);
       render();
       return true;
     }
@@ -2150,7 +2619,7 @@
         toast("רק מנהל יכול למחוק משימה");
         return false;
       }
-      state.tasks = taskAdapter.deleteTaskSoft(state.tasks, id, personalOwner());
+      state.tasks = tasksRepository.deleteTaskSoft(state.tasks, id, personalOwner());
       render();
       return true;
     }
@@ -2161,7 +2630,7 @@
         toast("אין הרשאה למשימה זו");
         return false;
       }
-      state.tasks = taskAdapter.completeTask(state.tasks, id);
+      state.tasks = tasksRepository.completeTask(state.tasks, id);
       render();
       return true;
     }
@@ -2176,7 +2645,7 @@
         toast("רק מנהל יכול להחזיר משימה לתהליך");
         return false;
       }
-      state.tasks = taskAdapter.reopenTask(state.tasks, id);
+      state.tasks = tasksRepository.reopenTask(state.tasks, id);
       render();
       return true;
     }
@@ -3061,7 +3530,7 @@
           render();
           return;
         }
-        state.tasks = taskAdapter.saveTasks([]);
+        state.tasks = tasksRepository.saveTasks([]);
         state.clearAllStep = 0;
         save();
         render();
@@ -3131,7 +3600,7 @@
         localStorage.setItem("beit-categories", JSON.stringify(custom));
         categories = loadCategories();
         const fallbackCategory = categories[0]?.id || "uncategorized";
-        state.tasks = taskAdapter.saveTasks(state.tasks.map(t => ids.includes(t.category) ? { ...t, category: fallbackCategory } : t));
+        state.tasks = tasksRepository.saveTasks(state.tasks.map(t => ids.includes(t.category) ? { ...t, category: fallbackCategory } : t));
         state.deletingCategory = false;
         state.categoriesToDelete = [];
         save();
@@ -3201,7 +3670,7 @@
         localStorage.setItem("beit-people", JSON.stringify(custom));
         people = loadPeople();
         const fallbackOwner = people[0] || "ללא מבצע";
-        state.tasks = taskAdapter.saveTasks(state.tasks.map(t => names.includes(t.owner) ? { ...t, owner: fallbackOwner } : t));
+        state.tasks = tasksRepository.saveTasks(state.tasks.map(t => names.includes(t.owner) ? { ...t, owner: fallbackOwner } : t));
         state.deletingPerson = false;
         state.peopleToDelete = [];
         save();

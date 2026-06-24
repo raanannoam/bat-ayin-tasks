@@ -64,6 +64,106 @@ C:\Users\Noam\Projects\Bat-ayin-tasks
 - להעדיף שינוי קטן וממוקד על פני refactor רחב.
 - לא להמציא פיצ'רים בתיעוד או בקוד. לתעד רק מה שקיים או מה שמסומן במפורש כ־TODO.
 
+## Cursor Agent Response Style
+
+Use compact checkpoint communication.
+
+Default response format:
+
+````text
+CP# complete
+
+changed:
+- file
+- exact functions touched
+
+diff:
+```diff
+minimal relevant diff only
+````
+
+validated:
+
+* syntax ok
+* behavior unchanged / or exact runtime result
+
+risks:
+
+* only real risks, max 3 bullets
+
+next:
+
+* one suggested next checkpoint
+
+```
+
+Rules:
+
+- Keep responses short.
+- Do not include long tables unless requested.
+- Do not repeat full architecture summaries.
+- Do not explain obvious pass-through behavior at length.
+- Prefer bullets over paragraphs.
+- For small checkpoints, include only the minimal diff.
+- Always stop after the requested checkpoint.
+- Do not continue to the next checkpoint without approval.
+
+## Ultra Compact Protocol
+
+think compact
+write compact
+
+format:
+
+CP# done
+
+chg:
+
+* ...
+
+diff:
+
+```diff
+minimal diff only
+```
+
+val:
+
+* syntax
+* result
+
+risk:
+
+* max 2
+
+next:
+
+* one line
+
+for audits:
+
+find:
+
+* ...
+* ...
+
+rec:
+
+* one line
+
+stop
+
+constraints:
+
+* no architecture recap
+* no long explanations
+* no tables unless requested
+* no repeating prior checkpoints
+* assume project context is already known
+* prefer keywords over sentences
+* output only information needed for the current checkpoint
+* stop immediately after requested output
+
 ## מודל הרשאות
 
 ### משתמש רגיל
@@ -92,7 +192,8 @@ const DATA_BACKEND = "local";
 מבנה adapters קיים:
 
 - `repositoryAdapters`
-- `taskAdapter`
+- `tasksRepository` — facade לכל גישת runtime למשימות
+- `taskAdapter` — backend פנימי (נבחר לפי `DATA_BACKEND`, נקרא רק מתוך `tasksRepository`)
 - `supplierAdapter`
 - `repositoryAdapters.local`
 
@@ -100,7 +201,8 @@ const DATA_BACKEND = "local";
 
 - אין לשנות את `DATA_BACKEND` מ־`"local"` ללא בקשה מפורשת.
 - אין להעביר קריאות אמיתיות ל־Supabase לפני שלב ייעודי.
-- משימות חייבות לעבור דרך `taskAdapter`.
+- **כל גישת runtime למשימות חייבת לעבור דרך `tasksRepository`.**
+- **אסור:** קריאות ישירות ל־`taskAdapter.*` מחוץ ל־`tasksRepository` ולשורת setup של ה־adapter (`repositoryAdapters` + `const taskAdapter = …`).
 - ספקים/רכש חייבים לעבור דרך `supplierAdapter`.
 - לא להוסיף גישה ישירה חדשה ל־localStorage עבור משימות או ספקים מחוץ ל־adapters.
 - אם מוסיפים backend חדש, לחבר אותו דרך `repositoryAdapters` ולא דרך UI ישירות.

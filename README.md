@@ -36,7 +36,7 @@ git -c core.fsmonitor=false tag
 ```
 
 4. לא לשנות `DATA_BACKEND` מ־`"local"` ללא בקשה מפורשת
-5. משימות וספקים — רק דרך `taskAdapter` / `supplierAdapter`
+5. משימות — רק דרך `tasksRepository`; ספקים — רק דרך `supplierAdapter`
 
 ## Roadmap קצר
 
