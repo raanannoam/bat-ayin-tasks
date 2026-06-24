@@ -1443,6 +1443,27 @@
       const date = new Date(`${value}T12:00:00`);
       return Number.isNaN(date.getTime()) ? null : date;
     }
+    function toIsoDateOnly(value) {
+      if (!value || typeof value !== "string") return null;
+      const dateOnly = value.slice(0, 10);
+      return /^\d{4}-\d{2}-\d{2}$/.test(dateOnly) ? dateOnly : null;
+    }
+    function daysFromTodayIso(value) {
+      const dueOnly = toIsoDateOnly(value);
+      if (!dueOnly) return null;
+      const due = dateFromIso(dueOnly);
+      if (!due) return null;
+      due.setHours(0, 0, 0, 0);
+      return Math.floor((due - startOfToday()) / 86400000);
+    }
+    function getDateBucketFromIso(dueDate, status) {
+      if (status === "done") return "done";
+      const dueOnly = toIsoDateOnly(dueDate);
+      if (!dueOnly) return "none";
+      if (dueOnly === isoDateFromOffset(0)) return "today";
+      if (dueOnly === isoDateFromOffset(1)) return "tomorrow";
+      return "date";
+    }
     function daysBetween(start, end = startOfToday()) {
       const startDate = dateFromIso(start);
       if (!startDate) return 0;
@@ -1612,18 +1633,10 @@
       "No Supabase auth session. Sign in first or provide a temporary debug login method outside committed code.";
 
     function toDateOnly(value) {
-      if (!value) return null;
-      return typeof value === "string" ? value.slice(0, 10) : null;
+      return toIsoDateOnly(value);
     }
     function deriveTaskDue(status, dueDate) {
-      if (status === "done") return "done";
-      if (!dueDate) return "none";
-      const due = dateFromIso(dueDate);
-      if (!due) return "none";
-      const diff = Math.round((due - startOfToday()) / 86400000);
-      if (diff === 0) return "today";
-      if (diff === 1) return "tomorrow";
-      return "date";
+      return getDateBucketFromIso(dueDate, status);
     }
     function buildCategorySlugById(rows) {
       return new Map((rows || []).map(row => [row.id, row.slug]));
@@ -1926,13 +1939,14 @@
     }
     function isOverdue(task) {
       if (task.status === "done" || !task.due_date) return false;
-      return dateFromIso(task.due_date) < startOfToday();
+      const dueOnly = toIsoDateOnly(task.due_date);
+      return dueOnly ? dueOnly < isoDateFromOffset(0) : false;
     }
     function taskDueLabel(task) {
       if (task.status === "done") return task.dueLabel || "הושלם";
       if (!task.due_date) return "ללא יעד";
       if (isOverdue(task)) return `עבר יעד • ${formatHebrewDate(task.due_date)}`;
-      const diff = Math.round((dateFromIso(task.due_date) - startOfToday()) / 86400000);
+      const diff = daysFromTodayIso(task.due_date);
       if (diff === 0) return `היום · ${formatHebrewDate(task.due_date).split(" · ")[0]}`;
       if (diff === 1) return `מחר · ${formatHebrewDate(task.due_date).split(" · ")[0]}`;
       return formatHebrewDate(task.due_date);
@@ -1941,7 +1955,7 @@
       if (task.status === "done") return 5;
       if (isOverdue(task)) return 0;
       if (!task.due_date) return 4;
-      const diff = Math.round((dateFromIso(task.due_date) - startOfToday()) / 86400000);
+      const diff = daysFromTodayIso(task.due_date);
       if (diff === 0) return 1;
       if (diff === 1) return 2;
       return 3;
