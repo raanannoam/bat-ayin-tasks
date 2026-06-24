@@ -3,7 +3,7 @@
 עדכון נכון לקומיט:
 
 ```text
-ea4ddc4 Add initial Supabase schema
+28a5a9c Clean temporary Playwright validation artifacts
 ```
 
 נתיב פרויקט:
@@ -21,10 +21,28 @@ Git: אין remote מוגדר כרגע (אין `origin`).
 מצב הפיתוח הנוכחי:
 
 - האפליקציה עובדת כ־mockup/אפליקציה סטטית מתוך `outputs/index.html`.
-- ה־backend הפעיל הוא localStorage.
+- ה־backend הפעיל הוא localStorage (`DATA_BACKEND = "local"`).
 - קיימת שכבת adapters למשימות ולספקים.
-- קיימת הכנה ראשונית ל־Supabase, כולל schema SQL ראשוני, אך אין עדיין מעבר נתונים או auth.
+- קיימת תשתית Supabase מלאה ב־DB (schema `bat_ayin` על פרויקט Yo-man) וקריאת debug מהאפליקציה — **ללא** מעבר production וללא כתיבה.
 - קיימת תשתית PWA בסיסית עם manifest, service worker ואייקונים.
+
+## מצב נוכחי (לפני מעבר Supabase)
+
+נקודות אימות עדכניות:
+
+- **Yo-man נשאר תקין ולא נפגע** — טבלאות `public` (clients, expenses, settings, work_entries) ללא שינוי.
+- **Schema `bat_ayin` קיים ומאומת** — ארגון, קטגוריות ו־9 טבלאות; namespace נפרד מ־Yo-man.
+- **RLS מאומת** — policies פעילות; בדיקות SQL עם `authenticated` role.
+- **Auth test user מאומת** — `tzvi-test@example.com` (manager) עם profile ב־`public.profiles` ו־membership ב־`bat_ayin.organization_members`.
+- **REST API ל־`bat_ayin` מאומת** — organizations/categories נגישים עם JWT תקף.
+- **Supabase client נוסף ל־`outputs/index.html`** — URL ו־anon key אמיתיים לפרויקט Yo-man.
+- **`testSupabaseConnection()` עובד** — בדיקת חיבור ל־`bat_ayin.tasks` (select limit 1).
+- **`supabaseTasksReadAdapter` קיים לקריאה בלבד** — טוען tasks + task_updates, ממפה ל־app object.
+- **`testLoadSupabaseTasks()` עובד עם session** — מחזיר `{ ok: true, count, tasks, source: "supabase" }`; בלי session מחזיר `{ ok: false, reason: "No Supabase auth session..." }`.
+- **`DATA_BACKEND` עדיין `"local"`** — UI ו־`state.tasks` נשארים על localStorage.
+- **אין כתיבה ל־Supabase** — אין insert/update/delete מהאפליקציה.
+- **אין migration** — נתוני localStorage לא הועברו ל־DB.
+- **אין שינוי בהתנהגות המשתמשים** — כל הפעולות ב־UI עוברות דרך local adapters כרגיל.
 
 ## מודול משימות
 
@@ -112,18 +130,19 @@ const DATA_BACKEND = "local";
 רכיבים קיימים:
 
 - `repositoryAdapters`
-- `repositoryAdapters.local`
-- `taskAdapter`
-- `supplierAdapter`
-- `localTasksAdapter`
-- `localSuppliersAdapter`
+- `repositoryAdapters.local` — production path
+- `repositoryAdapters.supabaseRead` — debug read-only (לא מחובר ל־`DATA_BACKEND`)
+- `taskAdapter` / `supplierAdapter` — נבחרים לפי `DATA_BACKEND`
+- `localTasksAdapter` / `localSuppliersAdapter`
+- `supabaseTasksReadAdapter` — `loadTasks()` async בלבד
+- `testLoadSupabaseTasks()` — debug בקונסול (`window.testLoadSupabaseTasks`)
 
 זרימת הנתונים הנוכחית:
 
-- משימות נטענות ונשמרות דרך `taskAdapter`.
-- ספקים נטענים ונשמרים דרך `supplierAdapter`.
-- `DATA_BACKEND` בוחר את adapter הפעיל מתוך `repositoryAdapters`.
-- כרגע רק backend מסוג `local` פעיל.
+- משימות נטענות ונשמרות דרך `taskAdapter` (local).
+- ספקים נטענים ונשמרים דרך `supplierAdapter` (local).
+- `DATA_BACKEND` בוחר adapter פעיל מתוך `repositoryAdapters`.
+- Supabase read path נפרד: `testLoadSupabaseTasks()` → `supabaseTasksReadAdapter` — **לא** מעדכן `state.tasks`.
 
 הערה חשובה:
 
@@ -132,37 +151,43 @@ const DATA_BACKEND = "local";
 
 ## מצב Supabase
 
-מה כבר הוכן:
+### מה כבר הוכן ואומת
 
-- תיקיית `supabase` קיימת.
-- קיימים הקבצים:
-  - `supabase/schema.sql`
-  - `supabase/rls.sql`
-  - `supabase/seed.sql`
-  - `supabase/smoke-test.sql`
-  - `supabase/README.md`
-- קיימת תשתית RLS ו־smoke test SQL לפי `supabase/README.md`.
-- קיים schema ראשוני (קומיט `ea4ddc4`).
-- נוספו placeholders:
-  - `SUPABASE_URL`
-  - `SUPABASE_ANON_KEY`
-- נוספה יצירת client בטוחה:
-  - אם הספרייה לא זמינה, האפליקציה לא קורסת.
-  - אם הערכים חסרים או placeholders, האפליקציה לא קורסת.
-- נוספה `testSupabaseConnection()`.
-- שגיאות Supabase נתפסות ונרשמות כ־`console.warn`.
+- תיקיית `supabase` עם:
+  - `schema.sql` — schema `bat_ayin` + `public.profiles`
+  - `rls.sql` — RLS policies
+  - `seed.sql` — ארגון + 6 קטגוריות
+  - `smoke-test.sql`
+  - `README.md`
+  - `mapping-plan.md` — תכנון מיפוי app ↔ DB
+- Schema deployed על פרoיקט **Yo-man** (`jxjxjvxbxpgvlarzbohm.supabase.co`).
+- `bat_ayin` ב־Exposed schemas ב־Dashboard.
+- Supabase client ב־`outputs/index.html` (URL + anon key אמיתיים).
+- `testSupabaseConnection()` — בדיקת חיבור.
+- `supabaseTasksReadAdapter` + `testLoadSupabaseTasks()` — קריאת משימות debug (דורש Auth session).
+- `.gitignore` — `node_modules/` (ניקוי artifacts מבדיקות Playwright).
 
-מה עדיין לא בוצע:
+### מה עדיין לא בוצע
 
-- לא הוחלף ה־backend.
-- לא הועברו משימות ל־Supabase.
+- לא הוחלף `DATA_BACKEND` ל־`"supabase"`.
+- לא הועברו משימות מ־localStorage ל־DB (migration).
 - לא הועברו ספקים ל־Supabase.
-- אין read-only mode מול Supabase.
-- אין write support מול Supabase.
-- אין Google Login.
-- אין Storage.
-- אין קבצים מצורפים אמיתיים.
+- אין Supabase write adapter.
+- אין async bootstrap ל־`state.tasks`.
+- אין Google Login / UI auth.
+- אין Storage / קבצים מצורפים.
 - אין push notifications.
+
+## Next recommended phase
+
+**לא לעבור עדיין ל־`DATA_BACKEND = "supabase"`.**
+
+סדר מומלץ:
+
+1. **יצירת משימות בדיקה ב־DB** — insert ידני/SQL ל־`bat_ayin.tasks` + `task_updates` (עם test user כ־assignee).
+2. **בדיקת קריאה אמיתית** — התחברות Auth מחוץ לקוד committed; `await testLoadSupabaseTasks()` עם `count > 0` ומיפוי נכון.
+3. **תכנון async bootstrap** — איך לטעון מ־Supabase בלי לשבור init sync של localStorage.
+4. **רק אחר כך** — Supabase write adapter, migration, והחלפת `DATA_BACKEND`.
 
 ## תגיות וקומיטים חשובים
 
@@ -171,56 +196,40 @@ const DATA_BACKEND = "local";
 - `stable-before-supabase`
 - `stable-local-adapters`
 - `stable-supabase-client-prepared`
+- `stable-bat-ayin-schema-namespace`
+- `stable-supabase-mapping`
+- `stable-docs-after-move`
 
-קומיטים חשובים:
+קומיטים אחרונים (Supabase):
 
-- `ea4ddc4 Add initial Supabase schema`
-- `2041384 Add project documentation for future agents`
-- `b41699d Prepare Supabase client configuration`
-- `c73f0fe Centralize local data backend configuration`
-- `9e83304 Add local supplier data adapter`
-- `72abb51 Add local task data adapter`
-- `23209c3 Add task lifecycle safeguards and archival`
-- `112a922 Add basic PWA install support`
-- `c576e63 Add supplier purchasing workflow and management counts`
-- `354c7b9 Add Supabase smoke test SQL`
+- `28a5a9c` — Clean temporary Playwright validation artifacts
+- `8fc0ea2` — Add read-only Supabase tasks adapter for debug validation
+- `f5b6f56` — Wire Supabase client and bat_ayin connection test
+- `6213588` — Move Bat Ayin schema to dedicated namespace
+
+קומיטים חשובים (היסטוריה):
+
+- `ea4ddc4` — Add initial Supabase schema
+- `2041384` — Add project documentation for future agents
+- `b41699d` — Prepare Supabase client configuration
+- `c73f0fe` — Centralize local data backend configuration
+- `9e83304` — Add local supplier data adapter
+- `72abb51` — Add local task data adapter
+- `23209c3` — Add task lifecycle safeguards and archival
+- `112a922` — Add basic PWA install support
+- `c576e63` — Add supplier purchasing workflow and management counts
+- `354c7b9` — Add Supabase smoke test SQL
 
 ## TODO / Roadmap
 
-סדר עדיפות:
+סדר עדיפות מעודכן:
 
-1. Supabase preparation
-2. Supabase read-only
-3. Supabase write support
-4. Google Login
-5. File attachments
-6. Push notifications
-
-פירוט:
-
-1. Supabase preparation
-   - schema SQL ראשוני כבר קיים (`ea4ddc4`).
-   - להשלים קונפיג אמיתי במקום placeholders כאשר תהיה סביבה מוכנה.
-   - להמשיך לשמור על `DATA_BACKEND = "local"` עד החלטה מפורשת.
-
-2. Supabase read-only
-   - להוסיף adapter קריאה בלבד.
-   - לבדוק טעינת נתונים מול Supabase בלי כתיבה.
-   - לא לשבור את localStorage fallback.
-
-3. Supabase write support
-   - להוסיף כתיבה הדרגתית דרך adapters.
-   - לשמור על טיפול שגיאות ב־try/catch.
-   - להחליט על אסטרטגיית migration וסנכרון.
-
-4. Google Login
-   - לחבר auth רק לאחר שה־data layer מוכן.
-   - להתאים הרשאות משתמש רגיל ומנהל ל־Supabase RLS.
-
-5. File attachments
-   - לחבר Supabase Storage או פתרון קבצים אחר.
-   - להחליף את שדה תיאור המסמך הזמני במודל קבצים אמיתי.
-
-6. Push notifications
-   - להרחיב את תשתית ה־PWA.
-   - להגדיר הרשאות, subscription ושרת התראות מתאים.
+1. ~~Supabase preparation~~ — **הושלם** (schema, RLS, seed, client, connection test)
+2. ~~Supabase read-only (debug)~~ — **הושלם חלקית** (`supabaseTasksReadAdapter`, `testLoadSupabaseTasks`)
+3. **Test data + read validation** — משימות בדיקה ב־DB, אימות מיפוי מלא
+4. **Async bootstrap design** — לפני החלפת backend
+5. Supabase write support
+6. Migration מ־localStorage
+7. Google Login
+8. File attachments
+9. Push notifications
