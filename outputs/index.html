@@ -1535,9 +1535,27 @@
     ];
 
     const dataVersion = "mockup-v3";
+    const params = new URLSearchParams(location.search);
+    const DEBUG_BACKEND_STORAGE_KEY = "beit-debug-backend";
+    try {
+      if (params.get("debugBackend") === "supabase") {
+        sessionStorage.setItem(DEBUG_BACKEND_STORAGE_KEY, "supabase");
+      }
+    } catch {}
+    function isDebugSupabaseBackendEnabled() {
+      if (params.get("debugBackend") === "supabase") return true;
+      try {
+        return sessionStorage.getItem(DEBUG_BACKEND_STORAGE_KEY) === "supabase";
+      } catch {
+        return false;
+      }
+    }
     const SUPABASE_URL = "https://jxjxjvxbxpgvlarzbohm.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4anhqdnhieHBndmxhcnpib2htIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5NTgyNjUsImV4cCI6MjA5NTUzNDI2NX0.g1W8SJWTRc3FYeZJIVdLBTKcSfHVgfQQZ_brjRKest4";
-    const DATA_BACKEND = "local";
+    const DATA_BACKEND = isDebugSupabaseBackendEnabled() ? "supabase" : "local";
+    if (DATA_BACKEND === "supabase") {
+      console.warn("[debug] DATA_BACKEND=supabase — tasks via Supabase; suppliers stay local.");
+    }
     const repositoryAdapters = {};
 
     function isSupabasePlaceholder(value) {
@@ -1553,7 +1571,14 @@
           console.warn("Supabase client library is not available.");
           return null;
         }
-        return window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        return window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+          auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: false,
+            flowType: "pkce"
+          }
+        });
       } catch (error) {
         console.warn("Supabase client initialization failed.", error);
         return null;
@@ -1578,7 +1603,208 @@
     }
     window.testSupabaseConnection = testSupabaseConnection;
 
-    const params = new URLSearchParams(location.search);
+    const authDebugLogsFirst10 = [];
+    function debugAuthTrace(step, detail) {
+      if (authDebugLogsFirst10.length < 10) {
+        authDebugLogsFirst10.push({ step, detail });
+      }
+      console.warn(`[debug][auth][${step}]`, detail);
+      return detail;
+    }
+    function persistDebugBackendForOAuth() {
+      try {
+        if (isDebugSupabaseBackendEnabled()) {
+          sessionStorage.setItem(DEBUG_BACKEND_STORAGE_KEY, "supabase");
+        }
+      } catch {}
+    }
+    function restoreDebugBackendQuery(query) {
+      try {
+        if (sessionStorage.getItem(DEBUG_BACKEND_STORAGE_KEY) === "supabase") {
+          query.set("debugBackend", "supabase");
+        }
+      } catch {}
+      return query;
+    }
+    function getDebugSupabaseRedirectUrl() {
+      persistDebugBackendForOAuth();
+      return `${window.location.origin}${window.location.pathname}`;
+    }
+    function isSupabaseOAuthCallbackUrl() {
+      const query = new URLSearchParams(window.location.search);
+      if (query.get("code")) return true;
+      const hash = window.location.hash.replace(/^#/, "");
+      return hash.includes("access_token=") || hash.includes("error=") || hash.includes("error_description=");
+    }
+    function readSupabaseAuthCallbackUrl() {
+      const query = new URLSearchParams(window.location.search);
+      const hash = window.location.hash.replace(/^#/, "");
+      return {
+        href: window.location.href,
+        code: query.get("code"),
+        state: query.get("state"),
+        hash,
+        isCallback: isSupabaseOAuthCallbackUrl()
+      };
+    }
+    async function consumeSupabaseOAuthCallback() {
+      const liveTrace = {
+        href: location.href,
+        search: location.search,
+        hash: location.hash,
+        code: new URLSearchParams(location.search).get("code"),
+        hrefBeforeConsume: window.location.href
+      };
+      console.warn("[debug][auth][live-trace]", liveTrace);
+      window.__cp32LiveTrace = liveTrace;
+      window.__authDebugLogsFirst10 = authDebugLogsFirst10;
+      const callbackUrl = readSupabaseAuthCallbackUrl();
+      debugAuthTrace("3-callback-url", callbackUrl);
+      if (!supabaseClient || !callbackUrl.isCallback) {
+        return debugAuthTrace("3-consume-skip", { ok: true, consumed: false, reason: "no oauth callback in url" });
+      }
+      try {
+        const query = new URLSearchParams(window.location.search);
+        const code = query.get("code");
+        if (code) {
+          debugAuthTrace("4-exchange-start", { method: "pkce", codeLength: code.length });
+          const { data, error } = await supabaseClient.auth.exchangeCodeForSession(code);
+          debugAuthTrace("4-exchange-result", {
+            error: error?.message || null,
+            userId: data?.session?.user?.id || null,
+            email: data?.session?.user?.email || null
+          });
+          if (error) throw error;
+          if (!data?.session) {
+            throw new Error("exchangeCodeForSession succeeded but session is null.");
+          }
+          query.delete("code");
+          query.delete("state");
+          restoreDebugBackendQuery(query);
+          const search = query.toString();
+          window.history.replaceState({}, document.title, `${window.location.pathname}${search ? `?${search}` : ""}`);
+          return debugAuthTrace("3-consume-done", { ok: true, consumed: true, method: "pkce", userId: data.session.user.id });
+        }
+        debugAuthTrace("4-exchange-start", { method: "hash", hash: callbackUrl.hash.slice(0, 80) });
+        const { data, error } = await supabaseClient.auth.getSession();
+        debugAuthTrace("4-getSession-result", {
+          error: error?.message || null,
+          userId: data?.session?.user?.id || null,
+          email: data?.session?.user?.email || null
+        });
+        if (error) throw error;
+        if (!data?.session) {
+          throw new Error("OAuth hash callback present but getSession returned null.");
+        }
+        const hashQuery = new URLSearchParams(window.location.search);
+        restoreDebugBackendQuery(hashQuery);
+        const hashSearch = hashQuery.toString();
+        window.history.replaceState({}, document.title, `${window.location.pathname}${hashSearch ? `?${hashSearch}` : ""}`);
+        return debugAuthTrace("3-consume-done", { ok: true, consumed: true, method: "hash", userId: data.session.user.id });
+      } catch (error) {
+        debugAuthTrace("5-session-null", {
+          at: "consumeSupabaseOAuthCallback",
+          reason: error?.message || String(error)
+        });
+        console.warn("[debug] Supabase OAuth callback failed.", error);
+        return { ok: false, consumed: true, reason: error?.message || String(error), error };
+      }
+    }
+    async function bootstrapSupabaseAuthSession() {
+      if (!supabaseClient) {
+        return { ok: false, reason: "Supabase is not configured.", session: null, restored: false };
+      }
+      try {
+        const { data, error } = await supabaseClient.auth.getSession();
+        if (error) {
+          console.warn("[debug] Supabase session bootstrap failed.", error);
+          return { ok: false, reason: error.message || "Session bootstrap failed.", session: null, restored: false, error };
+        }
+        const session = data.session || null;
+        debugAuthTrace("4-bootstrap-getSession", {
+          userId: session?.user?.id || null,
+          email: session?.user?.email || null,
+          restored: Boolean(session)
+        });
+        if (!session) {
+          debugAuthTrace("5-session-null", { at: "bootstrapSupabaseAuthSession", reason: "getSession returned null" });
+        }
+        if (session) {
+          console.warn("[debug] Supabase session restored:", session.user?.email || session.user?.id);
+        }
+        return {
+          ok: true,
+          session,
+          user: session?.user || null,
+          restored: Boolean(session)
+        };
+      } catch (error) {
+        console.warn("[debug] Supabase session bootstrap failed.", error);
+        return { ok: false, reason: error?.message || String(error), session: null, restored: false, error };
+      }
+    }
+    async function getDebugSupabaseSession() {
+      return bootstrapSupabaseAuthSession();
+    }
+    async function debugSupabaseSignInWithGoogle() {
+      if (!supabaseClient) {
+        return { ok: false, reason: "Supabase is not configured." };
+      }
+      try {
+        const redirectTo = getDebugSupabaseRedirectUrl();
+        debugAuthTrace("1-signInWithOAuth", { provider: "google", redirectTo });
+        const { data, error } = await supabaseClient.auth.signInWithOAuth({
+          provider: "google",
+          options: { redirectTo }
+        });
+        debugAuthTrace("1-signInWithOAuth-result", {
+          error: error?.message || null,
+          url: data?.url || null
+        });
+        if (error) {
+          console.warn("[debug] Google sign-in failed.", error);
+          return { ok: false, reason: error.message || String(error), error };
+        }
+        console.warn("[debug] Google sign-in started.", redirectTo);
+        return { ok: true, redirectTo, url: data?.url || null };
+      } catch (error) {
+        console.warn("[debug] Google sign-in failed.", error);
+        return { ok: false, reason: error?.message || String(error), error };
+      }
+    }
+    async function debugSupabaseSignOut() {
+      if (!supabaseClient) {
+        return { ok: false, reason: "Supabase is not configured." };
+      }
+      try {
+        const { error } = await supabaseClient.auth.signOut();
+        if (error) {
+          console.warn("[debug] Supabase sign-out failed.", error);
+          return { ok: false, reason: error.message || String(error), error };
+        }
+        console.warn("[debug] Supabase signed out.");
+        return { ok: true };
+      } catch (error) {
+        console.warn("[debug] Supabase sign-out failed.", error);
+        return { ok: false, reason: error?.message || String(error), error };
+      }
+    }
+    window.bootstrapSupabaseAuthSession = bootstrapSupabaseAuthSession;
+    window.getDebugSupabaseSession = getDebugSupabaseSession;
+    window.debugSupabaseSignInWithGoogle = debugSupabaseSignInWithGoogle;
+    window.debugSupabaseSignOut = debugSupabaseSignOut;
+    window.consumeSupabaseOAuthCallback = consumeSupabaseOAuthCallback;
+    window.traceSupabaseAuthFlow = async function traceSupabaseAuthFlow() {
+      const steps = [];
+      steps.push({ step: 1, name: "callback-url", result: readSupabaseAuthCallbackUrl() });
+      const consumeResult = await consumeSupabaseOAuthCallback();
+      steps.push({ step: 3, name: "consume", result: consumeResult });
+      const sessionResult = await getDebugSupabaseSession();
+      steps.push({ step: 4, name: "getDebugSupabaseSession", result: sessionResult });
+      console.warn("[debug][auth] traceSupabaseAuthFlow", steps);
+      return { steps, sessionResult };
+    };
+
     const handoffRole = (() => {
       try {
         const role = sessionStorage.getItem("beit-mockup-role");
@@ -1631,7 +1857,7 @@
 
     const DEFAULT_ORGANIZATION_ID = "00000000-0000-0000-0000-000000000001";
     const NO_SUPABASE_AUTH_SESSION_REASON =
-      "No Supabase auth session. Sign in first or provide a temporary debug login method outside committed code.";
+      "No Supabase auth session. Run await debugSupabaseSignInWithGoogle() first.";
 
     function toDateOnly(value) {
       return toIsoDateOnly(value);
@@ -2267,9 +2493,130 @@
       return tasksRepository.loadTasks();
     }
     async function bootstrapTasks() {
-      state.tasks = await tasksRepository.loadTasks();
+      try {
+        state.tasks = await tasksRepository.loadTasks();
+      } catch (error) {
+        console.warn("Task bootstrap failed.", error);
+        state.tasks = [];
+      }
       render();
     }
+    async function testSupabaseTaskCrudViaRepository() {
+      const steps = {
+        load: false,
+        create: false,
+        update: false,
+        complete: false,
+        reopen: false,
+        delete: false
+      };
+      const blockers = [];
+      if (DATA_BACKEND !== "supabase") {
+        blockers.push("Add ?debugBackend=supabase to activate Supabase task backend.");
+      }
+      if (!supabaseClient) {
+        blockers.push("Supabase is not configured.");
+      }
+      try {
+        if (supabaseClient) {
+          const { data: authData, error: authError } = await supabaseClient.auth.getSession();
+          if (authError) blockers.push(authError.message || "Auth check failed.");
+          if (!authData?.session) blockers.push(NO_SUPABASE_AUTH_SESSION_REASON);
+        }
+        if (blockers.length) {
+          const failed = Object.keys(steps);
+          console.warn("[debug] testSupabaseTaskCrudViaRepository blockers:", blockers);
+          return { ok: false, backend: DATA_BACKEND, steps, passed: [], failed, blockers };
+        }
+        let tasks = await tasksRepository.loadTasks();
+        steps.load = Array.isArray(tasks);
+        const sampleTask = {
+          title: `[DEBUG] CRUD ${Date.now()}`,
+          owner: "צבי",
+          category: "office",
+          priority: "normal",
+          status: "progress",
+          notes: "",
+          due_date: null,
+          dueLabel: null,
+          due: "none",
+          reminder: { enabled: false },
+          updates: []
+        };
+        tasks = await tasksRepository.createTask(tasks, sampleTask);
+        const created = tasks.find(task => task.title === sampleTask.title);
+        steps.create = Boolean(created?.id);
+        if (!created?.id) {
+          throw new Error("Create step did not return a task id.");
+        }
+        const taskId = created.id;
+        tasks = await tasksRepository.updateTask(tasks, taskId, { notes: "cp29-update" });
+        steps.update = tasks.find(task => task.id === taskId)?.notes === "cp29-update";
+        tasks = await tasksRepository.completeTask(tasks, taskId);
+        steps.complete = tasks.find(task => task.id === taskId)?.status === "done";
+        tasks = await tasksRepository.reopenTask(tasks, taskId);
+        steps.reopen = tasks.find(task => task.id === taskId)?.status === "progress";
+        tasks = await tasksRepository.deleteTaskSoft(tasks, taskId, "צבי");
+        steps.delete = Boolean(tasks.find(task => task.id === taskId)?.deleted_at);
+        const passed = Object.entries(steps).filter(([, ok]) => ok).map(([name]) => name);
+        const failed = Object.entries(steps).filter(([, ok]) => !ok).map(([name]) => name);
+        console.warn("[debug] testSupabaseTaskCrudViaRepository steps:", steps);
+        return { ok: failed.length === 0, backend: DATA_BACKEND, steps, passed, failed, blockers };
+      } catch (error) {
+        console.warn("[debug] testSupabaseTaskCrudViaRepository failed.", error);
+        const passed = Object.entries(steps).filter(([, ok]) => ok).map(([name]) => name);
+        const failed = Object.entries(steps).filter(([, ok]) => !ok).map(([name]) => name);
+        return {
+          ok: false,
+          backend: DATA_BACKEND,
+          steps,
+          passed,
+          failed,
+          blockers,
+          reason: error?.message || String(error),
+          error
+        };
+      }
+    }
+    window.testSupabaseTaskCrudViaRepository = testSupabaseTaskCrudViaRepository;
+    async function testSupabaseDebugAuth() {
+      const validation = {
+        login: false,
+        logout: false,
+        sessionRestored: false,
+        repositoryCrudCallable: false
+      };
+      const blockers = [];
+      if (!supabaseClient) blockers.push("Supabase is not configured.");
+      validation.login = typeof debugSupabaseSignInWithGoogle === "function" && Boolean(supabaseClient);
+      validation.logout = typeof supabaseClient?.auth?.signOut === "function";
+      try {
+        const sessionResult = await getDebugSupabaseSession();
+        validation.sessionRestored = Boolean(sessionResult.session);
+        if (!sessionResult.session) {
+          blockers.push(NO_SUPABASE_AUTH_SESSION_REASON);
+        } else if (DATA_BACKEND !== "supabase") {
+          blockers.push("Add ?debugBackend=supabase to test repository CRUD against Supabase.");
+        } else {
+          await tasksRepository.loadTasks();
+          validation.repositoryCrudCallable = true;
+        }
+        console.warn("[debug] testSupabaseDebugAuth validation:", validation);
+        return {
+          ok: validation.login && validation.logout && validation.sessionRestored && validation.repositoryCrudCallable,
+          validation,
+          blockers,
+          session: sessionResult.session
+            ? { id: sessionResult.session.user?.id, email: sessionResult.session.user?.email }
+            : null
+        };
+      } catch (error) {
+        console.warn("[debug] testSupabaseDebugAuth failed.", error);
+        blockers.push(error?.message || String(error));
+        return { ok: false, validation, blockers, reason: error?.message || String(error), error };
+      }
+    }
+    window.testSupabaseDebugAuth = testSupabaseDebugAuth;
     const state = {
       role: initialRole,
       view: location.hash.replace("#", "") || (initialRole === "manager" ? "management" : "all"),
@@ -2360,7 +2707,7 @@
       }
     };
     repositoryAdapters.local.supplierAdapter = localSuppliersAdapter;
-    const supplierAdapter = repositoryAdapters[DATA_BACKEND].supplierAdapter;
+    const supplierAdapter = localSuppliersAdapter;
     function loadSuppliers() {
       return supplierAdapter.loadSuppliers();
     }
@@ -3739,9 +4086,39 @@
       render();
       resetScroll();
     });
-    if (!location.hash) location.hash = defaultRoute();
-    bootstrapTasks();
-
+    let debugAuthListenerReady = false;
+    function registerDebugSupabaseAuthListener() {
+      if (!supabaseClient || debugAuthListenerReady) return;
+      debugAuthListenerReady = true;
+      supabaseClient.auth.onAuthStateChange((event, session) => {
+        console.warn("[debug] Supabase auth event:", event, session?.user?.email || "none");
+        if (DATA_BACKEND !== "supabase") return;
+        if (event === "SIGNED_IN" && session) bootstrapTasks();
+        if (event === "SIGNED_OUT") {
+          state.tasks = [];
+          render();
+        }
+      });
+    }
+    async function initRuntime() {
+      debugAuthTrace("2-initRuntime-start", readSupabaseAuthCallbackUrl());
+      const consumeResult = await consumeSupabaseOAuthCallback();
+      if (!location.hash || isSupabaseOAuthCallbackUrl()) {
+        location.hash = defaultRoute();
+      }
+      state.view = location.hash.replace("#", "") || defaultRoute();
+      const sessionResult = await bootstrapSupabaseAuthSession();
+      if (consumeResult.consumed && !sessionResult.session) {
+        debugAuthTrace("5-session-null", {
+          at: "initRuntime-after-consume",
+          consumeResult,
+          sessionResult
+        });
+      }
+      registerDebugSupabaseAuthListener();
+      await bootstrapTasks();
+    }
+    initRuntime().finally(() => registerServiceWorker());
     function registerServiceWorker() {
       if (!("serviceWorker" in navigator)) return;
       let refreshing = false;
@@ -3768,7 +4145,6 @@
         });
       }).catch(() => {});
     }
-    registerServiceWorker();
   </script>
 </body>
 </html>
