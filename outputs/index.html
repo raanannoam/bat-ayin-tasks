@@ -2241,30 +2241,34 @@
     repositoryAdapters.supabaseWrite = { taskAdapter: supabaseTasksAdapter };
     const taskAdapter = repositoryAdapters[DATA_BACKEND].taskAdapter;
     const tasksRepository = {
-      createTask(tasks, task) {
-        return taskAdapter.createTask(tasks, task);
+      async createTask(tasks, task) {
+        return Promise.resolve(taskAdapter.createTask(tasks, task));
       },
-      updateTask(tasks, id, patch) {
-        return taskAdapter.updateTask(tasks, id, patch);
+      async updateTask(tasks, id, patch) {
+        return Promise.resolve(taskAdapter.updateTask(tasks, id, patch));
       },
-      completeTask(tasks, id) {
-        return taskAdapter.completeTask(tasks, id);
+      async completeTask(tasks, id) {
+        return Promise.resolve(taskAdapter.completeTask(tasks, id));
       },
-      reopenTask(tasks, id) {
-        return taskAdapter.reopenTask(tasks, id);
+      async reopenTask(tasks, id) {
+        return Promise.resolve(taskAdapter.reopenTask(tasks, id));
       },
-      deleteTaskSoft(tasks, id, deletedBy) {
-        return taskAdapter.deleteTaskSoft(tasks, id, deletedBy);
+      async deleteTaskSoft(tasks, id, deletedBy) {
+        return Promise.resolve(taskAdapter.deleteTaskSoft(tasks, id, deletedBy));
       },
-      saveTasks(tasks) {
-        return taskAdapter.saveTasks(tasks);
+      async saveTasks(tasks) {
+        return Promise.resolve(taskAdapter.saveTasks(tasks));
       },
-      loadTasks() {
-        return taskAdapter.loadTasks();
+      async loadTasks() {
+        return Promise.resolve(taskAdapter.loadTasks());
       }
     };
-    function loadTasks() {
+    async function loadTasks() {
       return tasksRepository.loadTasks();
+    }
+    async function bootstrapTasks() {
+      state.tasks = await tasksRepository.loadTasks();
+      render();
     }
     const state = {
       role: initialRole,
@@ -2285,7 +2289,7 @@
       allSort: "date",
       draftDate: "",
       supplierPrefill: "",
-      tasks: loadTasks(),
+      tasks: [],
       suppliers: [],
       prefs: safeObjectStorage("beit-prefs", { dark: false, text: "רגיל" })
     };
@@ -2367,8 +2371,8 @@
     const $ = (id) => document.getElementById(id);
     const app = $("app");
 
-    function save() {
-      tasksRepository.saveTasks(state.tasks);
+    async function save() {
+      state.tasks = await tasksRepository.saveTasks(state.tasks);
       supplierAdapter.saveSuppliers(state.suppliers);
       localStorage.setItem("beit-prefs", JSON.stringify(state.prefs));
     }
@@ -2572,11 +2576,11 @@
       render();
       resetScroll();
     }
-    function createTask(task) {
-      state.tasks = tasksRepository.createTask(state.tasks, task);
+    async function createTask(task) {
+      state.tasks = await tasksRepository.createTask(state.tasks, task);
       return task;
     }
-    function updateTask(id, patch) {
+    async function updateTask(id, patch) {
       const task = getTask(id);
       if (!canAccessTask(task)) {
         navigate("all");
@@ -2590,32 +2594,32 @@
           return false;
         }
       }
-      state.tasks = tasksRepository.updateTask(state.tasks, id, patch);
+      state.tasks = await tasksRepository.updateTask(state.tasks, id, patch);
       render();
       return true;
     }
-    function deleteTaskSoft(id) {
+    async function deleteTaskSoft(id) {
       const task = getTask(id);
       if (!canDeleteTask(task)) {
         toast("רק מנהל יכול למחוק משימה");
         return false;
       }
-      state.tasks = tasksRepository.deleteTaskSoft(state.tasks, id, personalOwner());
+      state.tasks = await tasksRepository.deleteTaskSoft(state.tasks, id, personalOwner());
       render();
       return true;
     }
-    function completeTask(id) {
+    async function completeTask(id) {
       const task = getTask(id);
       if (!canAccessTask(task)) {
         navigate("all");
         toast("אין הרשאה למשימה זו");
         return false;
       }
-      state.tasks = tasksRepository.completeTask(state.tasks, id);
+      state.tasks = await tasksRepository.completeTask(state.tasks, id);
       render();
       return true;
     }
-    function reopenTask(id) {
+    async function reopenTask(id) {
       const task = getTask(id);
       if (!canAccessTask(task)) {
         navigate("all");
@@ -2626,7 +2630,7 @@
         toast("רק מנהל יכול להחזיר משימה לתהליך");
         return false;
       }
-      state.tasks = tasksRepository.reopenTask(state.tasks, id);
+      state.tasks = await tasksRepository.reopenTask(state.tasks, id);
       render();
       return true;
     }
@@ -3331,7 +3335,7 @@
         toast("הזמנת הספק נוצרה");
         navigate(`supplier:${item.id}`);
       });
-      document.querySelectorAll("[data-status]").forEach(el => el.addEventListener("click", e => {
+      document.querySelectorAll("[data-status]").forEach(el => el.addEventListener("click", async (e) => {
         e.stopPropagation();
         const [id, status] = e.currentTarget.dataset.status.split(":");
         const task = getTask(id);
@@ -3345,7 +3349,11 @@
           toast("רק מנהל יכול להחזיר משימה לתהליך");
           return;
         }
-        const changed = status === "done" ? completeTask(id) : task.status === "done" ? reopenTask(id) : updateTask(id, { status });
+        const changed = status === "done"
+          ? await completeTask(id)
+          : task.status === "done"
+            ? await reopenTask(id)
+            : await updateTask(id, { status });
         if (changed) toast(status === "done" ? "✓ המשימה סומנה כהושלמה" : "הסטטוס עודכן");
       }));
       $("toggleDoneArchive")?.addEventListener("click", () => {
@@ -3353,17 +3361,17 @@
         state.showDoneArchive = !state.showDoneArchive;
         render();
       });
-      $("saveTaskCategory")?.addEventListener("click", () => {
+      $("saveTaskCategory")?.addEventListener("click", async () => {
         const id = state.view.split(":")[1];
         const task = getTask(id);
         if (!canEditTaskContent(task)) {
           toast("משימה שהושלמה נעולה לעריכה");
           return;
         }
-        updateTask(id, { category: $("taskCategorySelect").value });
+        await updateTask(id, { category: $("taskCategorySelect").value });
         toast("הקטגוריה עודכנה");
       });
-      $("deleteTask")?.addEventListener("click", () => {
+      $("deleteTask")?.addEventListener("click", async () => {
         const id = state.view.split(":")[1];
         const task = getTask(id);
         if (!canDeleteTask(task)) {
@@ -3371,12 +3379,12 @@
           return;
         }
         if (!confirm("למחוק את המשימה? המחיקה רכה ותסתיר אותה מהרשימות.")) return;
-        if (deleteTaskSoft(id)) {
+        if (await deleteTaskSoft(id)) {
           toast("המשימה נמחקה");
           navigate(state.lastList || "management");
         }
       });
-      document.querySelectorAll("[data-priority]").forEach(el => el.addEventListener("click", e => {
+      document.querySelectorAll("[data-priority]").forEach(el => el.addEventListener("click", async (e) => {
         e.stopPropagation();
         const [id, priority] = e.currentTarget.dataset.priority.split(":");
         const task = getTask(id);
@@ -3385,10 +3393,10 @@
           toast("משימה שהושלמה נעולה לעריכה");
           return;
         }
-        updateTask(id, { priority });
+        await updateTask(id, { priority });
         toast("הדחיפות עודכנה");
       }));
-      document.querySelectorAll("[data-tomorrow]").forEach(el => el.addEventListener("click", e => {
+      document.querySelectorAll("[data-tomorrow]").forEach(el => el.addEventListener("click", async (e) => {
         const id = e.currentTarget.dataset.tomorrow;
         const task = getTask(id);
         if (!canEditTaskContent(task)) {
@@ -3396,12 +3404,12 @@
           toast("משימה שהושלמה נעולה לעריכה");
           return;
         }
-        updateTask(id, { due: "tomorrow", due_date: isoDateFromOffset(1), dueLabel: "מחר · רביעי", reminder: defaultTaskReminder({ ...task, due_date: isoDateFromOffset(1) }) });
+        await updateTask(id, { due: "tomorrow", due_date: isoDateFromOffset(1), dueLabel: "מחר · רביעי", reminder: defaultTaskReminder({ ...task, due_date: isoDateFromOffset(1) }) });
         toast("היעד עבר למחר");
       }));
       $("editNotes")?.addEventListener("click", () => { state.editingNotes = true; render(); });
       $("cancelNotes")?.addEventListener("click", () => { state.editingNotes = false; render(); });
-      $("saveNotes")?.addEventListener("click", () => {
+      $("saveNotes")?.addEventListener("click", async () => {
         const id = state.view.split(":")[1];
         if (!canEditTaskContent(getTask(id))) {
           navigate("all");
@@ -3409,12 +3417,12 @@
           return;
         }
         state.editingNotes = false;
-        updateTask(id, { notes: $("notesInput").value });
+        await updateTask(id, { notes: $("notesInput").value });
         toast("ההערות נשמרו");
       });
       $("editTitle")?.addEventListener("click", () => { state.editingTitle = true; render(); });
       $("cancelTitle")?.addEventListener("click", () => { state.editingTitle = false; render(); });
-      $("saveTitle")?.addEventListener("click", () => {
+      $("saveTitle")?.addEventListener("click", async () => {
         const id = state.view.split(":")[1];
         if (!canEditTaskContent(getTask(id))) {
           navigate("all");
@@ -3422,11 +3430,11 @@
           return;
         }
         state.editingTitle = false;
-        updateTask(id, { title: $("titleInput").value || "משימה ללא כותרת" });
+        await updateTask(id, { title: $("titleInput").value || "משימה ללא כותרת" });
         toast("שם המשימה נשמר");
       });
       $("pickDate")?.addEventListener("click", () => { $("dateChooser").style.display = "block"; });
-      $("saveDate")?.addEventListener("click", () => {
+      $("saveDate")?.addEventListener("click", async () => {
         const input = $("dateInput").value;
         const id = state.view.split(":")[1];
         if (!canEditTaskContent(getTask(id))) {
@@ -3435,7 +3443,7 @@
           return;
         }
         if (!input) return toast("בחר תאריך");
-        updateTask(id, { due: "date", due_date: input, dueLabel: formatHebrewDate(input), reminder: defaultTaskReminder({ ...getTask(id), due_date: input }) });
+        await updateTask(id, { due: "date", due_date: input, dueLabel: formatHebrewDate(input), reminder: defaultTaskReminder({ ...getTask(id), due_date: input }) });
         toast("התאריך עודכן");
       });
       $("addUpdate")?.addEventListener("click", () => {
@@ -3454,7 +3462,7 @@
         state.addingUpdate = false;
         render();
       });
-      $("saveUpdate")?.addEventListener("click", () => {
+      $("saveUpdate")?.addEventListener("click", async () => {
         const id = state.view.split(":")[1];
         const t = getTask(id);
         if (!canEditTaskContent(t)) {
@@ -3465,7 +3473,7 @@
         const text = $("newUpdateInput").value.trim();
         if (!text) return toast("כתוב עדכון");
         state.addingUpdate = false;
-        updateTask(id, { updates: [...t.updates, { by: state.role === "manager" ? "צבי" : "עדינה", text, created_at: isoDateFromOffset(0), notify_participants: true, notification_status: "pending" }] });
+        await updateTask(id, { updates: [...t.updates, { by: state.role === "manager" ? "צבי" : "עדינה", text, created_at: isoDateFromOffset(0), notify_participants: true, notification_status: "pending" }] });
         toast("נוסף עדכון");
       });
       document.querySelectorAll("[data-edit-update]").forEach(el => el.addEventListener("click", e => {
@@ -3478,7 +3486,7 @@
         state.editingUpdateIndex = null;
         render();
       });
-      $("saveEditedUpdate")?.addEventListener("click", () => {
+      $("saveEditedUpdate")?.addEventListener("click", async () => {
         const id = state.view.split(":")[1];
         const t = getTask(id);
         const index = state.editingUpdateIndex;
@@ -3496,24 +3504,24 @@
         if (!text) return toast("כתוב עדכון");
         const updates = t.updates.map((update, updateIndex) => updateIndex === index ? { ...update, text } : update);
         state.editingUpdateIndex = null;
-        updateTask(id, { updates });
+        await updateTask(id, { updates });
         toast("העדכון נשמר");
       });
-      document.querySelectorAll("[data-theme-choice]").forEach(btn => btn.addEventListener("click", e => {
+      document.querySelectorAll("[data-theme-choice]").forEach(btn => btn.addEventListener("click", async (e) => {
         state.prefs.dark = e.currentTarget.dataset.themeChoice === "dark";
         document.body.dataset.theme = state.prefs.dark ? "dark" : "";
-        save();
+        await save();
         render();
       }));
-      $("clearAllTasks")?.addEventListener("click", () => {
+      $("clearAllTasks")?.addEventListener("click", async () => {
         if (state.clearAllStep < 2) {
           state.clearAllStep += 1;
           render();
           return;
         }
-        state.tasks = tasksRepository.saveTasks([]);
+        state.tasks = await tasksRepository.saveTasks([]);
         state.clearAllStep = 0;
-        save();
+        await save();
         render();
         toast("כל המשימות נמחקו");
       });
@@ -3569,7 +3577,7 @@
         state.categoriesToDelete = [];
         render();
       });
-      $("confirmDeleteCategory")?.addEventListener("click", () => {
+      $("confirmDeleteCategory")?.addEventListener("click", async () => {
         const ids = state.categoriesToDelete;
         if (!ids.length) return;
         const hidden = safeArrayStorage("beit-hidden-categories");
@@ -3581,10 +3589,10 @@
         localStorage.setItem("beit-categories", JSON.stringify(custom));
         categories = loadCategories();
         const fallbackCategory = categories[0]?.id || "uncategorized";
-        state.tasks = tasksRepository.saveTasks(state.tasks.map(t => ids.includes(t.category) ? { ...t, category: fallbackCategory } : t));
+        state.tasks = await tasksRepository.saveTasks(state.tasks.map(t => ids.includes(t.category) ? { ...t, category: fallbackCategory } : t));
         state.deletingCategory = false;
         state.categoriesToDelete = [];
-        save();
+        await save();
         render();
         toast(ids.length === 1 ? "הקטגוריה נמחקה" : "הקטגוריות נמחקו");
       });
@@ -3639,7 +3647,7 @@
         state.peopleToDelete = [];
         render();
       });
-      $("confirmDeletePerson")?.addEventListener("click", () => {
+      $("confirmDeletePerson")?.addEventListener("click", async () => {
         const names = state.peopleToDelete;
         if (!names.length) return;
         const hidden = safeArrayStorage("beit-hidden-people");
@@ -3651,10 +3659,10 @@
         localStorage.setItem("beit-people", JSON.stringify(custom));
         people = loadPeople();
         const fallbackOwner = people[0] || "ללא מבצע";
-        state.tasks = tasksRepository.saveTasks(state.tasks.map(t => names.includes(t.owner) ? { ...t, owner: fallbackOwner } : t));
+        state.tasks = await tasksRepository.saveTasks(state.tasks.map(t => names.includes(t.owner) ? { ...t, owner: fallbackOwner } : t));
         state.deletingPerson = false;
         state.peopleToDelete = [];
-        save();
+        await save();
         render();
         toast(names.length === 1 ? "המבצע נמחק" : "המבצעים נמחקו");
       });
@@ -3666,7 +3674,7 @@
         dateInput.style.display = dateMode ? "block" : "none";
         dateInput.required = dateMode;
       }));
-      $("createForm")?.addEventListener("submit", e => {
+      $("createForm")?.addEventListener("submit", async (e) => {
         e.preventDefault();
         const form = e.currentTarget;
         const owner = state.role === "manager" ? (form.owner?.value || people[0] || "ללא מבצע") : "עדינה";
@@ -3702,7 +3710,7 @@
           notes: $("newNotes").value,
           updates: []
         };
-        createTask(task);
+        await createTask(task);
         toast("המשימה נוצרה");
         navigate(`task:${task.id}`);
       });
@@ -3732,7 +3740,7 @@
       resetScroll();
     });
     if (!location.hash) location.hash = defaultRoute();
-    render();
+    bootstrapTasks();
 
     function registerServiceWorker() {
       if (!("serviceWorker" in navigator)) return;
