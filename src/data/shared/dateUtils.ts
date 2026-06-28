@@ -37,3 +37,21 @@ export function getDateBucketFromIso(dueDate: unknown, status: string | null | u
   if (dueOnly === isoDateFromOffset(1)) return "tomorrow";
   return "date";
 }
+
+/** ימים מהיום לפי ISO date */
+export function daysFromTodayIso(value: unknown) {
+  const dueOnly = toIsoDateOnly(value);
+  if (!dueOnly) return null;
+  const due = dateFromIso(dueOnly);
+  if (!due) return null;
+  due.setHours(0, 0, 0, 0);
+  return Math.floor((due.getTime() - startOfToday().getTime()) / 86400000);
+}
+
+/** ימים בין תאריך ISO ליעד (ברירת מחדל: היום) */
+export function daysBetween(start: string | null | undefined, end = startOfToday()) {
+  const startDate = dateFromIso(start);
+  if (!startDate) return 0;
+  startDate.setHours(0, 0, 0, 0);
+  return Math.max(0, Math.floor((end.getTime() - startDate.getTime()) / 86400000));
+}

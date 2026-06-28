@@ -1377,43 +1377,72 @@
     function labelIcon(name, text) {
       return `<span class="icon-label">${lineIcon(name)}<span>${text}</span></span>`;
     }
-    const baseCategories = [
-      { id: "kitchen", label: "מטבח", icon: "kitchen" },
-      { id: "maintenance", label: "תחזוקה", icon: "maintenance" },
-      { id: "study", label: "לימוד", icon: "study" },
-      { id: "money", label: "כספים", icon: "money" },
-      { id: "events", label: "אירועים", icon: "events" },
-      { id: "office", label: "משרד", icon: "office" }
-    ];
-    function safeParseStorage(key, fallback) {
-      try {
-        const raw = localStorage.getItem(key);
-        return raw ? JSON.parse(raw) : fallback;
-      } catch {
-        localStorage.removeItem(key);
-        return fallback;
-      }
+    // helpers משותפים מה-bundle — מקור יחיד, בלי כפילות inline
+    if (!BatAyinAdapters?.createSupabaseTasksAdapter || !BatAyinAdapters?.createSupabaseSuppliersAdapter) {
+      throw new Error("Adapters bundle failed to load.");
     }
-    function safeArrayStorage(key) {
-      const value = safeParseStorage(key, []);
-      return Array.isArray(value) ? value : [];
-    }
-    function safeObjectStorage(key, fallback) {
-      const value = safeParseStorage(key, fallback);
-      return value && typeof value === "object" && !Array.isArray(value) ? value : fallback;
-    }
-    function loadCategories() {
-      const hidden = safeArrayStorage("beit-hidden-categories");
-      const custom = safeArrayStorage("beit-categories");
-      return [...baseCategories.filter(c => !hidden.includes(c.id)), ...custom];
-    }
+    const {
+      normalizeTask,
+      normalizeSupplier,
+      defaultTaskReminder,
+      isoDateFromOffset,
+      toIsoDateOnly,
+      startOfToday,
+      dateFromIso,
+      daysFromTodayIso,
+      daysBetween,
+      createAsyncRepository,
+      createSupabaseTasksAdapter,
+      createSupabaseSuppliersAdapter,
+      createLocalTasksAdapter,
+      createLocalSuppliersAdapter,
+      BASE_CATEGORIES: baseCategories,
+      BASE_PEOPLE: basePeople,
+      loadCategories,
+      loadPeople,
+      readCustomCategories,
+      readHiddenCategoryIds,
+      saveCustomCategories,
+      saveHiddenCategoryIds,
+      readCustomPeople,
+      readHiddenPeople,
+      saveCustomPeople,
+      saveHiddenPeople,
+      allKnownPeople,
+      loadPreferences,
+      savePreferences,
+      SUPPLIER_STEPS: supplierSteps,
+      formatHebrewDate,
+      ageLabel,
+      relativeAgeLabel,
+      priorityLabel,
+      resolveCategory,
+      filterActiveTasks,
+      buildTaskDueLabel,
+      isTaskOverdue,
+      taskDueRank,
+      filterPersonalTasks,
+      filterManagementPeople,
+      filterVisibleDoneTasks,
+      filterOpenTasks,
+      isArchivedDone,
+      findTask,
+      findVisibleTask,
+      canAccessTask: canAccessTaskDomain,
+      canEditTaskContent: canEditTaskContentDomain,
+      canDeleteTask: canDeleteTaskDomain,
+      sortTasks: sortTasksDomain,
+      sortOptions,
+      resolveCurrentSort,
+      taskGroupTitle: taskGroupTitleDomain,
+      filterVisibleSuppliers,
+      findSupplier,
+      findVisibleSupplier,
+      canAccessSupplier: canAccessSupplierDomain,
+      supplierProgress: supplierProgressDomain,
+      personalOwner: personalOwnerDomain
+    } = BatAyinAdapters;
     let categories = loadCategories();
-    const basePeople = ["עדינה", "אבי", "חיה", "צבי"];
-    function loadPeople() {
-      const hidden = safeArrayStorage("beit-hidden-people");
-      const custom = safeArrayStorage("beit-people");
-      return [...basePeople.filter(p => !hidden.includes(p)), ...custom];
-    }
     let people = loadPeople();
     const statusMeta = {
       progress: { label: "בתהליך", dot: "progress", icon: "progress" },
@@ -1427,114 +1456,6 @@
       ["normal", "רגילה"],
       ["high", "גבוהה"]
     ];
-    function startOfToday() {
-      const date = new Date();
-      date.setHours(0, 0, 0, 0);
-      return date;
-    }
-    function isoDateFromOffset(days) {
-      const date = startOfToday();
-      date.setDate(date.getDate() + days);
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-      const day = String(date.getDate()).padStart(2, "0");
-      return `${date.getFullYear()}-${month}-${day}`;
-    }
-    function dateFromIso(value) {
-      if (!value) return null;
-      const date = new Date(`${value}T12:00:00`);
-      return Number.isNaN(date.getTime()) ? null : date;
-    }
-    function toIsoDateOnly(value) {
-      if (!value || typeof value !== "string") return null;
-      const dateOnly = value.slice(0, 10);
-      return /^\d{4}-\d{2}-\d{2}$/.test(dateOnly) ? dateOnly : null;
-    }
-    function daysFromTodayIso(value) {
-      const dueOnly = toIsoDateOnly(value);
-      if (!dueOnly) return null;
-      const due = dateFromIso(dueOnly);
-      if (!due) return null;
-      due.setHours(0, 0, 0, 0);
-      return Math.floor((due - startOfToday()) / 86400000);
-    }
-    function getDateBucketFromIso(dueDate, status) {
-      if (status === "done") return "done";
-      const dueOnly = toIsoDateOnly(dueDate);
-      if (!dueOnly) return "none";
-      if (dueOnly === isoDateFromOffset(0)) return "today";
-      if (dueOnly === isoDateFromOffset(1)) return "tomorrow";
-      return "date";
-    }
-    function daysBetween(start, end = startOfToday()) {
-      const startDate = dateFromIso(start);
-      if (!startDate) return 0;
-      startDate.setHours(0, 0, 0, 0);
-      return Math.max(0, Math.floor((end - startDate) / 86400000));
-    }
-    function ageLabel(createdAt) {
-      const days = daysBetween(createdAt);
-      return days === 1 ? "נוצרה לפני יום" : `נוצרה לפני ${days} ימים`;
-    }
-    function relativeAgeLabel(createdAt) {
-      const days = daysBetween(createdAt);
-      if (days === 0) return "היום";
-      return days === 1 ? "לפני יום" : `לפני ${days} ימים`;
-    }
-    const starterTasks = [
-      { id: "t1", title: "אישור הזמנת ירקות", category: "kitchen", owner: "עדינה", due: "today", dueLabel: "היום · שלישי", status: "progress", notes: "לבדוק מול הספק ולאשר כמויות", updates: [{ by: "עדינה", text: "מחכה למחיר סופי" }] },
-      { id: "t2", title: "בדיקת ציוד לשבת", category: "maintenance", owner: "אבי", due: "today", dueLabel: "היום · שלישי", status: "progress", notes: "לוודא שולחנות וכבלים באולם", updates: [{ by: "אבי", text: "חסר כבל מאריך אחד" }] },
-      { id: "t3", title: "בדיקת ספק", category: "events", owner: "חיה", due: "date", dueLabel: "שני · 14 יוני", status: "progress", notes: "לקבל אישור על מועד הגעה", updates: [] },
-      { id: "t4", title: "הכנת דף מקורות", category: "study", owner: "עדינה", due: "tomorrow", dueLabel: "מחר · רביעי", status: "progress", notes: "להדפיס עשרים עותקים", updates: [] },
-      { id: "t11", title: "סידור רשימת קניות", category: "office", owner: "עדינה", due: "today", dueLabel: "היום · שלישי", status: "progress", notes: "לעדכן אחרי שיחה עם המטבח", updates: [] },
-      { id: "t12", title: "תיאום הדפסות", category: "study", owner: "עדינה", due: "today", dueLabel: "היום · שלישי", status: "progress", notes: "לבדוק מול המזכירות לפני 13:00", updates: [] },
-      { id: "t5", title: "אישור תשלום לספק", category: "money", owner: "צבי", due: "today", dueLabel: "היום · שלישי", status: "progress", notes: "לוודא חשבונית לפני אישור", updates: [] },
-      { id: "t6", title: "שיחה עם איש תחזוקה", category: "maintenance", owner: "צבי", due: "today", dueLabel: "היום · שלישי", status: "progress", notes: "לתאם תיקון ידית בדלת", updates: [] },
-      { id: "t7", title: "תשלום לספק", category: "money", owner: "עדינה", due: "done", dueLabel: "הושלם · ראשון", status: "done", notes: "נסגר", updates: [{ by: "צבי", text: "אושר במזכירות" }] },
-      { id: "t8", title: "דף מקורות לשיעור", category: "study", owner: "עדינה", due: "done", dueLabel: "הושלם · שני", status: "done", notes: "הועבר להדפסה", updates: [] },
-      { id: "t9", title: "הזמנת ציוד", category: "maintenance", owner: "צבי", due: "done", dueLabel: "הושלם · שני", status: "done", notes: "בוצע", updates: [] },
-      { id: "t10", title: "בדיקת מלאי", category: "kitchen", owner: "חיה", due: "tomorrow", dueLabel: "מחר · רביעי", status: "progress", notes: "לבדוק שמן, קמח ותבלינים", updates: [] }
-    ];
-
-    const supplierSteps = [
-      { id: "order", label: "הזמנה" },
-      { id: "received", label: "קבלה" },
-      { id: "payment", label: "תשלום" },
-      { id: "invoice", label: "קבלת חשבונית" }
-    ];
-    const starterSuppliers = [
-      {
-        id: "s1",
-        supplier: "ספק ירקות",
-        description: "הזמנת ירקות לשבת",
-        amount: "₪680",
-        due_date: isoDateFromOffset(1),
-        notes: "לוודא כמויות מול המטבח לפני תשלום.",
-        document_notes: "חשבונית תתווסף אחרי קבלת הסחורה.",
-        links: ["https://example.com/order-vegetables"],
-        assignees: ["עדינה"],
-        allAssignees: false,
-        steps: { order: true, received: false, payment: false, invoice: false },
-        step_dates: { order: isoDateFromOffset(0), received: "", payment: "", invoice: "" },
-        created_at: isoDateFromOffset(0)
-      },
-      {
-        id: "s2",
-        supplier: "ציוד תחזוקה",
-        description: "רכישת כבלים וציוד לאולם",
-        amount: "",
-        due_date: "",
-        notes: "מיועד לכל צוות הניהול.",
-        document_notes: "צילום מסך הצעת מחיר נשמר בינתיים בהערות.",
-        links: [],
-        assignees: [],
-        allAssignees: true,
-        steps: { order: true, received: true, payment: false, invoice: false },
-        step_dates: { order: isoDateFromOffset(-1), received: isoDateFromOffset(0), payment: "", invoice: "" },
-        created_at: isoDateFromOffset(-1)
-      }
-    ];
-
-    const dataVersion = "mockup-v3";
     const params = new URLSearchParams(location.search);
     const DEBUG_BACKEND_STORAGE_KEY = "beit-debug-backend";
     try {
@@ -1603,11 +1524,7 @@
     }
     window.testSupabaseConnection = testSupabaseConnection;
 
-    const authDebugLogsFirst10 = [];
     function debugAuthTrace(step, detail) {
-      if (authDebugLogsFirst10.length < 10) {
-        authDebugLogsFirst10.push({ step, detail });
-      }
       console.warn(`[debug][auth][${step}]`, detail);
       return detail;
     }
@@ -1648,16 +1565,6 @@
       };
     }
     async function consumeSupabaseOAuthCallback() {
-      const liveTrace = {
-        href: location.href,
-        search: location.search,
-        hash: location.hash,
-        code: new URLSearchParams(location.search).get("code"),
-        hrefBeforeConsume: window.location.href
-      };
-      console.warn("[debug][auth][live-trace]", liveTrace);
-      window.__cp32LiveTrace = liveTrace;
-      window.__authDebugLogsFirst10 = authDebugLogsFirst10;
       const callbackUrl = readSupabaseAuthCallbackUrl();
       debugAuthTrace("3-callback-url", callbackUrl);
       if (!supabaseClient || !callbackUrl.isCallback) {
@@ -1743,9 +1650,6 @@
         return { ok: false, reason: error?.message || String(error), session: null, restored: false, error };
       }
     }
-    async function getDebugSupabaseSession() {
-      return bootstrapSupabaseAuthSession();
-    }
     async function debugSupabaseSignInWithGoogle() {
       if (!supabaseClient) {
         return { ok: false, reason: "Supabase is not configured." };
@@ -1790,20 +1694,9 @@
       }
     }
     window.bootstrapSupabaseAuthSession = bootstrapSupabaseAuthSession;
-    window.getDebugSupabaseSession = getDebugSupabaseSession;
     window.debugSupabaseSignInWithGoogle = debugSupabaseSignInWithGoogle;
     window.debugSupabaseSignOut = debugSupabaseSignOut;
     window.consumeSupabaseOAuthCallback = consumeSupabaseOAuthCallback;
-    window.traceSupabaseAuthFlow = async function traceSupabaseAuthFlow() {
-      const steps = [];
-      steps.push({ step: 1, name: "callback-url", result: readSupabaseAuthCallbackUrl() });
-      const consumeResult = await consumeSupabaseOAuthCallback();
-      steps.push({ step: 3, name: "consume", result: consumeResult });
-      const sessionResult = await getDebugSupabaseSession();
-      steps.push({ step: 4, name: "getDebugSupabaseSession", result: sessionResult });
-      console.warn("[debug][auth] traceSupabaseAuthFlow", steps);
-      return { steps, sessionResult };
-    };
 
     const handoffRole = (() => {
       try {
@@ -1817,421 +1710,31 @@
     const requestedRole = params.get("mockup") || handoffRole;
     const initialRole = requestedRole === "manager" ? "manager" : "user";
 
-    function normalizeUpdate(update, taskIndex, updateIndex) {
-      return {
-        by: update.by || "עדינה",
-        text: update.text || "",
-        created_at: update.created_at || isoDateFromOffset(-(taskIndex + updateIndex + 1)),
-        notify_participants: Boolean(update.notify_participants),
-        notification_status: update.notification_status || "pending"
-      };
-    }
-    function defaultTaskReminder(task) {
-      return {
-        enabled: Boolean(task.due_date),
-        timing: "before_due",
-        amount: 1,
-        unit: "day"
-      };
-    }
-    function normalizeTask(task, index) {
-      const dueDefaults = { today: isoDateFromOffset(0), tomorrow: isoDateFromOffset(1), date: isoDateFromOffset(12) };
-      const dueDate = task.status === "done" || task.due === "done" || task.due === "none"
-        ? null
-        : task.due_date || dueDefaults[task.due] || null;
-      const updates = Array.isArray(task.updates) ? task.updates.map((update, updateIndex) => normalizeUpdate(update, index, updateIndex)) : [];
-      return {
-        priority: index % 5 === 0 ? "high" : "normal",
-        created_at: task.created_at || isoDateFromOffset(-(index + 1)),
-        due_date: dueDate,
-        ...task,
-        due_date: dueDate,
-        due: task.due || (dueDate ? "date" : "none"),
-        completed_at: task.status === "done" ? task.completed_at || task.created_at || isoDateFromOffset(-(index + 1)) : null,
-        deleted_at: task.deleted_at || null,
-        deleted_by: task.deleted_by || null,
-        reminder: task.reminder || defaultTaskReminder({ ...task, due_date: dueDate }),
-        updates
-      };
-    }
-
-    const DEFAULT_ORGANIZATION_ID = "00000000-0000-0000-0000-000000000001";
     const NO_SUPABASE_AUTH_SESSION_REASON =
       "No Supabase auth session. Run await debugSupabaseSignInWithGoogle() first.";
 
-    function toDateOnly(value) {
-      return toIsoDateOnly(value);
-    }
-    function deriveTaskDue(status, dueDate) {
-      return getDateBucketFromIso(dueDate, status);
-    }
-    function buildCategorySlugById(rows) {
-      return new Map((rows || []).map(row => [row.id, row.slug]));
-    }
-    function buildCategoryIdBySlug(rows) {
-      return new Map((rows || []).map(row => [row.slug, row.id]));
-    }
-    function buildProfileNameById(rows) {
-      return new Map((rows || []).map(row => [row.id, row.display_name]));
-    }
-    function buildProfileIdByName(rows) {
-      return new Map((rows || []).map(row => [row.display_name, row.id]));
-    }
-    function groupTaskUpdatesByTaskId(rows) {
-      const grouped = new Map();
-      (rows || []).forEach(row => {
-        const list = grouped.get(row.task_id) || [];
-        list.push(row);
-        grouped.set(row.task_id, list);
-      });
-      return grouped;
-    }
-    async function loadSupabaseTasksReadContext(client) {
-      const batAyin = client.schema("bat_ayin");
-      const [categoriesResult, membersResult] = await Promise.all([
-        batAyin.from("categories")
-          .select("id, slug")
-          .eq("organization_id", DEFAULT_ORGANIZATION_ID)
-          .is("deleted_at", null),
-        batAyin.from("organization_members")
-          .select("user_id")
-          .eq("organization_id", DEFAULT_ORGANIZATION_ID)
-          .eq("is_active", true)
-      ]);
-      if (categoriesResult.error) throw categoriesResult.error;
-      if (membersResult.error) throw membersResult.error;
-      const userIds = [...new Set((membersResult.data || []).map(row => row.user_id))];
-      let profileRows = [];
-      if (userIds.length) {
-        const profilesResult = await client.from("profiles").select("id, display_name").in("id", userIds);
-        if (profilesResult.error) throw profilesResult.error;
-        profileRows = profilesResult.data || [];
-      }
-      return {
-        categorySlugById: buildCategorySlugById(categoriesResult.data),
-        profileNameById: buildProfileNameById(profileRows)
-      };
-    }
-    async function loadSupabaseTasksWriteContext(client) {
-      try {
-        if (!client) {
-          return { ok: false, reason: "Supabase is not configured.", code: "supabase_not_configured" };
-        }
-        const { data: authData, error: authError } = await client.auth.getSession();
-        if (authError) {
-          return {
-            ok: false,
-            reason: authError.message || "Auth check failed.",
-            code: "auth_check_failed",
-            error: authError
-          };
-        }
-        if (!authData.session) {
-          return { ok: false, reason: NO_SUPABASE_AUTH_SESSION_REASON, code: "auth_session_missing" };
-        }
-        const authUserId = authData.session.user.id;
-        const batAyin = client.schema("bat_ayin");
-        const [categoriesResult, membersResult] = await Promise.all([
-          batAyin.from("categories")
-            .select("id, slug")
-            .eq("organization_id", DEFAULT_ORGANIZATION_ID)
-            .eq("is_active", true)
-            .is("deleted_at", null),
-          batAyin.from("organization_members")
-            .select("user_id, role, is_active")
-            .eq("organization_id", DEFAULT_ORGANIZATION_ID)
-            .eq("is_active", true)
-        ]);
-        if (categoriesResult.error) {
-          return {
-            ok: false,
-            reason: categoriesResult.error.message || String(categoriesResult.error),
-            code: "categories_load_failed",
-            error: categoriesResult.error
-          };
-        }
-        if (membersResult.error) {
-          return {
-            ok: false,
-            reason: membersResult.error.message || String(membersResult.error),
-            code: "members_load_failed",
-            error: membersResult.error
-          };
-        }
-        const members = membersResult.data || [];
-        const currentMember = members.find(row => row.user_id === authUserId);
-        if (!currentMember) {
-          return {
-            ok: false,
-            reason: "Signed-in user is not an active member of this organization.",
-            code: "not_org_member"
-          };
-        }
-        const userIds = [...new Set(members.map(row => row.user_id))];
-        let profileRows = [];
-        if (userIds.length) {
-          const profilesResult = await client.from("profiles").select("id, display_name").in("id", userIds);
-          if (profilesResult.error) {
-            return {
-              ok: false,
-              reason: profilesResult.error.message || String(profilesResult.error),
-              code: "profiles_load_failed",
-              error: profilesResult.error
-            };
-          }
-          profileRows = profilesResult.data || [];
-        }
-        const profileNameById = buildProfileNameById(profileRows);
-        const profileIdByName = buildProfileIdByName(profileRows);
-        return {
-          ok: true,
-          ctx: {
-            organizationId: DEFAULT_ORGANIZATION_ID,
-            authUserId,
-            authUserRole: currentMember.role === "manager" ? "manager" : "user",
-            categoryIdBySlug: buildCategoryIdBySlug(categoriesResult.data),
-            profileIdByName,
-            profileNameById,
-            allowedAssigneeIds: new Set(userIds),
-            allowedOwnerNames: new Set(profileIdByName.keys())
-          }
-        };
-      } catch (error) {
-        return { ok: false, reason: error?.message || String(error), code: "unexpected_error", error };
-      }
-    }
-    function mapAppTaskToSupabaseInsert(appTask, writeCtx) {
-      const title = String(appTask?.title ?? "").trim();
-      if (!title) {
-        return { ok: false, code: "title_missing" };
-      }
-      const owner = appTask?.owner;
-      if (owner == null || String(owner).trim() === "") {
-        return { ok: false, code: "owner_missing", reason: "Task owner is required." };
-      }
-      const ownerName = String(owner).trim();
-      const assigneeId = writeCtx.profileIdByName.get(ownerName);
-      if (!assigneeId) {
-        return {
-          ok: false,
-          code: "owner_not_found",
-          reason: "Owner name does not exist in Supabase member map."
-        };
-      }
-      if (!writeCtx.allowedAssigneeIds.has(assigneeId)) {
-        return { ok: false, code: "owner_not_allowed" };
-      }
-      const category = appTask?.category;
-      let categoryId = null;
-      if (category && category !== "uncategorized") {
-        categoryId = writeCtx.categoryIdBySlug.get(category) ?? null;
-        if (!categoryId) {
-          return { ok: false, code: "category_not_found" };
-        }
-      }
-      return {
-        ok: true,
-        payload: {
-          organization_id: writeCtx.organizationId,
-          category_id: categoryId,
-          assignee_id: assigneeId,
-          created_by: writeCtx.authUserId,
-          title,
-          notes: appTask?.notes ?? "",
-          status: appTask?.status === "done" ? "done" : "progress",
-          priority: appTask?.priority === "high" ? "high" : "normal",
-          due_date: appTask?.dueDate ?? null,
-          due_label: appTask?.dueLabel ?? null,
-          reminder: appTask?.reminder ?? { enabled: false }
-        }
-      };
-    }
-    function mapDbTaskUpdateToApp(row, ctx) {
-      return {
-        by: ctx.profileNameById.get(row.author_id) || "לא ידוע",
-        text: row.body || "",
-        created_at: toDateOnly(row.created_at),
-        notify_participants: Boolean(row.notify_participants),
-        notification_status: row.notification_status || "pending"
-      };
-    }
-    function mapDbTaskRowToApp(row, ctx, updateRows) {
-      const dueDate = row.due_date || null;
-      return {
-        id: String(row.id),
-        title: row.title || "",
-        notes: row.notes || "",
-        status: row.status || "progress",
-        priority: row.priority || "normal",
-        category: ctx.categorySlugById.get(row.category_id) || "office",
-        owner: ctx.profileNameById.get(row.assignee_id) || "לא ידוע",
-        due_date: dueDate,
-        dueLabel: row.due_label ?? null,
-        due: deriveTaskDue(row.status, dueDate),
-        reminder: row.reminder || { enabled: false },
-        created_at: toDateOnly(row.created_at),
-        completed_at: toDateOnly(row.completed_at),
-        deleted_at: null,
-        deleted_by: row.deleted_by ? ctx.profileNameById.get(row.deleted_by) || null : null,
-        updates: (updateRows || []).map(updateRow => mapDbTaskUpdateToApp(updateRow, ctx))
-      };
-    }
-    if (!BatAyinAdapters?.createSupabaseTasksAdapter || !BatAyinAdapters?.createSupabaseSuppliersAdapter) {
-      throw new Error("Adapters bundle failed to load.");
-    }
-    const supabaseTasksAdapter = BatAyinAdapters.createSupabaseTasksAdapter(supabaseClient);
-    const supabaseSuppliersAdapter = BatAyinAdapters.createSupabaseSuppliersAdapter();
-    async function testLoadSupabaseTasks() {
+    const supabaseTasksAdapter = createSupabaseTasksAdapter(supabaseClient);
+    const supabaseSuppliersAdapter = createSupabaseSuppliersAdapter(supabaseClient);
+
+    async function testSupabaseReadStateIsolation() {
       try {
         if (!supabaseClient) {
           return { ok: false, reason: "Supabase is not configured." };
         }
         const { data, error } = await supabaseClient.auth.getSession();
         if (error) {
-          console.warn("[debug] testLoadSupabaseTasks auth check failed.", error);
-          return { ok: false, error };
+          return { ok: false, reason: error.message || "Auth check failed.", error };
         }
         if (!data.session) {
           return { ok: false, reason: NO_SUPABASE_AUTH_SESSION_REASON };
         }
-        const tasks = await supabaseTasksAdapter.loadTasks();
-        console.warn("[debug] Supabase tasks loaded:", tasks.length);
-        return { ok: true, count: tasks.length, tasks, source: "supabase" };
-      } catch (error) {
-        console.warn("[debug] testLoadSupabaseTasks failed.", error);
-        return { ok: false, reason: error?.message || String(error), error };
-      }
-    }
-    window.testLoadSupabaseTasks = testLoadSupabaseTasks;
-
-    async function testLoadSupabaseTaskUpdates() {
-      try {
-        if (!supabaseClient) {
-          return { ok: false, reason: "Supabase is not configured." };
-        }
-        const { data: authData, error: authError } = await supabaseClient.auth.getSession();
-        if (authError) {
-          console.warn("[debug] testLoadSupabaseTaskUpdates auth check failed.", authError);
-          return { ok: false, reason: authError.message || "Auth check failed.", error: authError };
-        }
-        if (!authData.session) {
-          return { ok: false, reason: NO_SUPABASE_AUTH_SESSION_REASON };
-        }
-        const batAyin = supabaseClient.schema("bat_ayin");
-        const { data, error } = await batAyin
-          .from("task_updates")
-          .select("id, task_id, body, created_at, author_id")
-          .eq("organization_id", DEFAULT_ORGANIZATION_ID)
-          .order("created_at", { ascending: false })
-          .limit(20);
-        if (error) {
-          console.warn("[debug] testLoadSupabaseTaskUpdates failed.", error);
-          return { ok: false, reason: error.message || String(error), error };
-        }
-        const rows = data || [];
-        const uniqueTaskIds = [...new Set(rows.map(row => row.task_id))];
-        console.warn("[debug] Supabase task_updates count:", rows.length);
-        console.warn("[debug] Supabase task_updates first row:", rows[0] ?? null);
-        console.warn("[debug] Supabase task_updates unique task_id list:", uniqueTaskIds);
-        return { ok: true, count: rows.length, rows, uniqueTaskIds, source: "supabase" };
-      } catch (error) {
-        console.warn("[debug] testLoadSupabaseTaskUpdates failed.", error);
-        return { ok: false, reason: error?.message || String(error), error };
-      }
-    }
-    window.testLoadSupabaseTaskUpdates = testLoadSupabaseTaskUpdates;
-
-    async function testLoadSupabaseTaskLifecycleStats() {
-      try {
-        if (!supabaseClient) {
-          return { ok: false, reason: "Supabase is not configured." };
-        }
-        const { data: authData, error: authError } = await supabaseClient.auth.getSession();
-        if (authError) {
-          console.warn("[debug] testLoadSupabaseTaskLifecycleStats auth check failed.", authError);
-          return { ok: false, reason: authError.message || "Auth check failed.", error: authError };
-        }
-        if (!authData.session) {
-          return { ok: false, reason: NO_SUPABASE_AUTH_SESSION_REASON };
-        }
-        const batAyin = supabaseClient.schema("bat_ayin");
-        const orgFilter = query => query.eq("organization_id", DEFAULT_ORGANIZATION_ID);
-        const totalResult = await orgFilter(batAyin.from("tasks").select("id", { count: "exact", head: true }));
-        if (totalResult.error) throw totalResult.error;
-        const completedResult = await orgFilter(
-          batAyin.from("tasks").select("id", { count: "exact", head: true }).not("completed_at", "is", null)
-        );
-        if (completedResult.error) throw completedResult.error;
-        const deletedResult = await orgFilter(
-          batAyin.from("tasks").select("id", { count: "exact", head: true }).not("deleted_at", "is", null)
-        );
-        if (deletedResult.error) throw deletedResult.error;
-        const total = totalResult.count ?? 0;
-        const completed = completedResult.count ?? 0;
-        const deleted = deletedResult.count ?? 0;
-        console.warn("[debug] Supabase tasks total count:", total);
-        console.warn("[debug] Supabase tasks completed count:", completed);
-        console.warn("[debug] Supabase tasks deleted count:", deleted);
-        return { ok: true, total, completed, deleted };
-      } catch (error) {
-        console.warn("[debug] testLoadSupabaseTaskLifecycleStats failed.", error);
-        return { ok: false, reason: error?.message || String(error), error };
-      }
-    }
-    window.testLoadSupabaseTaskLifecycleStats = testLoadSupabaseTaskLifecycleStats;
-
-    async function testLoadSupabaseCategories() {
-      try {
-        if (!supabaseClient) {
-          return { ok: false, reason: "Supabase is not configured." };
-        }
-        const { data: authData, error: authError } = await supabaseClient.auth.getSession();
-        if (authError) {
-          console.warn("[debug] testLoadSupabaseCategories auth check failed.", authError);
-          return { ok: false, reason: authError.message || "Auth check failed.", error: authError };
-        }
-        if (!authData.session) {
-          return { ok: false, reason: NO_SUPABASE_AUTH_SESSION_REASON };
-        }
-        const batAyin = supabaseClient.schema("bat_ayin");
-        const { data, error } = await batAyin
-          .from("categories")
-          .select("id, name, created_at")
-          .eq("organization_id", DEFAULT_ORGANIZATION_ID)
-          .order("name", { ascending: true });
-        if (error) {
-          console.warn("[debug] testLoadSupabaseCategories failed.", error);
-          return { ok: false, reason: error.message || String(error), error };
-        }
-        const categories = data || [];
-        const names = categories.map(category => category.name);
-        console.warn("[debug] Supabase categories count:", categories.length);
-        console.warn("[debug] Supabase categories first category:", categories[0] ?? null);
-        console.warn("[debug] Supabase categories name list:", names);
-        console.warn("[debug] Supabase categories all records:", categories);
-        console.warn("[debug] Supabase categories id + name:", categories.map(category => ({ id: category.id, name: category.name })));
-        return { ok: true, count: categories.length, categories, names };
-      } catch (error) {
-        console.warn("[debug] testLoadSupabaseCategories failed.", error);
-        return { ok: false, reason: error?.message || String(error), error };
-      }
-    }
-    window.testLoadSupabaseCategories = testLoadSupabaseCategories;
-
-    async function testSupabaseReadStateIsolation() {
-      try {
         const tasksBefore = state.tasks;
         const beforeLength = tasksBefore.length;
-        await testLoadSupabaseTasks();
+        await supabaseTasksAdapter.loadTasks();
         const tasksAfter = state.tasks;
-        const afterLength = tasksAfter.length;
         const sameReference = tasksBefore === tasksAfter;
-        const sameLength = beforeLength === afterLength;
-        console.warn("[debug] Supabase read state isolation sameReference:", sameReference);
-        console.warn("[debug] Supabase read state isolation sameLength:", sameLength);
-        console.warn("[debug] Supabase read state isolation beforeLength:", beforeLength);
-        console.warn("[debug] Supabase read state isolation afterLength:", afterLength);
-        return { ok: true, sameReference, sameLength, beforeLength, afterLength };
+        const sameLength = beforeLength === tasksAfter.length;
+        return { ok: sameReference && sameLength, sameReference, sameLength, beforeLength, afterLength: tasksAfter.length };
       } catch (error) {
         console.warn("[debug] testSupabaseReadStateIsolation failed.", error);
         return { ok: false, reason: error?.message || String(error), error };
@@ -2239,256 +1742,19 @@
     }
     window.testSupabaseReadStateIsolation = testSupabaseReadStateIsolation;
 
-    async function testLoadSupabaseProfiles() {
-      try {
-        if (!supabaseClient) {
-          return { ok: false, reason: "Supabase is not configured." };
-        }
-        const { data: authData, error: authError } = await supabaseClient.auth.getSession();
-        if (authError) {
-          console.warn("[debug] testLoadSupabaseProfiles auth check failed.", authError);
-          return { ok: false, reason: authError.message || "Auth check failed.", error: authError };
-        }
-        if (!authData.session) {
-          return { ok: false, reason: NO_SUPABASE_AUTH_SESSION_REASON };
-        }
-        const batAyin = supabaseClient.schema("bat_ayin");
-        const membersResult = await batAyin
-          .from("organization_members")
-          .select("user_id, is_active")
-          .eq("organization_id", DEFAULT_ORGANIZATION_ID);
-        if (membersResult.error) throw membersResult.error;
-        const members = membersResult.data || [];
-        const userIds = [...new Set(members.map(row => row.user_id))];
-        let profiles = [];
-        if (userIds.length) {
-          const profilesResult = await supabaseClient.from("profiles").select("id, display_name").in("id", userIds);
-          if (profilesResult.error) throw profilesResult.error;
-          profiles = profilesResult.data || [];
-        }
-        const profileNameById = new Map(profiles.map(row => [row.id, row.display_name]));
-        const userIdToDisplayName = Object.fromEntries(
-          userIds.map(userId => [userId, profileNameById.get(userId) ?? null])
-        );
-        console.warn("[debug] Supabase organization members count:", members.length);
-        console.warn("[debug] Supabase profiles count:", profiles.length);
-        console.warn("[debug] Supabase user_id -> display_name mapping:", userIdToDisplayName);
-        return { ok: true, members, profiles };
-      } catch (error) {
-        console.warn("[debug] testLoadSupabaseProfiles failed.", error);
-        return { ok: false, reason: error?.message || String(error), error };
-      }
-    }
-    window.testLoadSupabaseProfiles = testLoadSupabaseProfiles;
-
-    async function testLoadSupabaseTasksWriteContext() {
-      const result = await loadSupabaseTasksWriteContext(supabaseClient);
-      console.warn("[debug] testLoadSupabaseTasksWriteContext result:", result);
-      return result;
-    }
-    window.testLoadSupabaseTasksWriteContext = testLoadSupabaseTasksWriteContext;
-
-    async function testMapAppTaskToSupabaseInsert() {
-      const contextResult = await loadSupabaseTasksWriteContext(supabaseClient);
-      console.warn("[debug] testMapAppTaskToSupabaseInsert write context:", contextResult);
-      if (!contextResult.ok) {
-        return contextResult;
-      }
-      const sampleTask = {
-        title: "Debug Mapping Test",
-        owner: "צבי",
-        category: "office",
-        priority: "normal",
-        notes: "",
-        dueDate: null,
-        dueLabel: null,
-        reminder: { enabled: false }
-      };
-      const result = mapAppTaskToSupabaseInsert(sampleTask, contextResult.ctx);
-      console.warn("[debug] testMapAppTaskToSupabaseInsert sample task:", sampleTask);
-      console.warn("[debug] testMapAppTaskToSupabaseInsert mapper result:", result);
-      return result;
-    }
-    window.testMapAppTaskToSupabaseInsert = testMapAppTaskToSupabaseInsert;
-
-    async function testWriteSupabaseTaskFromApp() {
-      const sampleTask = {
-        title: "[DEBUG] Full Write Validation",
-        owner: "צבי",
-        category: "office",
-        priority: "normal",
-        notes: "",
-        dueDate: null,
-        dueLabel: null,
-        reminder: { enabled: false }
-      };
-      try {
-        const contextResult = await loadSupabaseTasksWriteContext(supabaseClient);
-        console.warn("[debug] testWriteSupabaseTaskFromApp write context:", contextResult);
-        if (!contextResult.ok) {
-          return contextResult;
-        }
-        const mapperResult = mapAppTaskToSupabaseInsert(sampleTask, contextResult.ctx);
-        console.warn("[debug] testWriteSupabaseTaskFromApp sample task:", sampleTask);
-        console.warn("[debug] testWriteSupabaseTaskFromApp mapper result:", mapperResult);
-        if (!mapperResult.ok) {
-          return mapperResult;
-        }
-        const payload = mapperResult.payload;
-        console.warn("[debug] testWriteSupabaseTaskFromApp insert payload:", payload);
-        const { data, error } = await supabaseClient
-          .schema("bat_ayin")
-          .from("tasks")
-          .insert(payload)
-          .select()
-          .single();
-        if (error) {
-          console.warn("[debug] testWriteSupabaseTaskFromApp insert failed.", error);
-          console.warn(
-            "[debug] testWriteSupabaseTaskFromApp RLS/trigger error:",
-            error.message,
-            error.code,
-            error.details,
-            error.hint
-          );
-          return { ok: false, reason: error.message || String(error), error };
-        }
-        console.warn("[debug] testWriteSupabaseTaskFromApp inserted row:", data);
-        return { ok: true, insertedTask: data };
-      } catch (error) {
-        console.warn("[debug] testWriteSupabaseTaskFromApp failed.", error);
-        return { ok: false, reason: error?.message || String(error), error };
-      }
-    }
-    window.testWriteSupabaseTaskFromApp = testWriteSupabaseTaskFromApp;
-
-    async function testCreateSupabaseTask() {
-      const DEBUG_ASSIGNEE_ID = "24fd1678-f13f-4e94-8afb-02887c315202";
-      const DEBUG_TASK_TITLE = "[DEBUG] Supabase Insert Validation";
-      try {
-        if (!supabaseClient) {
-          return { ok: false, reason: "Supabase is not configured." };
-        }
-        const { data: authData, error: authError } = await supabaseClient.auth.getSession();
-        if (authError) {
-          console.warn("[debug] testCreateSupabaseTask auth check failed.", authError);
-          return { ok: false, reason: authError.message || "Auth check failed.", error: authError };
-        }
-        if (!authData.session) {
-          return { ok: false, reason: NO_SUPABASE_AUTH_SESSION_REASON };
-        }
-        const payload = {
-          organization_id: DEFAULT_ORGANIZATION_ID,
-          assignee_id: DEBUG_ASSIGNEE_ID,
-          created_by: authData.session.user.id,
-          title: DEBUG_TASK_TITLE
-        };
-        console.warn("[debug] testCreateSupabaseTask insert payload:", payload);
-        const { data, error } = await supabaseClient
-          .schema("bat_ayin")
-          .from("tasks")
-          .insert(payload)
-          .select()
-          .single();
-        if (error) {
-          console.warn("[debug] testCreateSupabaseTask insert failed.", error);
-          console.warn(
-            "[debug] testCreateSupabaseTask RLS/trigger error:",
-            error.message,
-            error.code,
-            error.details,
-            error.hint
-          );
-          return { ok: false, reason: error.message || String(error), error };
-        }
-        console.warn("[debug] testCreateSupabaseTask inserted row:", data);
-        return { ok: true, insertedTask: data };
-      } catch (error) {
-        console.warn("[debug] testCreateSupabaseTask failed.", error);
-        return { ok: false, reason: error?.message || String(error), error };
-      }
-    }
-    window.testCreateSupabaseTask = testCreateSupabaseTask;
-
-    const localTasksAdapter = {
-      loadTasks() {
-        if (localStorage.getItem("beit-version") !== dataVersion) {
-          localStorage.setItem("beit-tasks", JSON.stringify(starterTasks));
-          localStorage.setItem("beit-version", dataVersion);
-        }
-        const value = safeParseStorage("beit-tasks", null);
-        return (Array.isArray(value) ? value : starterTasks).map(normalizeTask);
-      },
-      saveTasks(tasks) {
-        localStorage.setItem("beit-tasks", JSON.stringify(tasks));
-        return tasks;
-      },
-      createTask(tasks, task) {
-        return this.saveTasks([task, ...tasks]);
-      },
-      updateTask(tasks, id, patch) {
-        return this.saveTasks(tasks.map(task => task.id === id ? { ...task, ...patch } : task));
-      },
-      deleteTaskSoft(tasks, id, deletedBy) {
-        return this.updateTask(tasks, id, { deleted_at: isoDateFromOffset(0), deleted_by: deletedBy });
-      },
-      completeTask(tasks, id) {
-        const task = tasks.find(item => item.id === id);
-        if (!task) return tasks;
-        return this.updateTask(tasks, id, {
-          status: "done",
-          due: "done",
-          due_date: null,
-          dueLabel: "הושלם · היום",
-          completed_at: isoDateFromOffset(0),
-          reminder: { ...task.reminder, enabled: false }
-        });
-      },
-      reopenTask(tasks, id) {
-        const task = tasks.find(item => item.id === id);
-        if (!task) return tasks;
-        const dueDate = task.due === "done" ? isoDateFromOffset(0) : task.due_date;
-        return this.updateTask(tasks, id, {
-          status: "progress",
-          due: task.due === "done" ? "today" : task.due,
-          due_date: dueDate,
-          dueLabel: task.due === "done" ? "היום · שלישי" : task.dueLabel,
-          completed_at: null,
-          reminder: defaultTaskReminder({ ...task, due_date: dueDate })
-        });
-      }
-    };
+    const localTasksAdapter = createLocalTasksAdapter();
     repositoryAdapters.local = { taskAdapter: localTasksAdapter };
-    repositoryAdapters.supabase = {
-      taskAdapter: supabaseTasksAdapter,
-      supplierAdapter: supabaseSuppliersAdapter
-    };
-    repositoryAdapters.supabaseRead = { taskAdapter: supabaseTasksAdapter };
-    repositoryAdapters.supabaseWrite = { taskAdapter: supabaseTasksAdapter };
+    repositoryAdapters.supabase = { taskAdapter: supabaseTasksAdapter, supplierAdapter: supabaseSuppliersAdapter };
     const taskAdapter = repositoryAdapters[DATA_BACKEND].taskAdapter;
-    const tasksRepository = {
-      async createTask(tasks, task) {
-        return Promise.resolve(taskAdapter.createTask(tasks, task));
-      },
-      async updateTask(tasks, id, patch) {
-        return Promise.resolve(taskAdapter.updateTask(tasks, id, patch));
-      },
-      async completeTask(tasks, id) {
-        return Promise.resolve(taskAdapter.completeTask(tasks, id));
-      },
-      async reopenTask(tasks, id) {
-        return Promise.resolve(taskAdapter.reopenTask(tasks, id));
-      },
-      async deleteTaskSoft(tasks, id, deletedBy) {
-        return Promise.resolve(taskAdapter.deleteTaskSoft(tasks, id, deletedBy));
-      },
-      async saveTasks(tasks) {
-        return Promise.resolve(taskAdapter.saveTasks(tasks));
-      },
-      async loadTasks() {
-        return Promise.resolve(taskAdapter.loadTasks());
-      }
-    };
+    const tasksRepository = createAsyncRepository(taskAdapter, [
+      "loadTasks",
+      "saveTasks",
+      "createTask",
+      "updateTask",
+      "completeTask",
+      "reopenTask",
+      "deleteTaskSoft"
+    ]);
     async function loadTasks() {
       return tasksRepository.loadTasks();
     }
@@ -2579,44 +1845,115 @@
       }
     }
     window.testSupabaseTaskCrudViaRepository = testSupabaseTaskCrudViaRepository;
-    async function testSupabaseDebugAuth() {
-      const validation = {
-        login: false,
-        logout: false,
-        sessionRestored: false,
-        repositoryCrudCallable: false
+    async function testSupabaseSupplierCrud() {
+      const steps = {
+        load: false,
+        create: false,
+        update: false,
+        stage: false,
+        markAll: false,
+        delete: false
       };
       const blockers = [];
-      if (!supabaseClient) blockers.push("Supabase is not configured.");
-      validation.login = typeof debugSupabaseSignInWithGoogle === "function" && Boolean(supabaseClient);
-      validation.logout = typeof supabaseClient?.auth?.signOut === "function";
+      if (!supabaseClient) {
+        blockers.push("Supabase is not configured.");
+      }
       try {
-        const sessionResult = await getDebugSupabaseSession();
-        validation.sessionRestored = Boolean(sessionResult.session);
-        if (!sessionResult.session) {
-          blockers.push(NO_SUPABASE_AUTH_SESSION_REASON);
-        } else if (DATA_BACKEND !== "supabase") {
-          blockers.push("Add ?debugBackend=supabase to test repository CRUD against Supabase.");
-        } else {
-          await tasksRepository.loadTasks();
-          validation.repositoryCrudCallable = true;
+        if (supabaseClient) {
+          const { data: authData, error: authError } = await supabaseClient.auth.getSession();
+          if (authError) blockers.push(authError.message || "Auth check failed.");
+          if (!authData?.session) blockers.push(NO_SUPABASE_AUTH_SESSION_REASON);
         }
-        console.warn("[debug] testSupabaseDebugAuth validation:", validation);
+        if (blockers.length) {
+          const failed = Object.keys(steps);
+          console.warn("[debug] testSupabaseSupplierCrud blockers:", blockers);
+          return { ok: false, backend: DATA_BACKEND, adapter: "supabaseSuppliersAdapter", steps, passed: [], failed, blockers };
+        }
+        let suppliers = await supabaseSuppliersAdapter.loadSuppliers();
+        steps.load = Array.isArray(suppliers);
+        const { data: sessionAuthData } = await supabaseClient.auth.getSession();
+        const sessionUserId = sessionAuthData?.session?.user?.id;
+        const profileResult = sessionUserId
+          ? await supabaseClient.from("profiles").select("display_name").eq("id", sessionUserId).maybeSingle()
+          : { data: null, error: null };
+        if (profileResult.error) {
+          throw new Error(profileResult.error.message || "Profile lookup failed.");
+        }
+        const signedInDisplayName = profileResult.data?.display_name?.trim() || null;
+        const marker = `[DEBUG] supplier CRUD ${Date.now()}`;
+        const sampleOrder = {
+          id: `debug-supplier-${Date.now()}`,
+          supplier: marker,
+          description: "cp6-supplier-crud",
+          amount: "₪100",
+          due_date: isoDateFromOffset(1),
+          notes: "debug-create",
+          document_notes: "",
+          links: ["https://example.com/debug-supplier"],
+          assignees: [],
+          allAssignees: true,
+          steps: { order: false, received: false, payment: false, invoice: false },
+          step_dates: { order: "", received: "", payment: "", invoice: "" },
+          created_at: isoDateFromOffset(0)
+        };
+        suppliers = await supabaseSuppliersAdapter.createSupplierOrder(suppliers, sampleOrder);
+        const created = suppliers.find(item => item.supplier === marker);
+        steps.create = Boolean(created?.id);
+        if (!created?.id) {
+          throw new Error("Create step did not return a supplier order id.");
+        }
+        const orderId = created.id;
+        suppliers = await supabaseSuppliersAdapter.updateSupplierOrder(suppliers, orderId, { notes: "cp6-update" });
+        steps.update = suppliers.find(item => item.id === orderId)?.notes === "cp6-update";
+        suppliers = await supabaseSuppliersAdapter.updateSupplierStage(
+          suppliers,
+          orderId,
+          "order",
+          true,
+          isoDateFromOffset(0)
+        );
+        const staged = suppliers.find(item => item.id === orderId);
+        steps.stage = Boolean(staged?.steps?.order && staged?.step_dates?.order);
+        suppliers = await supabaseSuppliersAdapter.markAllSupplierStages(suppliers, orderId);
+        const marked = suppliers.find(item => item.id === orderId);
+        steps.markAll = supplierSteps.every(step => marked?.steps?.[step.id]);
+        if (!signedInDisplayName) {
+          throw new Error("Signed-in profile display_name is required for self-contained delete step.");
+        }
+        suppliers = await supabaseSuppliersAdapter.deleteSupplierOrderSoft(suppliers, orderId, signedInDisplayName);
+        steps.delete = Boolean(suppliers.find(item => item.id === orderId)?.deleted_at);
+        const passed = Object.entries(steps).filter(([, ok]) => ok).map(([name]) => name);
+        const failed = Object.entries(steps).filter(([, ok]) => !ok).map(([name]) => name);
+        console.warn("[debug] testSupabaseSupplierCrud steps:", steps);
         return {
-          ok: validation.login && validation.logout && validation.sessionRestored && validation.repositoryCrudCallable,
-          validation,
-          blockers,
-          session: sessionResult.session
-            ? { id: sessionResult.session.user?.id, email: sessionResult.session.user?.email }
-            : null
+          ok: failed.length === 0,
+          backend: DATA_BACKEND,
+          adapter: "supabaseSuppliersAdapter",
+          assigneeMode: "allAssignees",
+          deletedBy: signedInDisplayName,
+          steps,
+          passed,
+          failed,
+          blockers
         };
       } catch (error) {
-        console.warn("[debug] testSupabaseDebugAuth failed.", error);
-        blockers.push(error?.message || String(error));
-        return { ok: false, validation, blockers, reason: error?.message || String(error), error };
+        console.warn("[debug] testSupabaseSupplierCrud failed.", error);
+        const passed = Object.entries(steps).filter(([, ok]) => ok).map(([name]) => name);
+        const failed = Object.entries(steps).filter(([, ok]) => !ok).map(([name]) => name);
+        return {
+          ok: false,
+          backend: DATA_BACKEND,
+          adapter: "supabaseSuppliersAdapter",
+          steps,
+          passed,
+          failed,
+          blockers,
+          reason: error?.message || String(error),
+          error
+        };
       }
     }
-    window.testSupabaseDebugAuth = testSupabaseDebugAuth;
+    window.testSupabaseSupplierCrud = testSupabaseSupplierCrud;
     const state = {
       role: initialRole,
       view: location.hash.replace("#", "") || (initialRole === "manager" ? "management" : "all"),
@@ -2638,80 +1975,32 @@
       supplierPrefill: "",
       tasks: [],
       suppliers: [],
-      prefs: safeObjectStorage("beit-prefs", { dark: false, text: "רגיל" })
+      prefs: loadPreferences()
     };
-    function normalizeSupplier(item, index) {
-      const steps = supplierSteps.reduce((acc, step) => {
-        acc[step.id] = Boolean(item.steps && item.steps[step.id]);
-        return acc;
-      }, {});
-      const step_dates = supplierSteps.reduce((acc, step) => {
-        acc[step.id] = item.step_dates && item.step_dates[step.id] ? item.step_dates[step.id] : "";
-        return acc;
-      }, {});
-      return {
-        id: item.id || `s${Date.now()}-${index}`,
-        supplier: item.supplier || "ספק ללא שם",
-        description: item.description || "",
-        amount: item.amount || "",
-        due_date: item.due_date || "",
-        notes: item.notes || "",
-        document_notes: item.document_notes || "",
-        links: Array.isArray(item.links) ? item.links : [],
-        assignees: Array.isArray(item.assignees) ? item.assignees : [],
-        allAssignees: Boolean(item.allAssignees),
-        steps,
-        step_dates,
-        created_at: item.created_at || isoDateFromOffset(-index)
-      };
-    }
-    const localSuppliersAdapter = {
-      loadSuppliers() {
-        if (!localStorage.getItem("beit-suppliers")) {
-          localStorage.setItem("beit-suppliers", JSON.stringify(starterSuppliers));
-        }
-        const value = safeParseStorage("beit-suppliers", null);
-        return (Array.isArray(value) ? value : starterSuppliers).map(normalizeSupplier);
-      },
-      saveSuppliers(suppliers) {
-        localStorage.setItem("beit-suppliers", JSON.stringify(suppliers));
-        return suppliers;
-      },
-      createSupplierOrder(suppliers, item) {
-        return this.saveSuppliers([item, ...suppliers]);
-      },
-      updateSupplierOrder(suppliers, id, patchOrUpdater) {
-        return this.saveSuppliers(suppliers.map(item => {
-          if (item.id !== id) return item;
-          return typeof patchOrUpdater === "function" ? patchOrUpdater(item) : { ...item, ...patchOrUpdater };
-        }));
-      },
-      deleteSupplierOrderSoft(suppliers, id, deletedBy) {
-        return this.updateSupplierOrder(suppliers, id, { deleted_at: isoDateFromOffset(0), deleted_by: deletedBy });
-      },
-      updateSupplierStage(suppliers, id, step, checked, dateValue = null) {
-        return this.updateSupplierOrder(suppliers, id, item => ({
-          ...item,
-          steps: { ...item.steps, [step]: dateValue ? true : checked },
-          step_dates: dateValue === null ? item.step_dates : { ...item.step_dates, [step]: dateValue }
-        }));
-      },
-      markAllSupplierStages(suppliers, id) {
-        const today = isoDateFromOffset(0);
-        const allSteps = supplierSteps.reduce((acc, step) => ({ ...acc, [step.id]: true }), {});
-        return this.updateSupplierOrder(suppliers, id, item => ({
-          ...item,
-          steps: allSteps,
-          step_dates: supplierSteps.reduce((acc, step) => ({ ...acc, [step.id]: item.step_dates[step.id] || today }), {})
-        }));
-      }
-    };
+    const localSuppliersAdapter = createLocalSuppliersAdapter();
     repositoryAdapters.local.supplierAdapter = localSuppliersAdapter;
-    const supplierAdapter = localSuppliersAdapter;
-    function loadSuppliers() {
-      return supplierAdapter.loadSuppliers();
+    // ספקים תמיד local ב-runtime — גם כש-debug backend=supabase (V2 יעבור דרך DATA_BACKEND)
+    const supplierAdapter = repositoryAdapters.local.supplierAdapter;
+    const suppliersRepository = createAsyncRepository(supplierAdapter, [
+      "loadSuppliers",
+      "saveSuppliers",
+      "createSupplierOrder",
+      "updateSupplierOrder",
+      "deleteSupplierOrderSoft",
+      "updateSupplierStage",
+      "markAllSupplierStages"
+    ]);
+    async function loadSuppliers() {
+      return suppliersRepository.loadSuppliers();
     }
-    state.suppliers = loadSuppliers();
+    async function bootstrapSuppliers() {
+      try {
+        state.suppliers = await suppliersRepository.loadSuppliers();
+      } catch (error) {
+        console.warn("Supplier bootstrap failed.", error);
+        state.suppliers = [];
+      }
+    }
 
     document.body.dataset.theme = state.prefs.dark ? "dark" : "";
 
@@ -2720,150 +2009,83 @@
 
     async function save() {
       state.tasks = await tasksRepository.saveTasks(state.tasks);
-      supplierAdapter.saveSuppliers(state.suppliers);
-      localStorage.setItem("beit-prefs", JSON.stringify(state.prefs));
+      state.suppliers = await suppliersRepository.saveSuppliers(state.suppliers);
+      savePreferences(state.prefs);
     }
     function toast(text) {
       $("toast").textContent = text;
       $("toast").classList.add("show");
       setTimeout(() => $("toast").classList.remove("show"), 1600);
     }
-    function cat(id) { return categories.find(c => c.id === id) || { id: "uncategorized", label: "ללא קטגוריה", icon: "office" }; }
-    function priorityLabel(priority) { return priority === "high" ? "גבוהה" : "רגילה"; }
-    function formatHebrewDate(value) {
-      if (!value) return "ללא יעד";
-      const date = dateFromIso(value);
-      if (!date) return "ללא יעד";
-      const days = ["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
-      const months = ["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
-      return `${days[date.getDay()]} · ${date.getDate()} ${months[date.getMonth()]}`;
-    }
-    function isOverdue(task) {
-      if (task.status === "done" || !task.due_date) return false;
-      const dueOnly = toIsoDateOnly(task.due_date);
-      return dueOnly ? dueOnly < isoDateFromOffset(0) : false;
-    }
-    function taskDueLabel(task) {
-      if (task.status === "done") return task.dueLabel || "הושלם";
-      if (!task.due_date) return "ללא יעד";
-      if (isOverdue(task)) return `עבר יעד • ${formatHebrewDate(task.due_date)}`;
-      const diff = daysFromTodayIso(task.due_date);
-      if (diff === 0) return `היום · ${formatHebrewDate(task.due_date).split(" · ")[0]}`;
-      if (diff === 1) return `מחר · ${formatHebrewDate(task.due_date).split(" · ")[0]}`;
-      return formatHebrewDate(task.due_date);
-    }
-    function taskDueRank(task) {
-      if (task.status === "done") return 5;
-      if (isOverdue(task)) return 0;
-      if (!task.due_date) return 4;
-      const diff = daysFromTodayIso(task.due_date);
-      if (diff === 0) return 1;
-      if (diff === 1) return 2;
-      return 3;
-    }
-    function personalOwner() {
-      return state.role === "manager" ? "צבי" : "עדינה";
-    }
-    function personalTasks(tasks) {
-      return tasks.filter(t => t.owner === personalOwner());
-    }
-    function managementPeople() {
-      return people.filter(person => person !== personalOwner());
-    }
-    function activeTasks(tasks = state.tasks) {
-      return tasks.filter(t => !t.deleted_at);
-    }
-    function isArchivedDone(task) {
-      return task.status === "done" && daysBetween(task.completed_at || task.created_at) >= 90;
-    }
+    const accessCtx = () => ({ role: state.role, userOwner: "עדינה" });
+    function cat(id) { return resolveCategory(categories, id); }
+    function isOverdue(task) { return isTaskOverdue(task); }
+    function taskDueLabel(task) { return buildTaskDueLabel(task); }
+    function personalOwner() { return personalOwnerDomain(accessCtx()); }
+    function personalTasks(tasks) { return filterPersonalTasks(tasks, accessCtx()); }
+    function managementPeople() { return filterManagementPeople(people, accessCtx()); }
+    function activeTasks(tasks = state.tasks) { return filterActiveTasks(tasks); }
     function visibleDoneTasks(tasks = state.tasks, includeArchive = false) {
-      return activeTasks(tasks).filter(t => t.status === "done" && (includeArchive || !isArchivedDone(t)));
+      return filterVisibleDoneTasks(tasks, includeArchive);
     }
-    function canEditTaskContent(task) {
-      return canAccessTask(task) && task.status !== "done" && !task.deleted_at;
-    }
-    function canDeleteTask(task) {
-      return Boolean(task) && state.role === "manager" && !task.deleted_at;
-    }
-    function canAccessTask(task) {
-      return Boolean(task) && !task.deleted_at && (state.role === "manager" || task.owner === "עדינה");
-    }
-    function getTask(id) {
-      return state.tasks.find(x => x.id === id);
-    }
-    function getVisibleTask(id) {
-      const task = getTask(id);
-      return canAccessTask(task) ? task : null;
-    }
-    function supplierProgress(item) {
-      const done = supplierSteps.filter(step => item.steps[step.id]).length;
-      return { done, total: supplierSteps.length, complete: done === supplierSteps.length };
-    }
-    function canAccessSupplier(item) {
-      return Boolean(item) && (state.role === "manager" || item.allAssignees || item.assignees.includes(personalOwner()));
-    }
-    function visibleSuppliers() {
-      return state.suppliers.filter(canAccessSupplier).sort((a, b) => {
-        const aDone = supplierProgress(a).complete ? 1 : 0;
-        const bDone = supplierProgress(b).complete ? 1 : 0;
-        return aDone - bDone || (a.due_date || "9999").localeCompare(b.due_date || "9999") || a.supplier.localeCompare(b.supplier, "he");
-      });
-    }
-    function getSupplier(id) {
-      return state.suppliers.find(item => item.id === id);
-    }
-    function getVisibleSupplier(id) {
-      const item = getSupplier(id);
-      return canAccessSupplier(item) ? item : null;
-    }
-    function updateSupplier(id, updater) {
+    function canAccessTask(task) { return canAccessTaskDomain(accessCtx(), task); }
+    function canEditTaskContent(task) { return canEditTaskContentDomain(accessCtx(), task); }
+    function canDeleteTask(task) { return canDeleteTaskDomain(accessCtx(), task); }
+    function getTask(id) { return findTask(state.tasks, id); }
+    function getVisibleTask(id) { return findVisibleTask(state.tasks, id, accessCtx()); }
+    function supplierProgress(item) { return supplierProgressDomain(item, supplierSteps); }
+    function canAccessSupplier(item) { return canAccessSupplierDomain(accessCtx(), item); }
+    function visibleSuppliers() { return filterVisibleSuppliers(state.suppliers, accessCtx(), supplierSteps); }
+    function getSupplier(id) { return findSupplier(state.suppliers, id); }
+    function getVisibleSupplier(id) { return findVisibleSupplier(state.suppliers, id, accessCtx()); }
+    async function updateSupplier(id, updater) {
       const item = getSupplier(id);
       if (!canAccessSupplier(item)) {
         navigate("suppliers");
         toast("אין הרשאה להזמנה זו");
         return false;
       }
-      state.suppliers = supplierAdapter.updateSupplierOrder(state.suppliers, id, updater);
+      state.suppliers = await suppliersRepository.updateSupplierOrder(state.suppliers, id, updater);
       render();
       return true;
     }
-    function createSupplierOrder(item) {
-      state.suppliers = supplierAdapter.createSupplierOrder(state.suppliers, item);
+    async function createSupplierOrder(item) {
+      state.suppliers = await suppliersRepository.createSupplierOrder(state.suppliers, item);
       return item;
     }
-    function deleteSupplierOrderSoft(id) {
+    async function deleteSupplierOrderSoft(id) {
       const item = getSupplier(id);
       if (!canAccessSupplier(item)) {
         navigate("suppliers");
         toast("אין הרשאה להזמנה זו");
         return false;
       }
-      state.suppliers = supplierAdapter.deleteSupplierOrderSoft(state.suppliers, id, personalOwner());
+      state.suppliers = await suppliersRepository.deleteSupplierOrderSoft(state.suppliers, id, personalOwner());
       render();
       return true;
     }
     function updateSupplierOrder(id, patchOrUpdater) {
       return updateSupplier(id, patchOrUpdater);
     }
-    function updateSupplierStage(id, step, checked, dateValue = null) {
+    async function updateSupplierStage(id, step, checked, dateValue = null) {
       const item = getSupplier(id);
       if (!canAccessSupplier(item)) {
         navigate("suppliers");
         toast("אין הרשאה להזמנה זו");
         return false;
       }
-      state.suppliers = supplierAdapter.updateSupplierStage(state.suppliers, id, step, checked, dateValue);
+      state.suppliers = await suppliersRepository.updateSupplierStage(state.suppliers, id, step, checked, dateValue);
       render();
       return true;
     }
-    function markAllSupplierStages(id) {
+    async function markAllSupplierStages(id) {
       const item = getSupplier(id);
       if (!canAccessSupplier(item)) {
         navigate("suppliers");
         toast("אין הרשאה להזמנה זו");
         return false;
       }
-      state.suppliers = supplierAdapter.markAllSupplierStages(state.suppliers, id);
+      state.suppliers = await suppliersRepository.markAllSupplierStages(state.suppliers, id);
       render();
       return true;
     }
@@ -2897,7 +2119,7 @@
       }
     }
     function openTasks() {
-      return activeTasks().filter(t => t.status !== "done");
+      return filterOpenTasks(state.tasks);
     }
     function resetScroll() {
       window.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -3079,27 +2301,10 @@
         </article>`;
     }
     function sortTasks(tasks, sortMode = state.allSort) {
-      return [...tasks].sort((a, b) => {
-        const priorityDiff = (a.priority === "high" ? 0 : 1) - (b.priority === "high" ? 0 : 1);
-        if (priorityDiff) return priorityDiff;
-        if (sortMode === "category") {
-          return cat(a.category).label.localeCompare(cat(b.category).label, "he") || taskDueRank(a) - taskDueRank(b) || taskDueLabel(a).localeCompare(taskDueLabel(b), "he") || a.title.localeCompare(b.title, "he");
-        }
-        if (sortMode === "owner") {
-          return a.owner.localeCompare(b.owner, "he") || taskDueRank(a) - taskDueRank(b) || taskDueLabel(a).localeCompare(taskDueLabel(b), "he") || a.title.localeCompare(b.title, "he");
-        }
-        return taskDueRank(a) - taskDueRank(b) || taskDueLabel(a).localeCompare(taskDueLabel(b), "he") || a.title.localeCompare(b.title, "he");
-      });
-    }
-    function sortOptions(context = "personal") {
-      if (context === "org") return [["date", "לפי תאריך"], ["category", "לפי קטגוריה"], ["owner", "לפי מבצע"]];
-      if (context === "category") return [["date", "לפי תאריך"], ["owner", "לפי מבצע"]];
-      if (context === "person") return [["date", "לפי תאריך"], ["category", "לפי קטגוריה"]];
-      return [["date", "לפי תאריך"], ["category", "לפי קטגוריה"]];
+      return sortTasksDomain(tasks, sortMode, categories);
     }
     function currentSort(context = "personal") {
-      const allowed = sortOptions(context).map(([key]) => key);
-      return allowed.includes(state.allSort) ? state.allSort : "date";
+      return resolveCurrentSort(state.allSort, context);
     }
     function sortControls(context = "personal") {
       const labels = sortOptions(context);
@@ -3107,9 +2312,7 @@
       return `<div class="sort-bar" aria-label="אפשרויות מיון">${labels.map(([key, label]) => `<button data-sort="${key}" class="${activeSort === key ? "active" : ""}">${label}</button>`).join("")}</div>`;
     }
     function taskGroupTitle(task, sortMode = state.allSort) {
-      if (sortMode === "category") return cat(task.category).label;
-      if (sortMode === "owner") return task.owner;
-      return "";
+      return taskGroupTitleDomain(task, sortMode, categories);
     }
     function renderTaskList(tasks, showOwner, emptyText, sortMode = state.allSort) {
       if (!tasks.length) return `<div class="empty">${emptyText}</div>`;
@@ -3615,19 +2818,19 @@
         const label = $(`newStepDateLabel-${step}`);
         if (label) label.textContent = e.currentTarget.value ? formatHebrewDate(e.currentTarget.value) : "בחר תאריך";
         e.currentTarget.closest(".supplier-check")?.classList.toggle("done", Boolean(e.currentTarget.value));
-      }));      document.querySelectorAll("[data-supplier-step]").forEach(el => el.addEventListener("change", e => {
+      }));      document.querySelectorAll("[data-supplier-step]").forEach(el => el.addEventListener("change", async e => {
         const [id, step] = e.currentTarget.dataset.supplierStep.split(":");
-        if (updateSupplierStage(id, step, e.currentTarget.checked)) toast("שלב ההזמנה עודכן");
+        if (await updateSupplierStage(id, step, e.currentTarget.checked)) toast("שלב ההזמנה עודכן");
       }));
-      document.querySelectorAll("[data-supplier-step-date]").forEach(el => el.addEventListener("change", e => {
+      document.querySelectorAll("[data-supplier-step-date]").forEach(el => el.addEventListener("change", async e => {
         const [id, step] = e.currentTarget.dataset.supplierStepDate.split(":");
         const value = e.currentTarget.value;
         const current = getSupplier(id);
-        if (updateSupplierStage(id, step, value ? true : Boolean(current?.steps[step]), value)) toast("תאריך השלב נשמר");
+        if (await updateSupplierStage(id, step, value ? true : Boolean(current?.steps[step]), value)) toast("תאריך השלב נשמר");
       }));
-      document.querySelectorAll("[data-supplier-all]").forEach(el => el.addEventListener("click", e => {
+      document.querySelectorAll("[data-supplier-all]").forEach(el => el.addEventListener("click", async e => {
         const id = e.currentTarget.dataset.supplierAll;
-        if (markAllSupplierStages(id)) toast("כל שלבי ההזמנה סומנו");
+        if (await markAllSupplierStages(id)) toast("כל שלבי ההזמנה סומנו");
       }));      $("supplierForm")?.addEventListener("change", e => {
         if (e.target.name !== "supplierAll") return;
         document.querySelectorAll('input[name="supplierAssignee"]').forEach(input => {
@@ -3646,7 +2849,7 @@
       }
       $("supplierLinks")?.addEventListener("input", updateSupplierLinksPreview);
       $("supplierLinks")?.addEventListener("paste", () => setTimeout(updateSupplierLinksPreview, 0));
-      updateSupplierLinksPreview();      $("supplierForm")?.addEventListener("submit", e => {
+      updateSupplierLinksPreview();      $("supplierForm")?.addEventListener("submit", async e => {
         e.preventDefault();
         const allAssignees = Boolean(document.querySelector('input[name="supplierAll"]')?.checked);
         const assignees = allAssignees ? [] : [...document.querySelectorAll('input[name="supplierAssignee"]:checked')].map(input => input.value);
@@ -3678,7 +2881,7 @@
           step_dates: stepDates,
           created_at: isoDateFromOffset(0)
         }, 0);
-        createSupplierOrder(item);
+        await createSupplierOrder(item);
         toast("הזמנת הספק נוצרה");
         navigate(`supplier:${item.id}`);
       });
@@ -3889,9 +3092,9 @@
         const name = $("newCategoryName").value.trim();
         if (!name) return toast("כתוב שם קטגוריה");
         const category = { id: `custom-${Date.now()}`, label: name, icon: "office" };
-        const custom = safeArrayStorage("beit-categories");
+        const custom = readCustomCategories();
         custom.push(category);
-        localStorage.setItem("beit-categories", JSON.stringify(custom));
+        saveCustomCategories(custom);
         categories = loadCategories();
         state.addingCategory = false;
         state.deletingCategory = false;
@@ -3927,13 +3130,12 @@
       $("confirmDeleteCategory")?.addEventListener("click", async () => {
         const ids = state.categoriesToDelete;
         if (!ids.length) return;
-        const hidden = safeArrayStorage("beit-hidden-categories");
+        const hidden = readHiddenCategoryIds();
         ids.filter(id => baseCategories.some(c => c.id === id)).forEach(id => {
           if (!hidden.includes(id)) hidden.push(id);
         });
-        localStorage.setItem("beit-hidden-categories", JSON.stringify(hidden));
-        const custom = safeArrayStorage("beit-categories").filter(c => !ids.includes(c.id));
-        localStorage.setItem("beit-categories", JSON.stringify(custom));
+        saveHiddenCategoryIds(hidden);
+        saveCustomCategories(readCustomCategories().filter(c => !ids.includes(c.id)));
         categories = loadCategories();
         const fallbackCategory = categories[0]?.id || "uncategorized";
         state.tasks = await tasksRepository.saveTasks(state.tasks.map(t => ids.includes(t.category) ? { ...t, category: fallbackCategory } : t));
@@ -3959,9 +3161,9 @@
       $("savePerson")?.addEventListener("click", () => {
         const name = $("newPersonName").value.trim();
         if (!name) return toast("כתוב שם מבצע");
-        const custom = safeArrayStorage("beit-people");
-        if (![...basePeople, ...custom].includes(name)) custom.push(name);
-        localStorage.setItem("beit-people", JSON.stringify(custom));
+        const custom = readCustomPeople();
+        if (!allKnownPeople().includes(name)) custom.push(name);
+        saveCustomPeople(custom);
         people = loadPeople();
         state.addingPerson = false;
         state.deletingPerson = false;
@@ -3997,13 +3199,12 @@
       $("confirmDeletePerson")?.addEventListener("click", async () => {
         const names = state.peopleToDelete;
         if (!names.length) return;
-        const hidden = safeArrayStorage("beit-hidden-people");
+        const hidden = readHiddenPeople();
         names.filter(name => basePeople.includes(name)).forEach(name => {
           if (!hidden.includes(name)) hidden.push(name);
         });
-        localStorage.setItem("beit-hidden-people", JSON.stringify(hidden));
-        const custom = safeArrayStorage("beit-people").filter(name => !names.includes(name));
-        localStorage.setItem("beit-people", JSON.stringify(custom));
+        saveHiddenPeople(hidden);
+        saveCustomPeople(readCustomPeople().filter(name => !names.includes(name)));
         people = loadPeople();
         const fallbackOwner = people[0] || "ללא מבצע";
         state.tasks = await tasksRepository.saveTasks(state.tasks.map(t => names.includes(t.owner) ? { ...t, owner: fallbackOwner } : t));
@@ -4116,9 +3317,35 @@
         });
       }
       registerDebugSupabaseAuthListener();
+      await bootstrapSuppliers();
       await bootstrapTasks();
     }
-    initRuntime().finally(() => registerServiceWorker());
+
+    // hooks ל-validation-harness.js — לא משנה runtime רגיל
+    window.__validationHooks = {
+      localTasksAdapter,
+      localSuppliersAdapter,
+      supplierAdapter,
+      tasksRepository,
+      suppliersRepository,
+      state,
+      isoDateFromOffset,
+      toIsoDateOnly,
+      supplierSteps,
+      canAccessTask,
+      canEditTaskContent,
+      canDeleteTask,
+      canAccessSupplier,
+      isArchivedDone,
+      visibleDoneTasks,
+      activeTasks,
+      DATA_BACKEND,
+      supabaseClient,
+      bootstrapTasks,
+      bootstrapSuppliers,
+      loadSuppliers
+    };
+    window.__appReady = initRuntime().finally(() => registerServiceWorker());
     function registerServiceWorker() {
       if (!("serviceWorker" in navigator)) return;
       let refreshing = false;
@@ -4146,5 +3373,6 @@
       }).catch(() => {});
     }
   </script>
+  <script src="./validation-harness.js"></script>
 </body>
 </html>

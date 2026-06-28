@@ -32,27 +32,34 @@ C:\Users\Noam\Projects\Bat-ayin-tasks
 
 ## Git
 
-- HEAD נוכחי: `ea4ddc4 Add initial Supabase schema`
+- HEAD נוכחי: `1dbdd1a End-to-end Supabase task CRUD`
+- תג יציב: `stable-supabase-task-crud-e2e`
 - אין remote מוגדר כרגע (אין `origin`).
 
 ## קומיטים חשובים קיימים
 
+- `1dbdd1a End-to-end Supabase task CRUD`
+- `b3d3a9c Complete Supabase task mutations`
+- `c422d08 Make runtime async-ready`
+- `7e392a3 Unify Supabase adapters`
+- `bf70287 Add Supabase tasks write adapter`
+- `bc5b14b Add tasksRepository facade and Supabase write debug validation`
 - `ea4ddc4 Add initial Supabase schema`
-- `2041384 Add project documentation for future agents`
-- `b41699d Prepare Supabase client configuration`
 - `c73f0fe Centralize local data backend configuration`
-- `9e83304 Add local supplier data adapter`
 - `72abb51 Add local task data adapter`
-- `23209c3 Add task lifecycle safeguards and archival`
-- `112a922 Add basic PWA install support`
-- `c576e63 Add supplier purchasing workflow and management counts`
-- `354c7b9 Add Supabase smoke test SQL`
+- `9e83304 Add local supplier data adapter`
 
 ## תגיות קיימות
 
 - `stable-before-supabase`
 - `stable-local-adapters`
 - `stable-supabase-client-prepared`
+- `stable-tasks-repository`
+- `stable-supabase-write-adapter`
+- `stable-supabase-unified-adapter`
+- `stable-async-runtime`
+- `stable-supabase-task-crud`
+- `stable-supabase-task-crud-e2e`
 
 ## כללי עבודה
 
@@ -191,16 +198,18 @@ const DATA_BACKEND = "local";
 
 מבנה adapters קיים:
 
-- `repositoryAdapters`
-- `tasksRepository` — facade לכל גישת runtime למשימות
+- `outputs/adapters.js` — bundled `BatAyinAdapters` (מקור: `src/adaptersBundle.ts`)
+- `repositoryAdapters` — `local`, `supabase` (שני backends בלבד)
+- `tasksRepository` — async facade לכל גישת runtime למשימות
+- `supabaseTasksAdapter` — unified Supabase adapter (read + write)
 - `taskAdapter` — backend פנימי (נבחר לפי `DATA_BACKEND`, נקרא רק מתוך `tasksRepository`)
-- `supplierAdapter`
-- `repositoryAdapters.local`
+- `supplierAdapter` — תמיד local ב-production; Supabase adapter קיים ב-bundle ל-debug E2E בלבד
+- `repositoryAdapters.local` — production path
 
 כללי עבודה:
 
-- אין לשנות את `DATA_BACKEND` מ־`"local"` ללא בקשה מפורשת.
-- אין להעביר קריאות אמיתיות ל־Supabase לפני שלב ייעודי.
+- אין לשנות את ברירת המחדל של `DATA_BACKEND` מ־`"local"` ללא בקשה מפורשת.
+- אין production switch ל־Supabase — debug override (`?debugBackend=supabase`) בלבד.
 - **כל גישת runtime למשימות חייבת לעבור דרך `tasksRepository`.**
 - **אסור:** קריאות ישירות ל־`taskAdapter.*` מחוץ ל־`tasksRepository` ולשורת setup של ה־adapter (`repositoryAdapters` + `const taskAdapter = …`).
 - ספקים/רכש חייבים לעבור דרך `supplierAdapter`.
@@ -210,30 +219,26 @@ const DATA_BACKEND = "local";
 
 ## מצב Supabase נוכחי
 
-מה קיים:
+מה קיים ואומת:
 
-- תיקיית `supabase` עם SQL בסיסי:
-  - `schema.sql`
-  - `rls.sql`
-  - `seed.sql`
-  - `smoke-test.sql`
-  - `README.md`
-- ב־`outputs/index.html` קיימים:
-  - `SUPABASE_URL`
-  - `SUPABASE_ANON_KEY`
-  - `createSupabaseClientSafe()`
-  - `testSupabaseConnection()`
-- יצירת client בטוחה: אם הספרייה לא זמינה או הערכים הם placeholders, האפליקציה לא קורסת.
-- שגיאות Supabase נתפסות ב־`try/catch` ונרשמות כ־`console.warn`.
+- תיקיית `supabase` עם SQL (schema, RLS, seed, smoke-test)
+- Client בטוח + `testSupabaseConnection()`
+- Bundled adapters: `outputs/adapters.js` → `BatAyinAdapters`
+- Unified Supabase tasks adapter (read + write)
+- Async runtime: `bootstrapTasks()`, async `tasksRepository`
+- Google OAuth (debug): `debugSupabaseSignInWithGoogle()`, session bootstrap
+- Organization membership context
+- Task CRUD E2E via `testSupabaseTaskCrudViaRepository()`
+- `DATA_BACKEND` ברירת מחדל `"local"` — UI production על localStorage
 
 מה עדיין לא קיים:
 
-- אין מעבר נתונים ל־Supabase.
-- אין קריאות production אמיתיות ל־Supabase במסלול האפליקציה.
-- אין Google Login.
-- אין Supabase Storage.
-- אין File attachments אמיתיים.
-- אין Push notifications.
+- Production switch (`DATA_BACKEND` production = supabase)
+- Migration localStorage → DB
+- Suppliers Supabase runtime (local בלבד ב-UI; adapter + E2E debug קיימים)
+- Production Google Login UI (OAuth debug בלבד)
+- Supabase Storage / file attachments
+- Push notifications
 
 ## מצב PWA נוכחי
 
@@ -249,10 +254,20 @@ const DATA_BACKEND = "local";
 לפני commit יש להריץ לפחות:
 
 ```bash
-node -e "const fs=require('fs'); const html=fs.readFileSync('outputs/index.html','utf8'); const m=html.match(new RegExp('<script>([\\\\s\\\\S]*)</script>')); new Function(m[1]); console.log('script syntax ok');"
+npm run validate
 git -c core.fsmonitor=false diff --check
 git -c core.fsmonitor=false status --porcelain
 ```
+
+פקודות validation:
+
+| פקודה | מה בודק |
+|--------|---------|
+| `npm run validate` | build + static + browser integration (פקודה ראשית) |
+| `npm run validate:static` | build, PWA, bundle sync בלבד |
+| `npm run validate:browser` | Playwright suites בלבד |
+| `npm run validate:supabase` | Supabase CRUD (דורש session + `--require-supabase`) |
+| `npm run verify` | static validation only (alias for `validate:static`) |
 
 כאשר יש שינוי התנהגותי, יש לבדוק גם בדפדפן:
 

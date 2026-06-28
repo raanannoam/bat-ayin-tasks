@@ -1,53 +1,60 @@
-const NOT_IMPLEMENTED = "Not implemented yet";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { AppSupplier } from "../../types/appSupplier.js";
+import { createSupabaseSuppliersReadAdapter } from "./supabaseSuppliersReadAdapter.js";
+import { createSupabaseSuppliersWriteAdapter } from "./supabaseSuppliersWriteAdapter.js";
 
-/** placeholder — parity עם localSuppliersAdapter */
+/** חוזה adapter ספקים — parity עם localSuppliersAdapter */
 export type SupabaseSuppliersAdapter = {
-  loadSuppliers(): never;
-  saveSuppliers(suppliers: unknown[]): never;
-  createSupplierOrder(suppliers: unknown[], item: unknown): never;
+  loadSuppliers(): Promise<AppSupplier[]>;
+  saveSuppliers(suppliers: AppSupplier[]): AppSupplier[];
+  createSupplierOrder(suppliers: AppSupplier[], item: AppSupplier): Promise<AppSupplier[]>;
   updateSupplierOrder(
-    suppliers: unknown[],
+    suppliers: AppSupplier[],
     id: string,
-    patchOrUpdater: unknown
-  ): never;
-  deleteSupplierOrderSoft(suppliers: unknown[], id: string, deletedBy: string): never;
+    patchOrUpdater: Partial<AppSupplier> | ((item: AppSupplier) => AppSupplier)
+  ): Promise<AppSupplier[]>;
+  deleteSupplierOrderSoft(
+    suppliers: AppSupplier[],
+    id: string,
+    deletedBy: string
+  ): Promise<AppSupplier[]>;
   updateSupplierStage(
-    suppliers: unknown[],
+    suppliers: AppSupplier[],
     id: string,
     step: string,
     checked: boolean,
     dateValue?: string | null
-  ): never;
-  markAllSupplierStages(suppliers: unknown[], id: string): never;
+  ): Promise<AppSupplier[]>;
+  markAllSupplierStages(suppliers: AppSupplier[], id: string): Promise<AppSupplier[]>;
 };
 
-function throwNotImplemented(): never {
-  throw new Error(NOT_IMPLEMENTED);
-}
-
-/** adapter ספקים — placeholder עד Supabase suppliers phase */
-export function createSupabaseSuppliersAdapter(): SupabaseSuppliersAdapter {
+/** adapter מאוחד — read + write + saveSuppliers noop */
+export function createSupabaseSuppliersAdapter(
+  client: SupabaseClient | null
+): SupabaseSuppliersAdapter {
+  const readAdapter = createSupabaseSuppliersReadAdapter(client);
+  const writeAdapter = createSupabaseSuppliersWriteAdapter(client);
   return {
     loadSuppliers() {
-      return throwNotImplemented();
+      return readAdapter.loadSuppliers();
     },
-    saveSuppliers() {
-      return throwNotImplemented();
+    saveSuppliers(suppliers) {
+      return suppliers;
     },
-    createSupplierOrder() {
-      return throwNotImplemented();
+    createSupplierOrder(suppliers, item) {
+      return writeAdapter.createSupplierOrder(suppliers, item);
     },
-    updateSupplierOrder() {
-      return throwNotImplemented();
+    updateSupplierOrder(suppliers, id, patchOrUpdater) {
+      return writeAdapter.updateSupplierOrder(suppliers, id, patchOrUpdater);
     },
-    deleteSupplierOrderSoft() {
-      return throwNotImplemented();
+    deleteSupplierOrderSoft(suppliers, id, deletedBy) {
+      return writeAdapter.deleteSupplierOrderSoft(suppliers, id, deletedBy);
     },
-    updateSupplierStage() {
-      return throwNotImplemented();
+    updateSupplierStage(suppliers, id, step, checked, dateValue) {
+      return writeAdapter.updateSupplierStage(suppliers, id, step, checked, dateValue);
     },
-    markAllSupplierStages() {
-      return throwNotImplemented();
+    markAllSupplierStages(suppliers, id) {
+      return writeAdapter.markAllSupplierStages(suppliers, id);
     }
   };
 }

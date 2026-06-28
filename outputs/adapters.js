@@ -21,17 +21,75 @@ var BatAyinAdapters = (() => {
   // src/adaptersBundle.ts
   var adaptersBundle_exports = {};
   __export(adaptersBundle_exports, {
+    BASE_CATEGORIES: () => BASE_CATEGORIES,
+    BASE_PEOPLE: () => BASE_PEOPLE,
+    DEFAULT_PREFS: () => DEFAULT_PREFS,
+    DEMO_MANAGER_OWNER: () => DEMO_MANAGER_OWNER,
+    DEMO_USER_OWNER: () => DEMO_USER_OWNER,
+    SUPPLIER_STEPS: () => SUPPLIER_STEPS,
+    ageLabel: () => ageLabel,
+    allKnownPeople: () => allKnownPeople,
+    buildTaskDueLabel: () => buildTaskDueLabel,
+    canAccessSupplier: () => canAccessSupplier,
+    canAccessTask: () => canAccessTask,
+    canDeleteTask: () => canDeleteTask,
+    canEditTaskContent: () => canEditTaskContent,
+    createAsyncRepository: () => createAsyncRepository,
+    createLocalSuppliersAdapter: () => createLocalSuppliersAdapter,
+    createLocalTasksAdapter: () => createLocalTasksAdapter,
     createSupabaseSuppliersAdapter: () => createSupabaseSuppliersAdapter,
     createSupabaseTasksAdapter: () => createSupabaseTasksAdapter,
-    createSupabaseTasksReadAdapter: () => createSupabaseTasksReadAdapter,
-    createSupabaseTasksWriteAdapter: () => createSupabaseTasksWriteAdapter,
+    dateFromIso: () => dateFromIso,
+    daysBetween: () => daysBetween,
+    daysFromTodayIso: () => daysFromTodayIso,
     defaultTaskReminder: () => defaultTaskReminder,
+    filterActiveTasks: () => filterActiveTasks,
+    filterManagementPeople: () => filterManagementPeople,
+    filterOpenTasks: () => filterOpenTasks,
+    filterPersonalTasks: () => filterPersonalTasks,
+    filterVisibleDoneTasks: () => filterVisibleDoneTasks,
+    filterVisibleSuppliers: () => filterVisibleSuppliers,
+    findSupplier: () => findSupplier,
+    findTask: () => findTask,
+    findVisibleSupplier: () => findVisibleSupplier,
+    findVisibleTask: () => findVisibleTask,
+    formatHebrewDate: () => formatHebrewDate,
     getDateBucketFromIso: () => getDateBucketFromIso,
+    isArchivedDone: () => isArchivedDone,
+    isTaskOverdue: () => isTaskOverdue,
     isoDateFromOffset: () => isoDateFromOffset,
+    loadCategories: () => loadCategories,
+    loadPeople: () => loadPeople,
+    loadPreferences: () => loadPreferences,
     loadSupabaseTasksWriteContext: () => loadSupabaseTasksWriteContext,
     mapAppTaskToSupabaseInsert: () => mapAppTaskToSupabaseInsert,
+    normalizeSupplier: () => normalizeSupplier,
     normalizeTask: () => normalizeTask,
-    toIsoDateOnly: () => toIsoDateOnly
+    personalOwner: () => personalOwner,
+    priorityLabel: () => priorityLabel,
+    readCustomCategories: () => readCustomCategories,
+    readCustomPeople: () => readCustomPeople,
+    readHiddenCategoryIds: () => readHiddenCategoryIds,
+    readHiddenPeople: () => readHiddenPeople,
+    relativeAgeLabel: () => relativeAgeLabel,
+    resolveCategory: () => resolveCategory,
+    resolveCurrentSort: () => resolveCurrentSort,
+    safeArrayStorage: () => safeArrayStorage,
+    safeObjectStorage: () => safeObjectStorage,
+    safeParseStorage: () => safeParseStorage,
+    saveCustomCategories: () => saveCustomCategories,
+    saveCustomPeople: () => saveCustomPeople,
+    saveHiddenCategoryIds: () => saveHiddenCategoryIds,
+    saveHiddenPeople: () => saveHiddenPeople,
+    savePreferences: () => savePreferences,
+    sortOptions: () => sortOptions,
+    sortTasks: () => sortTasks,
+    startOfToday: () => startOfToday,
+    supplierProgress: () => supplierProgress,
+    taskDueRank: () => taskDueRank,
+    taskGroupTitle: () => taskGroupTitle,
+    toIsoDateOnly: () => toIsoDateOnly,
+    writeStorageJson: () => writeStorageJson
   });
 
   // src/data/adapters/supabase/constants.ts
@@ -98,6 +156,11 @@ var BatAyinAdapters = (() => {
     const day = String(date.getDate()).padStart(2, "0");
     return `${date.getFullYear()}-${month}-${day}`;
   }
+  function dateFromIso(value) {
+    if (!value) return null;
+    const date = /* @__PURE__ */ new Date(`${value}T12:00:00`);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
   function toIsoDateOnly(value) {
     if (!value || typeof value !== "string") return null;
     const dateOnly = value.slice(0, 10);
@@ -110,6 +173,20 @@ var BatAyinAdapters = (() => {
     if (dueOnly === isoDateFromOffset(0)) return "today";
     if (dueOnly === isoDateFromOffset(1)) return "tomorrow";
     return "date";
+  }
+  function daysFromTodayIso(value) {
+    const dueOnly = toIsoDateOnly(value);
+    if (!dueOnly) return null;
+    const due = dateFromIso(dueOnly);
+    if (!due) return null;
+    due.setHours(0, 0, 0, 0);
+    return Math.floor((due.getTime() - startOfToday().getTime()) / 864e5);
+  }
+  function daysBetween(start, end = startOfToday()) {
+    const startDate = dateFromIso(start);
+    if (!startDate) return 0;
+    startDate.setHours(0, 0, 0, 0);
+    return Math.max(0, Math.floor((end.getTime() - startDate.getTime()) / 864e5));
   }
 
   // src/data/adapters/supabase/mapDbTaskUpdateToApp.ts
@@ -620,35 +697,978 @@ var BatAyinAdapters = (() => {
     };
   }
 
-  // src/data/adapters/supabase/supabaseSuppliersAdapter.ts
-  var NOT_IMPLEMENTED = "Not implemented yet";
-  function throwNotImplemented() {
-    throw new Error(NOT_IMPLEMENTED);
+  // src/data/adapters/supabase/groupLinksByOrderId.ts
+  function groupLinksByOrderId(rows) {
+    const grouped = /* @__PURE__ */ new Map();
+    (rows || []).forEach((row) => {
+      if (!row.url) return;
+      const list = grouped.get(row.supplier_order_id) || [];
+      list.push(row.url);
+      grouped.set(row.supplier_order_id, list);
+    });
+    return grouped;
   }
-  function createSupabaseSuppliersAdapter() {
+
+  // src/data/adapters/supabase/loadSupabaseSuppliersReadContext.ts
+  async function loadSupabaseSuppliersReadContext(client) {
+    const batAyin = client.schema("bat_ayin");
+    const membersResult = await batAyin.from("organization_members").select("user_id").eq("organization_id", DEFAULT_ORGANIZATION_ID).eq("is_active", true);
+    if (membersResult.error) throw membersResult.error;
+    const userIds = [...new Set((membersResult.data || []).map((row) => row.user_id))];
+    let profileRows = [];
+    if (userIds.length) {
+      const profilesResult = await client.from("profiles").select("id, display_name").in("id", userIds);
+      if (profilesResult.error) throw profilesResult.error;
+      profileRows = profilesResult.data || [];
+    }
+    return { profileNameById: buildProfileNameById(profileRows) };
+  }
+
+  // src/data/types/appSupplier.ts
+  var SUPPLIER_STEP_IDS = ["order", "received", "payment", "invoice"];
+
+  // src/data/adapters/supabase/supplierStepMaps.ts
+  var STEP_DB_COLUMNS = {
+    order: { completed: "order_completed", completedAt: "order_completed_at" },
+    received: { completed: "received_completed", completedAt: "received_completed_at" },
+    payment: { completed: "payment_completed", completedAt: "payment_completed_at" },
+    invoice: { completed: "invoice_completed", completedAt: "invoice_completed_at" }
+  };
+  function dbDateToApp(value) {
+    return toIsoDateOnly(typeof value === "string" ? value : null) ?? "";
+  }
+  function appDateToDb(value) {
+    return toIsoDateOnly(value) ?? null;
+  }
+  function emptySupplierSteps() {
+    return SUPPLIER_STEP_IDS.reduce((acc, step) => {
+      acc[step] = false;
+      return acc;
+    }, {});
+  }
+  function emptySupplierStepDates() {
+    return SUPPLIER_STEP_IDS.reduce((acc, step) => {
+      acc[step] = "";
+      return acc;
+    }, {});
+  }
+  function mapDbRowToSupplierSteps(row) {
+    const steps = emptySupplierSteps();
+    const step_dates = emptySupplierStepDates();
+    for (const step of SUPPLIER_STEP_IDS) {
+      const cols = STEP_DB_COLUMNS[step];
+      steps[step] = Boolean(row[cols.completed]);
+      step_dates[step] = dbDateToApp(row[cols.completedAt]);
+    }
+    return { steps, step_dates };
+  }
+  function mapSupplierStepsToDb(steps, stepDates) {
     return {
-      loadSuppliers() {
-        return throwNotImplemented();
-      },
-      saveSuppliers() {
-        return throwNotImplemented();
-      },
-      createSupplierOrder() {
-        return throwNotImplemented();
-      },
-      updateSupplierOrder() {
-        return throwNotImplemented();
-      },
-      deleteSupplierOrderSoft() {
-        return throwNotImplemented();
-      },
-      updateSupplierStage() {
-        return throwNotImplemented();
-      },
-      markAllSupplierStages() {
-        return throwNotImplemented();
+      order_completed: Boolean(steps.order),
+      order_completed_at: appDateToDb(stepDates.order),
+      received_completed: Boolean(steps.received),
+      received_completed_at: appDateToDb(stepDates.received),
+      payment_completed: Boolean(steps.payment),
+      payment_completed_at: appDateToDb(stepDates.payment),
+      invoice_completed: Boolean(steps.invoice),
+      invoice_completed_at: appDateToDb(stepDates.invoice)
+    };
+  }
+  function buildSupplierStageUpdatePayload(step, checked, dateValue) {
+    if (!SUPPLIER_STEP_IDS.includes(step)) return null;
+    const cols = STEP_DB_COLUMNS[step];
+    const nextChecked = dateValue ? true : checked;
+    const payload = {
+      [cols.completed]: nextChecked
+    };
+    if (dateValue !== null && dateValue !== void 0) {
+      payload[cols.completedAt] = appDateToDb(dateValue);
+    }
+    return payload;
+  }
+  function buildMarkAllSupplierStagesPayload(stepDates) {
+    const today = isoDateFromOffset(0);
+    const steps = SUPPLIER_STEP_IDS.reduce((acc, step) => {
+      acc[step] = true;
+      return acc;
+    }, {});
+    const nextDates = SUPPLIER_STEP_IDS.reduce((acc, step) => {
+      acc[step] = stepDates[step] || today;
+      return acc;
+    }, {});
+    return mapSupplierStepsToDb(steps, nextDates);
+  }
+
+  // src/data/adapters/supabase/mapDbSupplierOrderRowToApp.ts
+  function mapDbSupplierOrderRowToApp(row, ctx, links = []) {
+    const { steps, step_dates } = mapDbRowToSupplierSteps(row);
+    const assigneeIds = Array.isArray(row.assignee_ids) ? row.assignee_ids : [];
+    const assignees = row.all_assignees ? [] : assigneeIds.map((id) => ctx.profileNameById.get(id)).filter((name) => Boolean(name));
+    const deletedById = typeof row.deleted_by === "string" ? row.deleted_by : null;
+    return {
+      id: String(row.id),
+      supplier: String(row.supplier_name ?? "\u05E1\u05E4\u05E7 \u05DC\u05DC\u05D0 \u05E9\u05DD"),
+      description: String(row.description ?? ""),
+      amount: String(row.amount_text ?? ""),
+      due_date: toIsoDateOnly(typeof row.due_date === "string" ? row.due_date : null) ?? "",
+      notes: String(row.notes ?? ""),
+      document_notes: String(row.document_notes ?? ""),
+      links: links.filter(Boolean),
+      assignees,
+      allAssignees: Boolean(row.all_assignees),
+      steps,
+      step_dates,
+      created_at: toIsoDateOnly(typeof row.created_at === "string" ? row.created_at : null) ?? "",
+      deleted_at: row.deleted_at ? toIsoDateOnly(String(row.deleted_at)) : null,
+      deleted_by: deletedById ? ctx.profileNameById.get(deletedById) ?? null : null
+    };
+  }
+
+  // src/data/adapters/supabase/fetchSupabaseSupplierOrderById.ts
+  var ORDER_SELECT = "id, supplier_name, description, amount_text, due_date, notes, document_notes, all_assignees, assignee_ids, order_completed, order_completed_at, received_completed, received_completed_at, payment_completed, payment_completed_at, invoice_completed, invoice_completed_at, created_at, deleted_at, deleted_by";
+  async function fetchSupabaseSupplierOrderById(client, orderId, options = {}) {
+    const ctx = await loadSupabaseSuppliersReadContext(client);
+    const batAyin = client.schema("bat_ayin");
+    let orderQuery = batAyin.from("supplier_orders").select(ORDER_SELECT).eq("id", orderId).eq("organization_id", DEFAULT_ORGANIZATION_ID);
+    if (!options.includeDeleted) {
+      orderQuery = orderQuery.is("deleted_at", null);
+    }
+    const orderResult = await orderQuery.single();
+    if (orderResult.error) throw orderResult.error;
+    const linksResult = await batAyin.from("supplier_order_links").select("url").eq("supplier_order_id", orderId).eq("organization_id", DEFAULT_ORGANIZATION_ID).is("deleted_at", null);
+    if (linksResult.error) throw linksResult.error;
+    const links = (linksResult.data || []).map((row) => row.url).filter(Boolean);
+    return mapDbSupplierOrderRowToApp(orderResult.data, ctx, links);
+  }
+
+  // src/data/adapters/supabase/supabaseSuppliersReadAdapter.ts
+  function createSupabaseSuppliersReadAdapter(client) {
+    return {
+      async loadSuppliers() {
+        if (!client) throw new Error("Supabase is not configured.");
+        const { data: authData, error: authError } = await client.auth.getSession();
+        if (authError) throw authError;
+        if (!authData.session) throw new Error(NO_SUPABASE_AUTH_SESSION_REASON);
+        const batAyin = client.schema("bat_ayin");
+        const ctx = await loadSupabaseSuppliersReadContext(client);
+        const ordersResult = await batAyin.from("supplier_orders").select(ORDER_SELECT).eq("organization_id", DEFAULT_ORGANIZATION_ID).is("deleted_at", null).order("created_at", { ascending: false });
+        if (ordersResult.error) throw ordersResult.error;
+        const orderRows = ordersResult.data || [];
+        if (!orderRows.length) return [];
+        const orderIds = orderRows.map((row) => row.id);
+        const linksResult = await batAyin.from("supplier_order_links").select("supplier_order_id, url").in("supplier_order_id", orderIds).eq("organization_id", DEFAULT_ORGANIZATION_ID).is("deleted_at", null);
+        if (linksResult.error) throw linksResult.error;
+        const linksByOrderId = groupLinksByOrderId(linksResult.data);
+        return orderRows.map(
+          (row) => mapDbSupplierOrderRowToApp(row, ctx, linksByOrderId.get(row.id) || [])
+        );
       }
     };
+  }
+
+  // src/data/adapters/supabase/loadSupabaseSuppliersWriteContext.ts
+  async function loadSupabaseSuppliersWriteContext(client) {
+    try {
+      if (!client) {
+        return { ok: false, reason: "Supabase is not configured.", code: "supabase_not_configured" };
+      }
+      const { data: authData, error: authError } = await client.auth.getSession();
+      if (authError) {
+        return {
+          ok: false,
+          reason: authError.message || "Auth check failed.",
+          code: "auth_check_failed",
+          error: authError
+        };
+      }
+      if (!authData.session) {
+        return { ok: false, reason: NO_SUPABASE_AUTH_SESSION_REASON, code: "auth_session_missing" };
+      }
+      const authUserId = authData.session.user.id;
+      const membersResult = await client.schema("bat_ayin").from("organization_members").select("user_id, role, is_active").eq("organization_id", DEFAULT_ORGANIZATION_ID).eq("is_active", true);
+      if (membersResult.error) {
+        return {
+          ok: false,
+          reason: membersResult.error.message || String(membersResult.error),
+          code: "members_load_failed",
+          error: membersResult.error
+        };
+      }
+      const members = membersResult.data || [];
+      const currentMember = members.find((row) => row.user_id === authUserId);
+      if (!currentMember) {
+        return {
+          ok: false,
+          reason: "Signed-in user is not an active member of this organization.",
+          code: "not_org_member"
+        };
+      }
+      const userIds = [...new Set(members.map((row) => row.user_id))];
+      let profileRows = [];
+      if (userIds.length) {
+        const profilesResult = await client.from("profiles").select("id, display_name").in("id", userIds);
+        if (profilesResult.error) {
+          return {
+            ok: false,
+            reason: profilesResult.error.message || String(profilesResult.error),
+            code: "profiles_load_failed",
+            error: profilesResult.error
+          };
+        }
+        profileRows = profilesResult.data || [];
+      }
+      const profileIdByName = buildProfileIdByName(profileRows);
+      return {
+        ok: true,
+        ctx: {
+          organizationId: DEFAULT_ORGANIZATION_ID,
+          authUserId,
+          authUserRole: currentMember.role === "manager" ? "manager" : "user",
+          profileIdByName,
+          profileNameById: buildProfileNameById(profileRows),
+          allowedAssigneeIds: new Set(userIds)
+        }
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { ok: false, reason: message, code: "unexpected_error", error };
+    }
+  }
+
+  // src/data/adapters/supabase/mapAppSupplierOrderToInsert.ts
+  function mapAssigneesToDb(app, writeCtx) {
+    if (app.allAssignees) {
+      return { ok: true, all_assignees: true, assignee_ids: [] };
+    }
+    const assigneeIds = [];
+    for (const name of app.assignees || []) {
+      const trimmed = String(name).trim();
+      const profileId = writeCtx.profileIdByName.get(trimmed);
+      if (!profileId) {
+        return {
+          ok: false,
+          code: "assignee_not_found",
+          reason: `Assignee "${trimmed}" does not exist in Supabase member map.`
+        };
+      }
+      if (!writeCtx.allowedAssigneeIds.has(profileId)) {
+        return { ok: false, code: "assignee_not_allowed" };
+      }
+      assigneeIds.push(profileId);
+    }
+    if (!assigneeIds.length) {
+      return {
+        ok: false,
+        code: "assignees_missing",
+        reason: "At least one assignee is required when allAssignees is false."
+      };
+    }
+    return { ok: true, all_assignees: false, assignee_ids: assigneeIds };
+  }
+  function mapAppSupplierOrderToInsert(app, writeCtx) {
+    const supplierName = String(app.supplier ?? "").trim();
+    if (!supplierName) {
+      return { ok: false, code: "supplier_name_missing" };
+    }
+    const assigneeResult = mapAssigneesToDb(app, writeCtx);
+    if (!assigneeResult.ok) {
+      return { ok: false, code: assigneeResult.code, reason: assigneeResult.reason };
+    }
+    return {
+      ok: true,
+      links: (app.links || []).filter(Boolean),
+      payload: {
+        organization_id: writeCtx.organizationId,
+        supplier_id: null,
+        created_by: writeCtx.authUserId,
+        supplier_name: supplierName,
+        description: app.description ?? "",
+        amount_text: app.amount ?? "",
+        due_date: toIsoDateOnly(app.due_date) ?? null,
+        notes: app.notes ?? "",
+        document_notes: app.document_notes ?? "",
+        all_assignees: assigneeResult.all_assignees,
+        assignee_ids: assigneeResult.assignee_ids,
+        ...mapSupplierStepsToDb(app.steps, app.step_dates)
+      }
+    };
+  }
+  function mapAppSupplierToSupabaseUpdate(app, writeCtx) {
+    const assigneeResult = mapAssigneesToDb(app, writeCtx);
+    if (!assigneeResult.ok) {
+      return { ok: false, code: assigneeResult.code, reason: assigneeResult.reason };
+    }
+    return {
+      ok: true,
+      payload: {
+        supplier_name: String(app.supplier ?? "").trim(),
+        description: app.description ?? "",
+        amount_text: app.amount ?? "",
+        due_date: toIsoDateOnly(app.due_date) ?? null,
+        notes: app.notes ?? "",
+        document_notes: app.document_notes ?? "",
+        all_assignees: assigneeResult.all_assignees,
+        assignee_ids: assigneeResult.assignee_ids,
+        ...mapSupplierStepsToDb(app.steps, app.step_dates)
+      },
+      links: (app.links || []).filter(Boolean)
+    };
+  }
+
+  // src/data/adapters/supabase/syncSupplierOrderLinks.ts
+  async function syncSupplierOrderLinks(client, orderId, links) {
+    const batAyin = client.schema("bat_ayin");
+    const existingResult = await batAyin.from("supplier_order_links").select("id").eq("supplier_order_id", orderId).eq("organization_id", DEFAULT_ORGANIZATION_ID).is("deleted_at", null);
+    if (existingResult.error) throw existingResult.error;
+    const existingIds = (existingResult.data || []).map((row) => row.id);
+    for (const id of existingIds) {
+      const { error } = await batAyin.rpc("soft_delete_supplier_order_link", { p_link_id: id });
+      if (error) throw error;
+    }
+    const nextLinks = [...new Set(links.filter(Boolean))];
+    if (!nextLinks.length) return;
+    const rows = nextLinks.map((url) => ({
+      organization_id: DEFAULT_ORGANIZATION_ID,
+      supplier_order_id: orderId,
+      url,
+      link_type: "link"
+    }));
+    const { error: insertError } = await batAyin.from("supplier_order_links").insert(rows);
+    if (insertError) throw insertError;
+  }
+  async function insertSupplierOrderLinks(client, orderId, links) {
+    const nextLinks = [...new Set(links.filter(Boolean))];
+    if (!nextLinks.length) return;
+    const rows = nextLinks.map((url) => ({
+      organization_id: DEFAULT_ORGANIZATION_ID,
+      supplier_order_id: orderId,
+      url,
+      link_type: "link"
+    }));
+    const { error } = await client.schema("bat_ayin").from("supplier_order_links").insert(rows);
+    if (error) throw error;
+  }
+
+  // src/data/adapters/supabase/applySupabaseSupplierUpdate.ts
+  async function applySupabaseSupplierUpdate(client, suppliers, id, next, options = {}) {
+    if (!client) throw new Error("Supabase is not configured.");
+    const existing = suppliers.find((item) => item.id === id);
+    if (!existing) return suppliers;
+    const contextResult = await loadSupabaseSuppliersWriteContext(client);
+    if (!contextResult.ok) {
+      throw new Error(contextResult.reason || contextResult.code || "Write context load failed.");
+    }
+    const mapResult = mapAppSupplierToSupabaseUpdate(next, contextResult.ctx);
+    if (!mapResult.ok) {
+      throw new Error(mapResult.reason || mapResult.code || "Supplier mapping failed.");
+    }
+    const { error } = await client.schema("bat_ayin").from("supplier_orders").update(mapResult.payload).eq("id", id).eq("organization_id", contextResult.ctx.organizationId);
+    if (error) throw error;
+    if (options.syncLinks !== false) {
+      await syncSupplierOrderLinks(client, id, mapResult.links);
+    }
+    const updated = await fetchSupabaseSupplierOrderById(client, id, {
+      includeDeleted: options.includeDeleted
+    });
+    return suppliers.map((item) => item.id === id ? updated : item);
+  }
+  async function applySupabaseSupplierSoftDelete(client, suppliers, id, deletedBy) {
+    if (!client) throw new Error("Supabase is not configured.");
+    const existing = suppliers.find((item) => item.id === id);
+    if (!existing) return suppliers;
+    const contextResult = await loadSupabaseSuppliersWriteContext(client);
+    if (!contextResult.ok) {
+      throw new Error(contextResult.reason || contextResult.code || "Write context load failed.");
+    }
+    const deletedById = contextResult.ctx.profileIdByName.get(String(deletedBy).trim());
+    if (!deletedById) {
+      throw new Error("Deleted-by name does not exist in Supabase member map.");
+    }
+    const { error } = await client.schema("bat_ayin").rpc("soft_delete_supplier_order", { p_order_id: id });
+    if (error) throw error;
+    const updated = {
+      ...existing,
+      deleted_at: isoDateFromOffset(0),
+      deleted_by: deletedBy
+    };
+    return suppliers.map((item) => item.id === id ? updated : item);
+  }
+
+  // src/data/adapters/supabase/supabaseSuppliersWriteAdapter.ts
+  function resolveSupplierPatch(existing, patchOrUpdater) {
+    return typeof patchOrUpdater === "function" ? patchOrUpdater(existing) : { ...existing, ...patchOrUpdater };
+  }
+  function createSupabaseSuppliersWriteAdapter(client) {
+    return {
+      async createSupplierOrder(suppliers, item) {
+        if (!client) throw new Error("Supabase is not configured.");
+        const contextResult = await loadSupabaseSuppliersWriteContext(client);
+        if (!contextResult.ok) {
+          throw new Error(contextResult.reason || contextResult.code || "Write context load failed.");
+        }
+        const mapResult = mapAppSupplierOrderToInsert(item, contextResult.ctx);
+        if (!mapResult.ok) {
+          throw new Error(mapResult.reason || mapResult.code || "Supplier mapping failed.");
+        }
+        const { data, error } = await client.schema("bat_ayin").from("supplier_orders").insert(mapResult.payload).select().single();
+        if (error) throw error;
+        await insertSupplierOrderLinks(client, data.id, mapResult.links);
+        const created = await fetchSupabaseSupplierOrderById(client, data.id);
+        return [created, ...suppliers || []];
+      },
+      updateSupplierOrder(suppliers, id, patchOrUpdater) {
+        const existing = suppliers.find((item) => item.id === id);
+        if (!existing) return Promise.resolve(suppliers);
+        const next = resolveSupplierPatch(existing, patchOrUpdater);
+        return applySupabaseSupplierUpdate(client, suppliers, id, next);
+      },
+      deleteSupplierOrderSoft(suppliers, id, deletedBy) {
+        return applySupabaseSupplierSoftDelete(client, suppliers, id, deletedBy);
+      },
+      async updateSupplierStage(suppliers, id, step, checked, dateValue = null) {
+        if (!client) throw new Error("Supabase is not configured.");
+        const existing = suppliers.find((item) => item.id === id);
+        if (!existing) return suppliers;
+        const payload = buildSupplierStageUpdatePayload(step, checked, dateValue);
+        if (!payload) return suppliers;
+        const contextResult = await loadSupabaseSuppliersWriteContext(client);
+        if (!contextResult.ok) {
+          throw new Error(contextResult.reason || contextResult.code || "Write context load failed.");
+        }
+        const { error } = await client.schema("bat_ayin").from("supplier_orders").update(payload).eq("id", id).eq("organization_id", contextResult.ctx.organizationId);
+        if (error) throw error;
+        const updated = await fetchSupabaseSupplierOrderById(client, id);
+        return suppliers.map((item) => item.id === id ? updated : item);
+      },
+      async markAllSupplierStages(suppliers, id) {
+        if (!client) throw new Error("Supabase is not configured.");
+        const existing = suppliers.find((item) => item.id === id);
+        if (!existing) return suppliers;
+        const payload = buildMarkAllSupplierStagesPayload(existing.step_dates);
+        const contextResult = await loadSupabaseSuppliersWriteContext(client);
+        if (!contextResult.ok) {
+          throw new Error(contextResult.reason || contextResult.code || "Write context load failed.");
+        }
+        const { error } = await client.schema("bat_ayin").from("supplier_orders").update(payload).eq("id", id).eq("organization_id", contextResult.ctx.organizationId);
+        if (error) throw error;
+        const updated = await fetchSupabaseSupplierOrderById(client, id);
+        return suppliers.map((item) => item.id === id ? updated : item);
+      }
+    };
+  }
+
+  // src/data/adapters/supabase/supabaseSuppliersAdapter.ts
+  function createSupabaseSuppliersAdapter(client) {
+    const readAdapter = createSupabaseSuppliersReadAdapter(client);
+    const writeAdapter = createSupabaseSuppliersWriteAdapter(client);
+    return {
+      loadSuppliers() {
+        return readAdapter.loadSuppliers();
+      },
+      saveSuppliers(suppliers) {
+        return suppliers;
+      },
+      createSupplierOrder(suppliers, item) {
+        return writeAdapter.createSupplierOrder(suppliers, item);
+      },
+      updateSupplierOrder(suppliers, id, patchOrUpdater) {
+        return writeAdapter.updateSupplierOrder(suppliers, id, patchOrUpdater);
+      },
+      deleteSupplierOrderSoft(suppliers, id, deletedBy) {
+        return writeAdapter.deleteSupplierOrderSoft(suppliers, id, deletedBy);
+      },
+      updateSupplierStage(suppliers, id, step, checked, dateValue) {
+        return writeAdapter.updateSupplierStage(suppliers, id, step, checked, dateValue);
+      },
+      markAllSupplierStages(suppliers, id) {
+        return writeAdapter.markAllSupplierStages(suppliers, id);
+      }
+    };
+  }
+
+  // src/data/shared/browserStorage.ts
+  function safeParseStorage(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch {
+      localStorage.removeItem(key);
+      return fallback;
+    }
+  }
+  function safeArrayStorage(key) {
+    const value = safeParseStorage(key, []);
+    return Array.isArray(value) ? value : [];
+  }
+  function safeObjectStorage(key, fallback) {
+    const value = safeParseStorage(key, fallback);
+    return value && typeof value === "object" && !Array.isArray(value) ? value : fallback;
+  }
+  function writeStorageJson(key, value) {
+    localStorage.setItem(key, JSON.stringify(value));
+  }
+
+  // src/data/adapters/local/starterTasks.ts
+  var DATA_VERSION = "mockup-v3";
+  var STARTER_TASKS = [
+    { id: "t1", title: "\u05D0\u05D9\u05E9\u05D5\u05E8 \u05D4\u05D6\u05DE\u05E0\u05EA \u05D9\u05E8\u05E7\u05D5\u05EA", category: "kitchen", owner: "\u05E2\u05D3\u05D9\u05E0\u05D4", due: "today", dueLabel: "\u05D4\u05D9\u05D5\u05DD \xB7 \u05E9\u05DC\u05D9\u05E9\u05D9", status: "progress", notes: "\u05DC\u05D1\u05D3\u05D5\u05E7 \u05DE\u05D5\u05DC \u05D4\u05E1\u05E4\u05E7 \u05D5\u05DC\u05D0\u05E9\u05E8 \u05DB\u05DE\u05D5\u05D9\u05D5\u05EA", updates: [{ by: "\u05E2\u05D3\u05D9\u05E0\u05D4", text: "\u05DE\u05D7\u05DB\u05D4 \u05DC\u05DE\u05D7\u05D9\u05E8 \u05E1\u05D5\u05E4\u05D9" }] },
+    { id: "t2", title: "\u05D1\u05D3\u05D9\u05E7\u05EA \u05E6\u05D9\u05D5\u05D3 \u05DC\u05E9\u05D1\u05EA", category: "maintenance", owner: "\u05D0\u05D1\u05D9", due: "today", dueLabel: "\u05D4\u05D9\u05D5\u05DD \xB7 \u05E9\u05DC\u05D9\u05E9\u05D9", status: "progress", notes: "\u05DC\u05D5\u05D5\u05D3\u05D0 \u05E9\u05D5\u05DC\u05D7\u05E0\u05D5\u05EA \u05D5\u05DB\u05D1\u05DC\u05D9\u05DD \u05D1\u05D0\u05D5\u05DC\u05DD", updates: [{ by: "\u05D0\u05D1\u05D9", text: "\u05D7\u05E1\u05E8 \u05DB\u05D1\u05DC \u05DE\u05D0\u05E8\u05D9\u05DA \u05D0\u05D7\u05D3" }] },
+    { id: "t3", title: "\u05D1\u05D3\u05D9\u05E7\u05EA \u05E1\u05E4\u05E7", category: "events", owner: "\u05D7\u05D9\u05D4", due: "date", dueLabel: "\u05E9\u05E0\u05D9 \xB7 14 \u05D9\u05D5\u05E0\u05D9", status: "progress", notes: "\u05DC\u05E7\u05D1\u05DC \u05D0\u05D9\u05E9\u05D5\u05E8 \u05E2\u05DC \u05DE\u05D5\u05E2\u05D3 \u05D4\u05D2\u05E2\u05D4", updates: [] },
+    { id: "t4", title: "\u05D4\u05DB\u05E0\u05EA \u05D3\u05E3 \u05DE\u05E7\u05D5\u05E8\u05D5\u05EA", category: "study", owner: "\u05E2\u05D3\u05D9\u05E0\u05D4", due: "tomorrow", dueLabel: "\u05DE\u05D7\u05E8 \xB7 \u05E8\u05D1\u05D9\u05E2\u05D9", status: "progress", notes: "\u05DC\u05D4\u05D3\u05E4\u05D9\u05E1 \u05E2\u05E9\u05E8\u05D9\u05DD \u05E2\u05D5\u05EA\u05E7\u05D9\u05DD", updates: [] },
+    { id: "t11", title: "\u05E1\u05D9\u05D3\u05D5\u05E8 \u05E8\u05E9\u05D9\u05DE\u05EA \u05E7\u05E0\u05D9\u05D5\u05EA", category: "office", owner: "\u05E2\u05D3\u05D9\u05E0\u05D4", due: "today", dueLabel: "\u05D4\u05D9\u05D5\u05DD \xB7 \u05E9\u05DC\u05D9\u05E9\u05D9", status: "progress", notes: "\u05DC\u05E2\u05D3\u05DB\u05DF \u05D0\u05D7\u05E8\u05D9 \u05E9\u05D9\u05D7\u05D4 \u05E2\u05DD \u05D4\u05DE\u05D8\u05D1\u05D7", updates: [] },
+    { id: "t12", title: "\u05EA\u05D9\u05D0\u05D5\u05DD \u05D4\u05D3\u05E4\u05E1\u05D5\u05EA", category: "study", owner: "\u05E2\u05D3\u05D9\u05E0\u05D4", due: "today", dueLabel: "\u05D4\u05D9\u05D5\u05DD \xB7 \u05E9\u05DC\u05D9\u05E9\u05D9", status: "progress", notes: "\u05DC\u05D1\u05D3\u05D5\u05E7 \u05DE\u05D5\u05DC \u05D4\u05DE\u05D6\u05DB\u05D9\u05E8\u05D5\u05EA \u05DC\u05E4\u05E0\u05D9 13:00", updates: [] },
+    { id: "t5", title: "\u05D0\u05D9\u05E9\u05D5\u05E8 \u05EA\u05E9\u05DC\u05D5\u05DD \u05DC\u05E1\u05E4\u05E7", category: "money", owner: "\u05E6\u05D1\u05D9", due: "today", dueLabel: "\u05D4\u05D9\u05D5\u05DD \xB7 \u05E9\u05DC\u05D9\u05E9\u05D9", status: "progress", notes: "\u05DC\u05D5\u05D5\u05D3\u05D0 \u05D7\u05E9\u05D1\u05D5\u05E0\u05D9\u05EA \u05DC\u05E4\u05E0\u05D9 \u05D0\u05D9\u05E9\u05D5\u05E8", updates: [] },
+    { id: "t6", title: "\u05E9\u05D9\u05D7\u05D4 \u05E2\u05DD \u05D0\u05D9\u05E9 \u05EA\u05D7\u05D6\u05D5\u05E7\u05D4", category: "maintenance", owner: "\u05E6\u05D1\u05D9", due: "today", dueLabel: "\u05D4\u05D9\u05D5\u05DD \xB7 \u05E9\u05DC\u05D9\u05E9\u05D9", status: "progress", notes: "\u05DC\u05EA\u05D0\u05DD \u05EA\u05D9\u05E7\u05D5\u05DF \u05D9\u05D3\u05D9\u05EA \u05D1\u05D3\u05DC\u05EA", updates: [] },
+    { id: "t7", title: "\u05EA\u05E9\u05DC\u05D5\u05DD \u05DC\u05E1\u05E4\u05E7", category: "money", owner: "\u05E2\u05D3\u05D9\u05E0\u05D4", due: "done", dueLabel: "\u05D4\u05D5\u05E9\u05DC\u05DD \xB7 \u05E8\u05D0\u05E9\u05D5\u05DF", status: "done", notes: "\u05E0\u05E1\u05D2\u05E8", updates: [{ by: "\u05E6\u05D1\u05D9", text: "\u05D0\u05D5\u05E9\u05E8 \u05D1\u05DE\u05D6\u05DB\u05D9\u05E8\u05D5\u05EA" }] },
+    { id: "t8", title: "\u05D3\u05E3 \u05DE\u05E7\u05D5\u05E8\u05D5\u05EA \u05DC\u05E9\u05D9\u05E2\u05D5\u05E8", category: "study", owner: "\u05E2\u05D3\u05D9\u05E0\u05D4", due: "done", dueLabel: "\u05D4\u05D5\u05E9\u05DC\u05DD \xB7 \u05E9\u05E0\u05D9", status: "done", notes: "\u05D4\u05D5\u05E2\u05D1\u05E8 \u05DC\u05D4\u05D3\u05E4\u05E1\u05D4", updates: [] },
+    { id: "t9", title: "\u05D4\u05D6\u05DE\u05E0\u05EA \u05E6\u05D9\u05D5\u05D3", category: "maintenance", owner: "\u05E6\u05D1\u05D9", due: "done", dueLabel: "\u05D4\u05D5\u05E9\u05DC\u05DD \xB7 \u05E9\u05E0\u05D9", status: "done", notes: "\u05D1\u05D5\u05E6\u05E2", updates: [] },
+    { id: "t10", title: "\u05D1\u05D3\u05D9\u05E7\u05EA \u05DE\u05DC\u05D0\u05D9", category: "kitchen", owner: "\u05D7\u05D9\u05D4", due: "tomorrow", dueLabel: "\u05DE\u05D7\u05E8 \xB7 \u05E8\u05D1\u05D9\u05E2\u05D9", status: "progress", notes: "\u05DC\u05D1\u05D3\u05D5\u05E7 \u05E9\u05DE\u05DF, \u05E7\u05DE\u05D7 \u05D5\u05EA\u05D1\u05DC\u05D9\u05E0\u05D9\u05DD", updates: [] }
+  ];
+
+  // src/data/adapters/local/localTasksAdapter.ts
+  function createLocalTasksAdapter() {
+    return {
+      loadTasks() {
+        if (localStorage.getItem("beit-version") !== DATA_VERSION) {
+          writeStorageJson("beit-tasks", STARTER_TASKS);
+          localStorage.setItem("beit-version", DATA_VERSION);
+        }
+        const value = safeParseStorage("beit-tasks", null);
+        const raw = Array.isArray(value) ? value : STARTER_TASKS;
+        return raw.map((task) => normalizeTask(task));
+      },
+      saveTasks(tasks) {
+        writeStorageJson("beit-tasks", tasks);
+        return tasks;
+      },
+      createTask(tasks, task) {
+        return this.saveTasks([task, ...tasks]);
+      },
+      updateTask(tasks, id, patch) {
+        return this.saveTasks(tasks.map((task) => task.id === id ? { ...task, ...patch } : task));
+      },
+      deleteTaskSoft(tasks, id, deletedBy) {
+        return this.updateTask(tasks, id, { deleted_at: isoDateFromOffset(0), deleted_by: deletedBy });
+      },
+      completeTask(tasks, id) {
+        const task = tasks.find((item) => item.id === id);
+        if (!task) return tasks;
+        return this.updateTask(tasks, id, {
+          status: "done",
+          due: "done",
+          due_date: null,
+          dueLabel: "\u05D4\u05D5\u05E9\u05DC\u05DD \xB7 \u05D4\u05D9\u05D5\u05DD",
+          completed_at: isoDateFromOffset(0),
+          reminder: { ...task.reminder, enabled: false }
+        });
+      },
+      reopenTask(tasks, id) {
+        const task = tasks.find((item) => item.id === id);
+        if (!task) return tasks;
+        const dueDate = task.due === "done" ? isoDateFromOffset(0) : task.due_date;
+        return this.updateTask(tasks, id, {
+          status: "progress",
+          due: task.due === "done" ? "today" : task.due,
+          due_date: dueDate,
+          dueLabel: task.due === "done" ? "\u05D4\u05D9\u05D5\u05DD \xB7 \u05E9\u05DC\u05D9\u05E9\u05D9" : task.dueLabel,
+          completed_at: null,
+          reminder: defaultTaskReminder({ ...task, due_date: dueDate })
+        });
+      }
+    };
+  }
+
+  // src/data/shared/normalizeSupplier.ts
+  function normalizeSupplierSteps(steps) {
+    return SUPPLIER_STEP_IDS.reduce((acc, stepId) => {
+      acc[stepId] = Boolean(steps?.[stepId]);
+      return acc;
+    }, {});
+  }
+  function normalizeSupplierStepDates(stepDates) {
+    return SUPPLIER_STEP_IDS.reduce((acc, stepId) => {
+      acc[stepId] = stepDates?.[stepId] ? stepDates[stepId] : "";
+      return acc;
+    }, {});
+  }
+  function normalizeSupplier(item, index = 0) {
+    return {
+      id: item.id || `s${Date.now()}-${index}`,
+      supplier: item.supplier || "\u05E1\u05E4\u05E7 \u05DC\u05DC\u05D0 \u05E9\u05DD",
+      description: item.description || "",
+      amount: item.amount || "",
+      due_date: item.due_date || "",
+      notes: item.notes || "",
+      document_notes: item.document_notes || "",
+      links: Array.isArray(item.links) ? item.links : [],
+      assignees: Array.isArray(item.assignees) ? item.assignees : [],
+      allAssignees: Boolean(item.allAssignees),
+      steps: normalizeSupplierSteps(item.steps),
+      step_dates: normalizeSupplierStepDates(item.step_dates),
+      created_at: item.created_at || isoDateFromOffset(-index),
+      deleted_at: item.deleted_at ?? null,
+      deleted_by: item.deleted_by ?? null
+    };
+  }
+
+  // src/data/adapters/local/starterSuppliers.ts
+  var STARTER_SUPPLIERS = [
+    {
+      id: "s1",
+      supplier: "\u05E1\u05E4\u05E7 \u05D9\u05E8\u05E7\u05D5\u05EA",
+      description: "\u05D4\u05D6\u05DE\u05E0\u05EA \u05D9\u05E8\u05E7\u05D5\u05EA \u05DC\u05E9\u05D1\u05EA",
+      amount: "\u20AA680",
+      due_date: isoDateFromOffset(1),
+      notes: "\u05DC\u05D5\u05D5\u05D3\u05D0 \u05DB\u05DE\u05D5\u05D9\u05D5\u05EA \u05DE\u05D5\u05DC \u05D4\u05DE\u05D8\u05D1\u05D7 \u05DC\u05E4\u05E0\u05D9 \u05EA\u05E9\u05DC\u05D5\u05DD.",
+      document_notes: "\u05D7\u05E9\u05D1\u05D5\u05E0\u05D9\u05EA \u05EA\u05EA\u05D5\u05D5\u05E1\u05E3 \u05D0\u05D7\u05E8\u05D9 \u05E7\u05D1\u05DC\u05EA \u05D4\u05E1\u05D7\u05D5\u05E8\u05D4.",
+      links: ["https://example.com/order-vegetables"],
+      assignees: ["\u05E2\u05D3\u05D9\u05E0\u05D4"],
+      allAssignees: false,
+      steps: { order: true, received: false, payment: false, invoice: false },
+      step_dates: { order: isoDateFromOffset(0), received: "", payment: "", invoice: "" },
+      created_at: isoDateFromOffset(0)
+    },
+    {
+      id: "s2",
+      supplier: "\u05E6\u05D9\u05D5\u05D3 \u05EA\u05D7\u05D6\u05D5\u05E7\u05D4",
+      description: "\u05E8\u05DB\u05D9\u05E9\u05EA \u05DB\u05D1\u05DC\u05D9\u05DD \u05D5\u05E6\u05D9\u05D5\u05D3 \u05DC\u05D0\u05D5\u05DC\u05DD",
+      amount: "",
+      due_date: "",
+      notes: "\u05DE\u05D9\u05D5\u05E2\u05D3 \u05DC\u05DB\u05DC \u05E6\u05D5\u05D5\u05EA \u05D4\u05E0\u05D9\u05D4\u05D5\u05DC.",
+      document_notes: "\u05E6\u05D9\u05DC\u05D5\u05DD \u05DE\u05E1\u05DA \u05D4\u05E6\u05E2\u05EA \u05DE\u05D7\u05D9\u05E8 \u05E0\u05E9\u05DE\u05E8 \u05D1\u05D9\u05E0\u05EA\u05D9\u05D9\u05DD \u05D1\u05D4\u05E2\u05E8\u05D5\u05EA.",
+      links: [],
+      assignees: [],
+      allAssignees: true,
+      steps: { order: true, received: true, payment: false, invoice: false },
+      step_dates: { order: isoDateFromOffset(-1), received: isoDateFromOffset(0), payment: "", invoice: "" },
+      created_at: isoDateFromOffset(-1)
+    }
+  ];
+
+  // src/data/adapters/local/localSuppliersAdapter.ts
+  function createLocalSuppliersAdapter() {
+    return {
+      loadSuppliers() {
+        if (!localStorage.getItem("beit-suppliers")) {
+          writeStorageJson("beit-suppliers", STARTER_SUPPLIERS);
+        }
+        const value = safeParseStorage("beit-suppliers", null);
+        const raw = Array.isArray(value) ? value : STARTER_SUPPLIERS;
+        return raw.map((item, index) => normalizeSupplier(item, index));
+      },
+      saveSuppliers(suppliers) {
+        writeStorageJson("beit-suppliers", suppliers);
+        return suppliers;
+      },
+      createSupplierOrder(suppliers, item) {
+        return this.saveSuppliers([item, ...suppliers]);
+      },
+      updateSupplierOrder(suppliers, id, patchOrUpdater) {
+        return this.saveSuppliers(
+          suppliers.map((item) => {
+            if (item.id !== id) return item;
+            return typeof patchOrUpdater === "function" ? patchOrUpdater(item) : { ...item, ...patchOrUpdater };
+          })
+        );
+      },
+      deleteSupplierOrderSoft(suppliers, id, deletedBy) {
+        return this.updateSupplierOrder(suppliers, id, {
+          deleted_at: isoDateFromOffset(0),
+          deleted_by: deletedBy
+        });
+      },
+      updateSupplierStage(suppliers, id, step, checked, dateValue = null) {
+        return this.updateSupplierOrder(suppliers, id, (item) => ({
+          ...item,
+          steps: { ...item.steps, [step]: dateValue ? true : checked },
+          step_dates: dateValue === null ? item.step_dates : { ...item.step_dates, [step]: dateValue }
+        }));
+      },
+      markAllSupplierStages(suppliers, id) {
+        const today = isoDateFromOffset(0);
+        const allSteps = SUPPLIER_STEP_IDS.reduce(
+          (acc, step) => ({ ...acc, [step]: true }),
+          {}
+        );
+        return this.updateSupplierOrder(suppliers, id, (item) => ({
+          ...item,
+          steps: allSteps,
+          step_dates: SUPPLIER_STEP_IDS.reduce(
+            (acc, step) => ({ ...acc, [step]: item.step_dates[step] || today }),
+            {}
+          )
+        }));
+      }
+    };
+  }
+
+  // src/data/shared/createAsyncRepository.ts
+  function createAsyncRepository(adapter, methods) {
+    const repository = {};
+    for (const method of methods) {
+      const fn = adapter[method];
+      if (typeof fn !== "function") continue;
+      repository[method] = (...args) => Promise.resolve(fn.apply(adapter, args));
+    }
+    return repository;
+  }
+
+  // src/data/catalog/baseCategories.ts
+  var BASE_CATEGORIES = [
+    { id: "kitchen", label: "\u05DE\u05D8\u05D1\u05D7", icon: "kitchen" },
+    { id: "maintenance", label: "\u05EA\u05D7\u05D6\u05D5\u05E7\u05D4", icon: "maintenance" },
+    { id: "study", label: "\u05DC\u05D9\u05DE\u05D5\u05D3", icon: "study" },
+    { id: "money", label: "\u05DB\u05E1\u05E4\u05D9\u05DD", icon: "money" },
+    { id: "events", label: "\u05D0\u05D9\u05E8\u05D5\u05E2\u05D9\u05DD", icon: "events" },
+    { id: "office", label: "\u05DE\u05E9\u05E8\u05D3", icon: "office" }
+  ];
+  var HIDDEN_CATEGORIES_KEY = "beit-hidden-categories";
+  var CUSTOM_CATEGORIES_KEY = "beit-categories";
+
+  // src/data/catalog/categoriesService.ts
+  function loadCategories() {
+    const hidden = safeArrayStorage(HIDDEN_CATEGORIES_KEY);
+    const custom = safeArrayStorage(CUSTOM_CATEGORIES_KEY);
+    return [...BASE_CATEGORIES.filter((c) => !hidden.includes(c.id)), ...custom];
+  }
+  function readHiddenCategoryIds() {
+    return safeArrayStorage(HIDDEN_CATEGORIES_KEY);
+  }
+  function readCustomCategories() {
+    return safeArrayStorage(CUSTOM_CATEGORIES_KEY);
+  }
+  function saveHiddenCategoryIds(ids) {
+    writeStorageJson(HIDDEN_CATEGORIES_KEY, ids);
+  }
+  function saveCustomCategories(categories) {
+    writeStorageJson(CUSTOM_CATEGORIES_KEY, categories);
+  }
+
+  // src/data/catalog/basePeople.ts
+  var BASE_PEOPLE = ["\u05E2\u05D3\u05D9\u05E0\u05D4", "\u05D0\u05D1\u05D9", "\u05D7\u05D9\u05D4", "\u05E6\u05D1\u05D9"];
+  var HIDDEN_PEOPLE_KEY = "beit-hidden-people";
+  var CUSTOM_PEOPLE_KEY = "beit-people";
+
+  // src/data/catalog/peopleService.ts
+  function loadPeople() {
+    const hidden = safeArrayStorage(HIDDEN_PEOPLE_KEY);
+    const custom = safeArrayStorage(CUSTOM_PEOPLE_KEY);
+    return [...BASE_PEOPLE.filter((p) => !hidden.includes(p)), ...custom];
+  }
+  function readHiddenPeople() {
+    return safeArrayStorage(HIDDEN_PEOPLE_KEY);
+  }
+  function readCustomPeople() {
+    return safeArrayStorage(CUSTOM_PEOPLE_KEY);
+  }
+  function saveHiddenPeople(names) {
+    writeStorageJson(HIDDEN_PEOPLE_KEY, names);
+  }
+  function saveCustomPeople(names) {
+    writeStorageJson(CUSTOM_PEOPLE_KEY, names);
+  }
+  function allKnownPeople() {
+    return [...BASE_PEOPLE, ...readCustomPeople()];
+  }
+
+  // src/data/catalog/supplierStepsMeta.ts
+  var SUPPLIER_STEPS = [
+    { id: "order", label: "\u05D4\u05D6\u05DE\u05E0\u05D4" },
+    { id: "received", label: "\u05E7\u05D1\u05DC\u05D4" },
+    { id: "payment", label: "\u05EA\u05E9\u05DC\u05D5\u05DD" },
+    { id: "invoice", label: "\u05E7\u05D1\u05DC\u05EA \u05D7\u05E9\u05D1\u05D5\u05E0\u05D9\u05EA" }
+  ];
+
+  // src/data/catalog/preferencesService.ts
+  var PREFS_STORAGE_KEY = "beit-prefs";
+  var DEFAULT_PREFS = {
+    dark: false,
+    text: "\u05E8\u05D2\u05D9\u05DC"
+  };
+  function loadPreferences() {
+    return safeObjectStorage(PREFS_STORAGE_KEY, DEFAULT_PREFS);
+  }
+  function savePreferences(prefs) {
+    writeStorageJson(PREFS_STORAGE_KEY, prefs);
+  }
+
+  // src/domain/shared/appRoles.ts
+  var DEMO_USER_OWNER = "\u05E2\u05D3\u05D9\u05E0\u05D4";
+  var DEMO_MANAGER_OWNER = "\u05E6\u05D1\u05D9";
+  function personalOwner(ctx) {
+    return ctx.role === "manager" ? DEMO_MANAGER_OWNER : ctx.userOwner ?? DEMO_USER_OWNER;
+  }
+
+  // src/domain/shared/ageLabels.ts
+  function ageLabel(createdAt) {
+    const days = daysBetween(createdAt);
+    return days === 1 ? "\u05E0\u05D5\u05E6\u05E8\u05D4 \u05DC\u05E4\u05E0\u05D9 \u05D9\u05D5\u05DD" : `\u05E0\u05D5\u05E6\u05E8\u05D4 \u05DC\u05E4\u05E0\u05D9 ${days} \u05D9\u05DE\u05D9\u05DD`;
+  }
+  function relativeAgeLabel(createdAt) {
+    const days = daysBetween(createdAt);
+    if (days === 0) return "\u05D4\u05D9\u05D5\u05DD";
+    return days === 1 ? "\u05DC\u05E4\u05E0\u05D9 \u05D9\u05D5\u05DD" : `\u05DC\u05E4\u05E0\u05D9 ${days} \u05D9\u05DE\u05D9\u05DD`;
+  }
+
+  // src/domain/shared/formatHebrewDate.ts
+  function formatHebrewDate(value) {
+    if (!value) return "\u05DC\u05DC\u05D0 \u05D9\u05E2\u05D3";
+    const date = dateFromIso(value);
+    if (!date) return "\u05DC\u05DC\u05D0 \u05D9\u05E2\u05D3";
+    const days = ["\u05E8\u05D0\u05E9\u05D5\u05DF", "\u05E9\u05E0\u05D9", "\u05E9\u05DC\u05D9\u05E9\u05D9", "\u05E8\u05D1\u05D9\u05E2\u05D9", "\u05D7\u05DE\u05D9\u05E9\u05D9", "\u05E9\u05D9\u05E9\u05D9", "\u05E9\u05D1\u05EA"];
+    const months = ["\u05D9\u05E0\u05D5\u05D0\u05E8", "\u05E4\u05D1\u05E8\u05D5\u05D0\u05E8", "\u05DE\u05E8\u05E5", "\u05D0\u05E4\u05E8\u05D9\u05DC", "\u05DE\u05D0\u05D9", "\u05D9\u05D5\u05E0\u05D9", "\u05D9\u05D5\u05DC\u05D9", "\u05D0\u05D5\u05D2\u05D5\u05E1\u05D8", "\u05E1\u05E4\u05D8\u05DE\u05D1\u05E8", "\u05D0\u05D5\u05E7\u05D8\u05D5\u05D1\u05E8", "\u05E0\u05D5\u05D1\u05DE\u05D1\u05E8", "\u05D3\u05E6\u05DE\u05D1\u05E8"];
+    return `${days[date.getDay()]} \xB7 ${date.getDate()} ${months[date.getMonth()]}`;
+  }
+
+  // src/domain/shared/priorityLabel.ts
+  function priorityLabel(priority) {
+    return priority === "high" ? "\u05D2\u05D1\u05D5\u05D4\u05D4" : "\u05E8\u05D2\u05D9\u05DC\u05D4";
+  }
+
+  // src/domain/shared/resolveCategory.ts
+  var FALLBACK_CATEGORY = {
+    id: "uncategorized",
+    label: "\u05DC\u05DC\u05D0 \u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4",
+    icon: "office"
+  };
+  function resolveCategory(categories, id) {
+    return categories.find((c) => c.id === id) ?? FALLBACK_CATEGORY;
+  }
+
+  // src/domain/tasks/taskActive.ts
+  function filterActiveTasks(tasks) {
+    return tasks.filter((t) => !t.deleted_at);
+  }
+
+  // src/domain/tasks/taskDue.ts
+  function isTaskOverdue(task) {
+    if (task.status === "done" || !task.due_date) return false;
+    const dueOnly = toIsoDateOnly(task.due_date);
+    return dueOnly ? dueOnly < isoDateFromOffset(0) : false;
+  }
+  function buildTaskDueLabel(task) {
+    if (task.status === "done") return task.dueLabel || "\u05D4\u05D5\u05E9\u05DC\u05DD";
+    if (!task.due_date) return "\u05DC\u05DC\u05D0 \u05D9\u05E2\u05D3";
+    if (isTaskOverdue(task)) return `\u05E2\u05D1\u05E8 \u05D9\u05E2\u05D3 \u2022 ${formatHebrewDate(task.due_date)}`;
+    const diff = daysFromTodayIso(task.due_date);
+    if (diff === 0) return `\u05D4\u05D9\u05D5\u05DD \xB7 ${formatHebrewDate(task.due_date).split(" \xB7 ")[0]}`;
+    if (diff === 1) return `\u05DE\u05D7\u05E8 \xB7 ${formatHebrewDate(task.due_date).split(" \xB7 ")[0]}`;
+    return formatHebrewDate(task.due_date);
+  }
+  function taskDueRank(task) {
+    if (task.status === "done") return 5;
+    if (isTaskOverdue(task)) return 0;
+    if (!task.due_date) return 4;
+    const diff = daysFromTodayIso(task.due_date);
+    if (diff === 0) return 1;
+    if (diff === 1) return 2;
+    return 3;
+  }
+
+  // src/domain/tasks/taskFilters.ts
+  function filterPersonalTasks(tasks, ctx) {
+    return tasks.filter((t) => t.owner === personalOwner(ctx));
+  }
+  function filterManagementPeople(people, ctx) {
+    return people.filter((person) => person !== personalOwner(ctx));
+  }
+  function isArchivedDone(task) {
+    return task.status === "done" && daysBetween(task.completed_at || task.created_at) >= 90;
+  }
+  function filterVisibleDoneTasks(tasks, includeArchive = false) {
+    return filterActiveTasks(tasks).filter(
+      (t) => t.status === "done" && (includeArchive || !isArchivedDone(t))
+    );
+  }
+  function filterOpenTasks(tasks) {
+    return filterActiveTasks(tasks).filter((t) => t.status !== "done");
+  }
+
+  // src/domain/tasks/taskPermissions.ts
+  function canAccessTask(ctx, task) {
+    if (!task || task.deleted_at) return false;
+    return ctx.role === "manager" || task.owner === DEMO_USER_OWNER;
+  }
+  function canEditTaskContent(ctx, task) {
+    if (!task || !canAccessTask(ctx, task)) return false;
+    return task.status !== "done" && !task.deleted_at;
+  }
+  function canDeleteTask(ctx, task) {
+    if (!task) return false;
+    return ctx.role === "manager" && !task.deleted_at;
+  }
+
+  // src/domain/tasks/taskLookup.ts
+  function findTask(tasks, id) {
+    return tasks.find((x) => x.id === id);
+  }
+  function findVisibleTask(tasks, id, ctx) {
+    const task = findTask(tasks, id);
+    return canAccessTask(ctx, task) ? task ?? null : null;
+  }
+
+  // src/domain/tasks/taskSort.ts
+  function sortOptions(context = "personal") {
+    if (context === "org") return [["date", "\u05DC\u05E4\u05D9 \u05EA\u05D0\u05E8\u05D9\u05DA"], ["category", "\u05DC\u05E4\u05D9 \u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4"], ["owner", "\u05DC\u05E4\u05D9 \u05DE\u05D1\u05E6\u05E2"]];
+    if (context === "category") return [["date", "\u05DC\u05E4\u05D9 \u05EA\u05D0\u05E8\u05D9\u05DA"], ["owner", "\u05DC\u05E4\u05D9 \u05DE\u05D1\u05E6\u05E2"]];
+    if (context === "person") return [["date", "\u05DC\u05E4\u05D9 \u05EA\u05D0\u05E8\u05D9\u05DA"], ["category", "\u05DC\u05E4\u05D9 \u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4"]];
+    return [["date", "\u05DC\u05E4\u05D9 \u05EA\u05D0\u05E8\u05D9\u05DA"], ["category", "\u05DC\u05E4\u05D9 \u05E7\u05D8\u05D2\u05D5\u05E8\u05D9\u05D4"]];
+  }
+  function resolveCurrentSort(allSort, context = "personal") {
+    const allowed = sortOptions(context).map(([key]) => key);
+    return allowed.includes(allSort) ? allSort : "date";
+  }
+  function taskGroupTitle(task, sortMode, categories) {
+    if (sortMode === "category") return resolveCategory(categories, task.category).label;
+    if (sortMode === "owner") return task.owner ?? "";
+    return "";
+  }
+  function sortTasks(tasks, sortMode, categories) {
+    return [...tasks].sort((a, b) => {
+      const priorityDiff = (a.priority === "high" ? 0 : 1) - (b.priority === "high" ? 0 : 1);
+      if (priorityDiff) return priorityDiff;
+      if (sortMode === "category") {
+        return resolveCategory(categories, a.category).label.localeCompare(
+          resolveCategory(categories, b.category).label,
+          "he"
+        ) || taskDueRank(a) - taskDueRank(b) || buildTaskDueLabel(a).localeCompare(buildTaskDueLabel(b), "he") || (a.title ?? "").localeCompare(b.title ?? "", "he");
+      }
+      if (sortMode === "owner") {
+        return (a.owner ?? "").localeCompare(b.owner ?? "", "he") || taskDueRank(a) - taskDueRank(b) || buildTaskDueLabel(a).localeCompare(buildTaskDueLabel(b), "he") || (a.title ?? "").localeCompare(b.title ?? "", "he");
+      }
+      return taskDueRank(a) - taskDueRank(b) || buildTaskDueLabel(a).localeCompare(buildTaskDueLabel(b), "he") || (a.title ?? "").localeCompare(b.title ?? "", "he");
+    });
+  }
+
+  // src/domain/suppliers/supplierPermissions.ts
+  function canAccessSupplier(ctx, item) {
+    if (!item) return false;
+    return ctx.role === "manager" || item.allAssignees || item.assignees.includes(personalOwner(ctx));
+  }
+
+  // src/domain/suppliers/supplierProgress.ts
+  function supplierProgress(item, steps) {
+    const done = steps.filter((step) => item.steps[step.id]).length;
+    return { done, total: steps.length, complete: done === steps.length };
+  }
+
+  // src/domain/suppliers/supplierFilters.ts
+  function compareSuppliersForList(a, b, steps) {
+    const aDone = supplierProgress(a, steps).complete ? 1 : 0;
+    const bDone = supplierProgress(b, steps).complete ? 1 : 0;
+    return aDone - bDone || (a.due_date || "9999").localeCompare(b.due_date || "9999") || a.supplier.localeCompare(b.supplier, "he");
+  }
+  function filterVisibleSuppliers(suppliers, ctx, steps) {
+    return suppliers.filter((item) => canAccessSupplier(ctx, item)).sort((a, b) => compareSuppliersForList(a, b, steps));
+  }
+
+  // src/domain/suppliers/supplierLookup.ts
+  function findSupplier(suppliers, id) {
+    return suppliers.find((item) => item.id === id);
+  }
+  function findVisibleSupplier(suppliers, id, ctx) {
+    const item = findSupplier(suppliers, id);
+    return canAccessSupplier(ctx, item) ? item ?? null : null;
   }
   return __toCommonJS(adaptersBundle_exports);
 })();

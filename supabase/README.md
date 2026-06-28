@@ -22,7 +22,7 @@ Before using the Supabase JS client against `bat_ayin`, add `bat_ayin` to
 - `schema.sql` creates the `bat_ayin` schema, shared `public.profiles`, Bat Ayin
   tables, constraints, indexes, and grants.
 - `rls.sql` enables row level security, `bat_ayin.*` helper functions, policies,
-  and triggers. Profile policies remain on `public.profiles`.
+  triggers, and supplier soft-delete RPCs. Profile policies remain on `public.profiles`.
 - `seed.sql` seeds the default organization, categories, and known-member placeholders.
 - `smoke-test.sql` provides a rollback-safe manual SQL smoke test for RLS behavior.
 
@@ -93,12 +93,6 @@ RLS helper functions live in the `bat_ayin` schema (`bat_ayin.is_org_member`,
 
 ## Not Included Yet
 
-- Frontend Supabase client wiring to `bat_ayin` schema
-- Google Auth wiring
-- localStorage replacement
-- audit logs
-- task events
-- task assignees table
-- invitations
-- workspace switching
-- billing
+- Production Google Auth UI (debug OAuth helpers exist in the app)
+- localStorage → Supabase migration tooling
+- audit logs / task events / invitations / billing

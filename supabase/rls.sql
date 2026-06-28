@@ -650,3 +650,73 @@ on bat_ayin.user_preferences
 for update
 using (user_id = auth.uid())
 with check (user_id = auth.uid());
+
+-- Supplier soft-delete RPCs (SECURITY DEFINER — bypass UPDATE RLS edge cases)
+create or replace function bat_ayin.soft_delete_supplier_order_link(p_link_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = bat_ayin, public
+as $$
+declare
+  lr bat_ayin.supplier_order_links%rowtype;
+begin
+  select * into lr
+  from bat_ayin.supplier_order_links
+  where id = p_link_id
+    and deleted_at is null;
+
+  if lr.id is null then
+    return;
+  end if;
+
+  if not bat_ayin.can_update_supplier_order(lr.supplier_order_id) then
+    raise exception 'permission denied for supplier order link soft delete'
+      using errcode = '42501';
+  end if;
+
+  update bat_ayin.supplier_order_links
+  set
+    deleted_at = now(),
+    updated_at = now()
+  where id = p_link_id
+    and deleted_at is null;
+end;
+$$;
+
+create or replace function bat_ayin.soft_delete_supplier_order(p_order_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = bat_ayin, public
+as $$
+declare
+  ord bat_ayin.supplier_orders%rowtype;
+begin
+  select * into ord
+  from bat_ayin.supplier_orders
+  where id = p_order_id
+    and deleted_at is null;
+
+  if ord.id is null then
+    return;
+  end if;
+
+  if not bat_ayin.can_update_supplier_order(ord.id) then
+    raise exception 'permission denied for supplier order soft delete'
+      using errcode = '42501';
+  end if;
+
+  update bat_ayin.supplier_orders
+  set
+    deleted_at = now(),
+    updated_at = now()
+  where id = p_order_id
+    and deleted_at is null;
+end;
+$$;
+
+revoke all on function bat_ayin.soft_delete_supplier_order_link(uuid) from public;
+grant execute on function bat_ayin.soft_delete_supplier_order_link(uuid) to authenticated;
+revoke all on function bat_ayin.soft_delete_supplier_order(uuid) from public;
+grant execute on function bat_ayin.soft_delete_supplier_order(uuid) to authenticated;

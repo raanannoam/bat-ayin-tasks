@@ -4,11 +4,18 @@
   "scripts": {
     "build": "tsc --noEmit",
     "build:adapters": "node scripts/build-adapters.mjs",
-    "build:all": "npm run build && npm run build:adapters"
+    "build:all": "npm run build && npm run build:adapters",
+    "verify": "node scripts/validate/run.mjs --static-only",
+    "validate": "npm run build:all && node scripts/validate/run.mjs",
+    "validate:static": "node scripts/validate/run.mjs --static-only",
+    "validate:browser": "node scripts/validate/run.mjs --browser-only",
+    "validate:supabase": "npm run build:all && node scripts/validate/run.mjs --supabase-debug --require-supabase",
+    "test": "npm run validate"
   },
   "devDependencies": {
     "@supabase/supabase-js": "^2.49.1",
     "esbuild": "^0.25.0",
+    "playwright": "^1.51.0",
     "typescript": "^5.7.3"
   }
 }
