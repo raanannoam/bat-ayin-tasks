@@ -14,6 +14,7 @@ type DbTaskRow = {
   reminder?: AppTask["reminder"];
   created_at?: string | null;
   completed_at?: string | null;
+  deleted_at?: string | null;
   category_id?: string | null;
   assignee_id?: string | null;
   deleted_by?: string | null;
@@ -46,7 +47,7 @@ export function mapDbTaskRowToApp(
     reminder: row.reminder || { enabled: false },
     created_at: toDateOnly(row.created_at),
     completed_at: toDateOnly(row.completed_at),
-    deleted_at: null,
+    deleted_at: toDateOnly(row.deleted_at),
     deleted_by: row.deleted_by ? ctx.profileNameById.get(row.deleted_by) || null : null,
     updates: (updateRows || []).map((updateRow) => mapDbTaskUpdateToApp(updateRow, ctx))
   };

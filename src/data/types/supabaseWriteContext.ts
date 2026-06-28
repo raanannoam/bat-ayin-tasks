@@ -31,3 +31,22 @@ export type WriteContextResult =
 export type MapInsertResult =
   | { ok: true; payload: SupabaseTaskInsertPayload }
   | { ok: false; reason?: string; code?: string };
+
+export type SupabaseTaskUpdatePayload = {
+  title?: string;
+  notes?: string;
+  status?: "progress" | "done";
+  priority?: "normal" | "high";
+  due_date?: string | null;
+  due_label?: string | null;
+  reminder?: { enabled: boolean; timing?: string; amount?: number; unit?: string };
+  category_id?: string | null;
+  assignee_id?: string;
+  completed_at?: string | null;
+  deleted_at?: string | null;
+  deleted_by?: string | null;
+};
+
+export type MapUpdateResult =
+  | { ok: true; payload: SupabaseTaskUpdatePayload }
+  | { ok: false; reason?: string; code?: string };

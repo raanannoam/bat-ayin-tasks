@@ -3,22 +3,16 @@ import type { AppTask } from "../../types/appTask.js";
 import { createSupabaseTasksReadAdapter } from "./supabaseTasksReadAdapter.js";
 import { createSupabaseTasksWriteAdapter } from "./supabaseTasksWriteAdapter.js";
 
-const NOT_IMPLEMENTED = "Not implemented yet";
-
 /** חוזה adapter משימות — parity עם localTasksAdapter */
 export type SupabaseTasksAdapter = {
   loadTasks(): Promise<AppTask[]>;
   saveTasks(tasks: AppTask[]): AppTask[];
   createTask(tasks: AppTask[], appTask: AppTask): Promise<AppTask[]>;
-  updateTask(tasks: AppTask[], id: string, patch: Partial<AppTask>): never;
-  deleteTaskSoft(tasks: AppTask[], id: string, deletedBy: string): never;
-  completeTask(tasks: AppTask[], id: string): never;
-  reopenTask(tasks: AppTask[], id: string): never;
+  updateTask(tasks: AppTask[], id: string, patch: Partial<AppTask>): Promise<AppTask[]>;
+  deleteTaskSoft(tasks: AppTask[], id: string, deletedBy: string): Promise<AppTask[]>;
+  completeTask(tasks: AppTask[], id: string): Promise<AppTask[]>;
+  reopenTask(tasks: AppTask[], id: string): Promise<AppTask[]>;
 };
-
-function throwNotImplemented(): never {
-  throw new Error(NOT_IMPLEMENTED);
-}
 
 /** adapter מאוחד — read + write + saveTasks noop */
 export function createSupabaseTasksAdapter(client: SupabaseClient | null): SupabaseTasksAdapter {
@@ -34,17 +28,17 @@ export function createSupabaseTasksAdapter(client: SupabaseClient | null): Supab
     createTask(tasks, appTask) {
       return writeAdapter.createTask(tasks, appTask);
     },
-    updateTask() {
-      return throwNotImplemented();
+    updateTask(tasks, id, patch) {
+      return writeAdapter.updateTask(tasks, id, patch);
     },
-    deleteTaskSoft() {
-      return throwNotImplemented();
+    deleteTaskSoft(tasks, id, deletedBy) {
+      return writeAdapter.deleteTaskSoft(tasks, id, deletedBy);
     },
-    completeTask() {
-      return throwNotImplemented();
+    completeTask(tasks, id) {
+      return writeAdapter.completeTask(tasks, id);
     },
-    reopenTask() {
-      return throwNotImplemented();
+    reopenTask(tasks, id) {
+      return writeAdapter.reopenTask(tasks, id);
     }
   };
 }

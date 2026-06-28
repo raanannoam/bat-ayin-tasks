@@ -1,27 +1,27 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AppTask } from "../../types/appTask.js";
-import { loadSupabaseTasksReadContext } from "./loadSupabaseTasksReadContext.js";
+import {
+  applySupabaseTaskPatch,
+  buildCompleteTaskPatch,
+  buildDeleteTaskSoftPatch,
+  buildReopenTaskPatch
+} from "./applySupabaseTaskPatch.js";
 import { loadSupabaseTasksWriteContext } from "./loadSupabaseTasksWriteContext.js";
 import { mapAppTaskToSupabaseInsert } from "./mapAppTaskToSupabaseInsert.js";
+import { loadSupabaseTasksReadContext } from "./loadSupabaseTasksReadContext.js";
 import { mapDbTaskRowToApp } from "./mapDbTaskRowToApp.js";
 import { normalizeTask } from "../../shared/normalizeTask.js";
-
-const NOT_IMPLEMENTED = "Not implemented yet";
 
 /** חוזה adapter כתיבה — תואם tasksRepository */
 export type SupabaseTasksWriteAdapter = {
   createTask(tasks: AppTask[], appTask: AppTask): Promise<AppTask[]>;
-  updateTask(tasks: AppTask[], id: string, patch: Partial<AppTask>): never;
-  deleteTaskSoft(tasks: AppTask[], id: string, deletedBy: string): never;
-  completeTask(tasks: AppTask[], id: string): never;
-  reopenTask(tasks: AppTask[], id: string): never;
+  updateTask(tasks: AppTask[], id: string, patch: Partial<AppTask>): Promise<AppTask[]>;
+  deleteTaskSoft(tasks: AppTask[], id: string, deletedBy: string): Promise<AppTask[]>;
+  completeTask(tasks: AppTask[], id: string): Promise<AppTask[]>;
+  reopenTask(tasks: AppTask[], id: string): Promise<AppTask[]>;
 };
 
-function throwNotImplemented(): never {
-  throw new Error(NOT_IMPLEMENTED);
-}
-
-/** יוצר adapter כתיבה ל-Supabase — createTask בלבד ממומש ב-CP18 */
+/** יוצר adapter כתיבה ל-Supabase */
 export function createSupabaseTasksWriteAdapter(
   client: SupabaseClient | null
 ): SupabaseTasksWriteAdapter {
@@ -49,17 +49,21 @@ export function createSupabaseTasksWriteAdapter(
       const createdTask = normalizeTask(mapDbTaskRowToApp(data, readCtx));
       return [createdTask, ...(tasks || [])];
     },
-    updateTask() {
-      return throwNotImplemented();
+    updateTask(tasks, id, patch) {
+      return applySupabaseTaskPatch(client, tasks, id, patch);
     },
-    deleteTaskSoft() {
-      return throwNotImplemented();
+    deleteTaskSoft(tasks, id, deletedBy) {
+      return applySupabaseTaskPatch(client, tasks, id, buildDeleteTaskSoftPatch(deletedBy));
     },
-    completeTask() {
-      return throwNotImplemented();
+    completeTask(tasks, id) {
+      const task = tasks.find((item) => item.id === id);
+      if (!task) return Promise.resolve(tasks);
+      return applySupabaseTaskPatch(client, tasks, id, buildCompleteTaskPatch(task));
     },
-    reopenTask() {
-      return throwNotImplemented();
+    reopenTask(tasks, id) {
+      const task = tasks.find((item) => item.id === id);
+      if (!task) return Promise.resolve(tasks);
+      return applySupabaseTaskPatch(client, tasks, id, buildReopenTaskPatch(task));
     }
   };
 }
