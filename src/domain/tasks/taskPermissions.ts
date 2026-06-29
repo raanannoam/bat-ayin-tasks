@@ -1,10 +1,12 @@
 import type { AppTask } from "../../data/types/appTask.js";
-import { DEMO_USER_OWNER, type AccessContext } from "../shared/appRoles.js";
+import type { AccessContext } from "../shared/appRoles.js";
+import { isPersonalTask } from "./taskFilters.js";
 
 /** הרשאת צפייה/עריכה בסיסית למשימה */
 export function canAccessTask(ctx: AccessContext, task: AppTask | null | undefined): boolean {
   if (!task || task.deleted_at) return false;
-  return ctx.role === "manager" || task.owner === DEMO_USER_OWNER;
+  if (ctx.role === "manager") return true;
+  return isPersonalTask(task, ctx);
 }
 
 /** האם ניתן לערוך תוכן משימה (לא הושלמה) */

@@ -1,8 +1,9 @@
-const CACHE_VERSION = "beit-tasks-pwa-v1";
+const CACHE_VERSION = "beit-tasks-pwa-v19";
 const STATIC_CACHE = CACHE_VERSION;
 const APP_SHELL = [
   "./",
   "./index.html",
+  "./adapters.js",
   "./manifest.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
@@ -40,6 +41,14 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
 
   if (request.mode === "navigate") {
+    const isOAuthReturn =
+      url.searchParams.has("code")
+      || url.searchParams.has("error")
+      || url.searchParams.has("error_description");
+    if (isOAuthReturn) {
+      event.respondWith(fetch(request));
+      return;
+    }
     event.respondWith(
       fetch(request)
         .then((response) => {
@@ -48,6 +57,27 @@ self.addEventListener("fetch", (event) => {
           return response;
         })
         .catch(() => caches.match("./index.html"))
+    );
+    return;
+  }
+
+  const path = url.pathname.replace(/\/$/, "") || "/";
+  const isDynamicAsset =
+    path.endsWith("/adapters.js")
+    || path.endsWith("/service-worker.js")
+    || path.endsWith("/index.html");
+
+  if (isDynamicAsset) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(STATIC_CACHE).then((cache) => cache.put(request, copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request))
     );
     return;
   }

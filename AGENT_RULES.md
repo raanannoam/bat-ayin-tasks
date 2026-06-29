@@ -4,6 +4,19 @@
 
 אפליקציית PWA לניהול משימות ורכש פנימי עבור ישיבת בת עין. האפליקציה מיועדת לעבודה בעברית וב־RTL, עם מסכי משתמש רגיל ומנהל, ונשענת כרגע על localStorage כ־backend פעיל.
 
+## Current Development Phase
+
+**Stage 0 — Pilot Stabilization** (official; see [`docs/MIGRATION_ROADMAP.md`](docs/MIGRATION_ROADMAP.md))
+
+All agents must follow Stage 0 until the product owner declares the pilot stable.
+
+- **Bug fixes are allowed** — critical pilot/production issues, auth, permissions, Supabase/RLS, data integrity, Android/PWA, operator documentation.
+- **Infrastructure work is postponed** — no GitHub-as-source-of-truth, CI/CD, repository cleanup, source-of-truth work, refactoring, or UI extraction.
+- **Stage 0 hosting exception:** production is on Vercel (`https://bat-ayin-tasks.vercel.app`); manual `npx vercel deploy --prod` only — not migration roadmap Stage 5.
+- **New features must be added to the backlog** in `PROJECT_STATUS.md` (section Backlog After Stage 0) unless explicitly approved by the product owner for the current stage.
+
+Do not start Stage 1 or any migration stage without explicit approval after Stage 0 exit.
+
 ## חובה לפני כל שינוי
 
 לפני כל שינוי בקבצים יש להריץ ולהציג:

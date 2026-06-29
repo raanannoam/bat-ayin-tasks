@@ -23,6 +23,8 @@ Before using the Supabase JS client against `bat_ayin`, add `bat_ayin` to
   tables, constraints, indexes, and grants.
 - `rls.sql` enables row level security, `bat_ayin.*` helper functions, policies,
   triggers, and supplier soft-delete RPCs. Profile policies remain on `public.profiles`.
+- `org-admin.sql` adds organization member administration RPCs, invitation table,
+  last-manager protection trigger, and invitation RLS.
 - `seed.sql` seeds the default organization, categories, and known-member placeholders.
 - `smoke-test.sql` provides a rollback-safe manual SQL smoke test for RLS behavior.
 
@@ -32,11 +34,17 @@ In the Supabase SQL editor, run:
 
 1. `schema.sql`
 2. `rls.sql`
-3. `seed.sql`
+3. `pilot-auth.sql` (auto-create profiles on Google signup)
+4. `org-admin.sql` (organization member administration)
+5. `seed.sql`
 
 For RLS smoke testing, create three temporary users in Supabase Authentication,
 replace the placeholder UUIDs in `smoke-test.sql`, then run `smoke-test.sql`.
 The smoke test uses a transaction and ends with `rollback`.
+
+After production-hardening changes to `rls.sql` (task `deleted_at` filters,
+`task_updates` UPDATE policies), re-run `rls.sql` on the deployed project before
+switching the frontend to Supabase backend.
 
 ## Seed Notes
 

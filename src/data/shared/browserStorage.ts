@@ -21,5 +21,13 @@ export function safeObjectStorage<T extends Record<string, unknown>>(key: string
 }
 
 export function writeStorageJson(key: string, value: unknown): void {
-  localStorage.setItem(key, JSON.stringify(value));
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    const name = error instanceof DOMException ? error.name : "";
+    if (name === "QuotaExceededError") {
+      throw new Error("STORAGE_QUOTA_EXCEEDED");
+    }
+    throw error;
+  }
 }

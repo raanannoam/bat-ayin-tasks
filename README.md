@@ -59,3 +59,15 @@ git -c core.fsmonitor=false tag
 9. File attachments, push notifications
 
 פרטים מלאים: `PROJECT_STATUS.md`
+
+## Project Lifecycle
+
+Current phase:
+
+**Stage 0 — Pilot Stabilization**
+
+For the complete roadmap see:
+
+[`docs/MIGRATION_ROADMAP.md`](docs/MIGRATION_ROADMAP.md)
+
+**Production URL:** `https://bat-ayin-tasks.vercel.app`

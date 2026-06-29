@@ -258,6 +258,7 @@
     const H = window.__validationHooks;
     const suite = createSuite("permissions");
     const savedRole = H.state.role;
+    const savedOwner = H.state.userOwner;
     const taskMine = { id: "p1", owner: "עדינה", status: "progress", deleted_at: null };
     const taskOther = { id: "p2", owner: "צבי", status: "progress", deleted_at: null };
     const supplierMine = { id: "s1", allAssignees: false, assignees: ["עדינה"] };
@@ -265,6 +266,7 @@
 
     try {
       H.state.role = "user";
+      H.state.userOwner = "עדינה";
       await suite.step("user-access-own-task", "user canAccessTask own task", async () => {
         assert(H.canAccessTask(taskMine), "should access own task");
         assert(H.canEditTaskContent(taskMine), "should edit own active task");
@@ -281,6 +283,7 @@
       });
 
       H.state.role = "manager";
+      H.state.userOwner = "צבי";
       await suite.step("manager-access-all", "manager canAccessTask any task", async () => {
         assert(H.canAccessTask(taskOther), "manager sees all");
       });
@@ -292,6 +295,7 @@
       });
     } finally {
       H.state.role = savedRole;
+      H.state.userOwner = savedOwner;
     }
 
     return suite.finish();
@@ -336,6 +340,107 @@
     return suite.finish();
   }
 
+  async function runOrgMembersPermissionsSuite() {
+    const H = window.__validationHooks;
+    const suite = createSuite("org-members-permissions");
+    const managerCtx = { role: "manager", userOwner: "צבי", userId: "manager-1" };
+    const userCtx = { role: "user", userOwner: "עדינה", userId: "user-1" };
+    let members = H.localOrgMembersAdapter.loadOrgMembers();
+    const manager = members.find(m => m.role === "manager" && m.isActive);
+    const regular = members.find(m => m.role === "user" && m.isActive);
+
+    await suite.step("manager-access-admin", "manager canAccessOrgAdmin", async () => {
+      assert(H.canAccessOrgAdmin(managerCtx), "manager should access admin");
+      assert(!H.canAccessOrgAdmin(userCtx), "user should not access admin");
+    });
+
+    await suite.step("promote-user", "manager can promote active user", async () => {
+      assert(H.canPromoteMember(managerCtx, regular), "should promote user");
+      const result = await H.orgMembersRepository.promoteMember(members, regular.userId, managerCtx);
+      assert(result.ok, result.reason || "promote failed");
+      members = result.members;
+      assert(members.find(m => m.userId === regular.userId)?.role === "manager", "not promoted");
+    });
+
+    await suite.step("demote-manager", "manager can demote when another manager exists", async () => {
+      const promoted = members.find(m => m.userId === regular.userId);
+      assert(H.canDemoteMember(managerCtx, members, promoted), "should demote extra manager");
+      const result = await H.orgMembersRepository.demoteMember(members, promoted.userId, managerCtx);
+      assert(result.ok, result.reason || "demote failed");
+      members = result.members;
+    });
+
+    await suite.step("last-manager-block-demote", "last manager cannot be demoted", async () => {
+      const lastManager = members.find(m => m.role === "manager" && m.isActive);
+      assert(H.isLastActiveManager(members, lastManager.userId), "should be last manager");
+      assert(!H.canDemoteMember(managerCtx, members, lastManager), "demote blocked");
+      const result = await H.orgMembersRepository.demoteMember(members, lastManager.userId, managerCtx);
+      assert(!result.ok && result.code === "last_manager", "expected last_manager error");
+    });
+
+    await suite.step("deactivate-user", "manager can deactivate user", async () => {
+      const target = members.find(m => m.role === "user" && m.isActive);
+      const result = await H.orgMembersRepository.deactivateMember(members, target.userId, managerCtx);
+      assert(result.ok, result.reason || "deactivate failed");
+      members = result.members;
+      assert(!members.find(m => m.userId === target.userId)?.isActive, "still active");
+    });
+
+    await suite.step("reactivate-user", "manager can reactivate user", async () => {
+      const target = members.find(m => m.role === "user" && !m.isActive);
+      const result = await H.orgMembersRepository.reactivateMember(members, target.userId, managerCtx);
+      assert(result.ok, result.reason || "reactivate failed");
+      members = result.members;
+      assert(members.find(m => m.userId === target.userId)?.isActive, "still inactive");
+    });
+
+    await suite.step("last-manager-block-deactivate", "last manager cannot be deactivated", async () => {
+      const lastManager = members.find(m => m.role === "manager" && m.isActive);
+      assert(!H.canDeactivateMember(managerCtx, members, lastManager), "deactivate blocked");
+      const result = await H.orgMembersRepository.deactivateMember(members, lastManager.userId, managerCtx);
+      assert(!result.ok && result.code === "last_manager", "expected last_manager error");
+    });
+
+    await suite.step("user-route-guard", "regular user cannot access org admin route", async () => {
+      const savedRole = H.state.role;
+      H.state.role = "user";
+      const blocked = H.guardManagerAdminView ? H.guardManagerAdminView("mgmt-members") : "all";
+      H.state.role = savedRole;
+      assert(blocked === "all", "user should be redirected away from mgmt-members");
+    });
+
+    return suite.finish();
+  }
+
+  async function runOrgMembersPageSuite() {
+    const H = window.__validationHooks;
+    const suite = createSuite("org-members-page");
+    const saved = { role: H.state.role, view: H.state.view, orgMembers: H.state.orgMembers, orgMembersLoaded: H.state.orgMembersLoaded };
+
+    try {
+      H.state.role = "manager";
+      H.state.orgMembers = H.localOrgMembersAdapter.loadOrgMembers();
+      H.state.orgMembersLoaded = true;
+      H.state.orgMembersLoading = false;
+      H.state.orgMembersError = "";
+      H.state.view = "mgmt-members";
+      H.render();
+      await suite.step("page-load", "Organization Members page renders list", async () => {
+        const text = document.getElementById("app")?.innerText || "";
+        assert(text.includes("חברי ארגון"), "title missing");
+        assert(text.includes("עדינה") || text.includes("צבי"), "member missing");
+      });
+    } finally {
+      H.state.role = saved.role;
+      H.state.view = saved.view;
+      H.state.orgMembers = saved.orgMembers;
+      H.state.orgMembersLoaded = saved.orgMembersLoaded;
+      H.render();
+    }
+
+    return suite.finish();
+  }
+
   async function runAdaptersBundleSuite() {
     const suite = createSuite("adapters-bundle");
     const A = window.BatAyinAdapters;
@@ -347,11 +452,15 @@
     for (const name of [
       "createSupabaseTasksAdapter",
       "createSupabaseSuppliersAdapter",
+      "createSupabaseOrgMembersAdapter",
       "normalizeTask",
       "normalizeSupplier",
       "createAsyncRepository",
       "loadSupabaseTasksWriteContext",
-      "mapAppTaskToSupabaseInsert"
+      "mapAppTaskToSupabaseInsert",
+      "canAccessOrgAdmin",
+      "canPromoteMember",
+      "canDemoteMember"
     ]) {
       await suite.step(`export-${name}`, `export ${name}`, async () => {
         assert(typeof A[name] === "function", `${name} not a function`);
@@ -399,7 +508,7 @@
     });
 
     if (H.DATA_BACKEND !== "supabase") {
-      suite.skip("task-crud", "testSupabaseTaskCrudViaRepository", "DATA_BACKEND=local — add ?debugBackend=supabase for live CRUD");
+      suite.skip("task-crud", "testSupabaseTaskCrudViaRepository", "DATA_BACKEND=local — use ?debugBackend=supabase for live CRUD");
       suite.skip("supplier-crud", "testSupabaseSupplierCrud", "requires debug backend + session");
       suite.skip("read-isolation", "testSupabaseReadStateIsolation", "requires debug backend");
       return suite.finish();
@@ -449,6 +558,8 @@
       results.push(await runLocalSuppliersAdapterSuite());
       results.push(await runSuppliersRepositorySuite());
       results.push(await runPermissionsSuite());
+      results.push(await runOrgMembersPermissionsSuite());
+      results.push(await runOrgMembersPageSuite());
       results.push(await runArchiveSuite());
       results.push(await runAuthApiSuite());
       if (options.supabase !== false) {
@@ -495,6 +606,8 @@
         "local-suppliers-adapter": runLocalSuppliersAdapterSuite,
         "suppliers-repository": runSuppliersRepositorySuite,
         permissions: runPermissionsSuite,
+        "org-members-permissions": runOrgMembersPermissionsSuite,
+        "org-members-page": runOrgMembersPageSuite,
         archive: runArchiveSuite,
         "adapters-bundle": runAdaptersBundleSuite,
         "auth-api": runAuthApiSuite,

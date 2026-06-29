@@ -32,10 +32,11 @@ export async function loadSupabaseTasksWriteContext(
     const [categoriesResult, membersResult] = await Promise.all([
       batAyin
         .from("categories")
-        .select("id, slug")
+        .select("id, slug, name, icon, sort_order")
         .eq("organization_id", DEFAULT_ORGANIZATION_ID)
         .eq("is_active", true)
-        .is("deleted_at", null),
+        .is("deleted_at", null)
+        .order("sort_order", { ascending: true }),
       batAyin
         .from("organization_members")
         .select("user_id, role, is_active")
@@ -82,13 +83,20 @@ export async function loadSupabaseTasksWriteContext(
       profileRows = profilesResult.data || [];
     }
     const profileIdByName = buildProfileIdByName(profileRows);
+    const categoryRows = categoriesResult.data || [];
+    const categoryCatalog = categoryRows.map((row) => ({
+      id: row.slug,
+      label: row.name,
+      icon: row.icon || "office"
+    }));
     return {
       ok: true,
       ctx: {
         organizationId: DEFAULT_ORGANIZATION_ID,
         authUserId,
         authUserRole: currentMember.role === "manager" ? "manager" : "user",
-        categoryIdBySlug: buildCategoryIdBySlug(categoriesResult.data),
+        categoryIdBySlug: buildCategoryIdBySlug(categoryRows),
+        categoryCatalog,
         profileIdByName,
         profileNameById: buildProfileNameById(profileRows),
         allowedAssigneeIds: new Set(userIds),

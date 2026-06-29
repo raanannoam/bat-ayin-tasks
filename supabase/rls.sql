@@ -73,6 +73,7 @@ as $$
     select 1
     from bat_ayin.tasks t
     where t.id = target_task_id
+      and t.deleted_at is null
       and (
         t.assignee_id = auth.uid()
         or bat_ayin.is_org_manager(t.organization_id)
@@ -432,7 +433,10 @@ drop policy if exists "users can read own tasks and managers can read all" on ba
 create policy "users can read own tasks and managers can read all"
 on bat_ayin.tasks
 for select
-using (assignee_id = auth.uid() or bat_ayin.is_org_manager(organization_id));
+using (
+  deleted_at is null
+  and (assignee_id = auth.uid() or bat_ayin.is_org_manager(organization_id))
+);
 
 drop policy if exists "users can create own tasks" on bat_ayin.tasks;
 create policy "users can create own tasks"
@@ -510,6 +514,27 @@ create policy "managers can delete updates"
 on bat_ayin.task_updates
 for delete
 using (bat_ayin.is_org_manager(organization_id));
+
+drop policy if exists "authors can update own task updates" on bat_ayin.task_updates;
+create policy "authors can update own task updates"
+on bat_ayin.task_updates
+for update
+using (
+  author_id = auth.uid()
+  and deleted_at is null
+  and bat_ayin.can_access_task(task_id)
+)
+with check (
+  author_id = auth.uid()
+  and bat_ayin.is_org_member(organization_id)
+);
+
+drop policy if exists "managers can update task updates" on bat_ayin.task_updates;
+create policy "managers can update task updates"
+on bat_ayin.task_updates
+for update
+using (bat_ayin.is_org_manager(organization_id))
+with check (bat_ayin.is_org_manager(organization_id));
 
 drop policy if exists "members can read active suppliers" on bat_ayin.suppliers;
 create policy "members can read active suppliers"
@@ -650,6 +675,22 @@ on bat_ayin.user_preferences
 for update
 using (user_id = auth.uid())
 with check (user_id = auth.uid());
+
+-- Organization Administration (see org-admin.sql for full migration)
+alter table bat_ayin.organization_invitations enable row level security;
+
+drop policy if exists "managers can read organization invitations" on bat_ayin.organization_invitations;
+create policy "managers can read organization invitations"
+on bat_ayin.organization_invitations
+for select
+using (bat_ayin.is_org_manager(organization_id));
+
+drop policy if exists "managers can manage organization invitations" on bat_ayin.organization_invitations;
+create policy "managers can manage organization invitations"
+on bat_ayin.organization_invitations
+for all
+using (bat_ayin.is_org_manager(organization_id))
+with check (bat_ayin.is_org_manager(organization_id));
 
 -- Supplier soft-delete RPCs (SECURITY DEFINER — bypass UPDATE RLS edge cases)
 create or replace function bat_ayin.soft_delete_supplier_order_link(p_link_id uuid)

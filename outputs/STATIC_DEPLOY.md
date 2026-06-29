@@ -1,8 +1,10 @@
 # Static Mockup Deployment
 
+> **Deprecated for pilot/production.** Production is on Vercel: `https://bat-ayin-tasks.vercel.app` — see `PILOT_DEPLOY.md`.
+
 This folder is ready for temporary static hosting.
 
-## Recommended Option: Netlify Drop
+## Legacy: Netlify Drop (mockup only)
 
 1. Go to https://app.netlify.com/drop
 2. Drag the entire `outputs` folder into the drop area.

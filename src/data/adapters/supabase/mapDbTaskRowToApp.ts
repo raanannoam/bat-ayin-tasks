@@ -40,6 +40,7 @@ export function mapDbTaskRowToApp(
     status: (row.status === "done" ? "done" : "progress") as AppTask["status"],
     priority: (row.priority === "high" ? "high" : "normal") as AppTask["priority"],
     category: ctx.categorySlugById.get(row.category_id || "") || "office",
+    assigneeId: row.assignee_id || undefined,
     owner: ctx.profileNameById.get(row.assignee_id || "") || "לא ידוע",
     due_date: dueDate,
     dueLabel: row.due_label ?? null,

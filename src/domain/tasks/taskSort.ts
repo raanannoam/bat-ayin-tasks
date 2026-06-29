@@ -31,38 +31,37 @@ export function taskGroupTitle(
   return "";
 }
 
-/** מיון משימות — עדיפות, יעד, כותרת */
+/** מיון משימות — לפי מצב מיון: מבצע/קטגוריה/תאריך */
 export function sortTasks(
   tasks: AppTask[],
   sortMode: string,
   categories: CategoryItem[]
 ): AppTask[] {
+  const priorityDiff = (a: AppTask, b: AppTask) =>
+    (a.priority === "high" ? 0 : 1) - (b.priority === "high" ? 0 : 1);
+  const dueDiff = (a: AppTask, b: AppTask) =>
+    taskDueRank(a) - taskDueRank(b) ||
+    buildTaskDueLabel(a).localeCompare(buildTaskDueLabel(b), "he") ||
+    (a.title ?? "").localeCompare(b.title ?? "", "he");
+
   return [...tasks].sort((a, b) => {
-    const priorityDiff = (a.priority === "high" ? 0 : 1) - (b.priority === "high" ? 0 : 1);
-    if (priorityDiff) return priorityDiff;
+    if (sortMode === "owner") {
+      return (
+        (a.owner ?? "").localeCompare(b.owner ?? "", "he") ||
+        priorityDiff(a, b) ||
+        dueDiff(a, b)
+      );
+    }
+    const byPriority = priorityDiff(a, b);
+    if (byPriority) return byPriority;
     if (sortMode === "category") {
       return (
         resolveCategory(categories, a.category).label.localeCompare(
           resolveCategory(categories, b.category).label,
           "he"
-        ) ||
-        taskDueRank(a) - taskDueRank(b) ||
-        buildTaskDueLabel(a).localeCompare(buildTaskDueLabel(b), "he") ||
-        (a.title ?? "").localeCompare(b.title ?? "", "he")
+        ) || dueDiff(a, b)
       );
     }
-    if (sortMode === "owner") {
-      return (
-        (a.owner ?? "").localeCompare(b.owner ?? "", "he") ||
-        taskDueRank(a) - taskDueRank(b) ||
-        buildTaskDueLabel(a).localeCompare(buildTaskDueLabel(b), "he") ||
-        (a.title ?? "").localeCompare(b.title ?? "", "he")
-      );
-    }
-    return (
-      taskDueRank(a) - taskDueRank(b) ||
-      buildTaskDueLabel(a).localeCompare(buildTaskDueLabel(b), "he") ||
-      (a.title ?? "").localeCompare(b.title ?? "", "he")
-    );
+    return dueDiff(a, b);
   });
 }

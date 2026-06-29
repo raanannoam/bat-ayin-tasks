@@ -43,10 +43,26 @@ create table if not exists bat_ayin.organization_members (
   user_id uuid not null references public.profiles(id) on delete cascade,
   role text not null check (role in ('manager', 'user')),
   is_active boolean not null default true,
+  first_login_at timestamptz,
+  last_activity_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
 
   primary key (organization_id, user_id)
+);
+
+create table if not exists bat_ayin.organization_invitations (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references bat_ayin.organizations(id) on delete cascade,
+  email text not null,
+  role text not null default 'user' check (role in ('manager', 'user')),
+  invited_by uuid references public.profiles(id) on delete set null,
+  status text not null default 'pending'
+    check (status in ('pending', 'accepted', 'revoked', 'expired')),
+  token_hash text,
+  expires_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
 create table if not exists bat_ayin.categories (

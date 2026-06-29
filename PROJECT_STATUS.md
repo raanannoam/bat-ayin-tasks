@@ -1,5 +1,21 @@
 # מצב הפרויקט
 
+## Current Phase
+
+**Stage 0 — Pilot Stabilization** (active)
+
+**Current objective:** Freeze architecture and stabilize the pilot. Fix real production or pilot bugs only. No infrastructure work, refactoring, or new features until the product owner declares the pilot stable.
+
+**Official roadmap:** [`docs/MIGRATION_ROADMAP.md`](docs/MIGRATION_ROADMAP.md)
+
+## Current Rules
+
+During Stage 0, only bug fixes and pilot-critical corrections are allowed (auth, permissions, Supabase/RLS, data integrity, Android/PWA, operator docs). New features, UX redesign, refactoring, CI/CD, and repository restructuring are postponed. **Approved exception:** production hosting on Vercel (`https://bat-ayin-tasks.vercel.app`) replaced Netlify when deploy credits were exhausted — manual deploy only, not migration roadmap Stage 5. Feature requests go to [Backlog (After Stage 0)](#backlog-after-stage-0).
+
+**Production URL:** `https://bat-ayin-tasks.vercel.app`
+
+---
+
 עדכון נכון לקומיט:
 
 ```text
@@ -171,11 +187,24 @@ const DATA_BACKEND = "local"; // debug override: ?debugBackend=supabase
 - **File attachments** — Supabase Storage
 - **Push notifications**
 
+## Backlog (After Stage 0)
+
+Infrastructure and architecture work deferred until Stage 0 exit (see [`docs/MIGRATION_ROADMAP.md`](docs/MIGRATION_ROADMAP.md)):
+
+1. **GitHub Actions** — Stage 4 CI validation on pull requests
+2. **Vercel migration** — Stage 5 automatic deployment (replace manual Netlify Drop)
+3. **Source-of-Truth cleanup** — Stage 1–2 repository and URL hardening
+4. **Stop committing generated artifacts** — Stage 5b (`outputs/adapters.js` gitignore after Vercel is stable)
+5. **UI extraction** — Stage 6 move `outputs/index.html` runtime into `src/ui/`
+6. **Future feature requests** — including suppliers Supabase, production auth UI, localStorage → DB migration, production backend switch, file attachments, push notifications (see [TODO / Roadmap](#todo--roadmap) below)
+
 ## Next recommended phase
+
+**מושהה עד סיום Stage 0.** אל תתחיל Stage 1 לפני שה-product owner מכריז שהפיילוט יציב.
 
 **לא לעבור עדיין ל־production `DATA_BACKEND = "supabase"`.**
 
-סדר מומלץ:
+סדר מומלץ (אחרי Stage 0):
 
 1. **Suppliers Supabase adapter** — read/write + RLS
 2. **Production auth UI** — Google Login במסך (לא רק debug console)

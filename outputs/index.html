@@ -12,6 +12,26 @@
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <title>משימות ישיבת בת עין</title>
+  <script>
+    // מעבר מ-localhost ל-production — שומר query (OAuth code) כדי לא להיתקע על 127.0.0.1
+    (function () {
+      var host = location.hostname;
+      if (host !== "127.0.0.1" && host !== "localhost") return;
+      var search = location.search || "";
+      if (search.includes("debugBackend=local") || search.includes("debugBackend=supabase") || search.includes("debug=1")) return;
+      var prod = "https://bat-ayin-tasks.vercel.app/index.html";
+      location.replace(prod + search + location.hash);
+    })();
+    // ניקוי SW לפני OAuth callback — קריטי באנדרואיד (PKCE נשמר ב-localStorage)
+    window.__authBoot = (function () {
+      const query = new URLSearchParams(location.search);
+      const isOAuthReturn = query.has("code") || query.has("error") || query.has("error_description");
+      if (!isOAuthReturn || !("serviceWorker" in navigator)) return Promise.resolve();
+      return navigator.serviceWorker.getRegistrations().then((regs) =>
+        Promise.all(regs.map((reg) => reg.unregister()))
+      );
+    })();
+  </script>
   <style>
     :root {
       --bg: #F7F3EA;
@@ -113,7 +133,11 @@
       width: min(calc(100% - 28px), 430px);
       margin: 0 auto;
       min-height: calc(100vh - 36px);
-      padding: 18px 16px 112px;
+      padding:
+        calc(18px + env(safe-area-inset-top, 0px))
+        calc(16px + env(safe-area-inset-right, 0px))
+        calc(112px + env(safe-area-inset-bottom, 0px))
+        calc(16px + env(safe-area-inset-left, 0px));
       background:
         linear-gradient(180deg, rgba(255,255,255,.68), rgba(255,255,255,0) 160px),
         linear-gradient(rgba(120,110,90,.04) 1px, transparent 1px),
@@ -162,6 +186,55 @@
       font-size: .76rem;
       line-height: 1.35;
       text-align: center;
+    }
+    .offline-banner {
+      display: none;
+      margin: -8px 0 10px;
+      padding: 8px 10px;
+      border-radius: 9px;
+      border: 1px solid color-mix(in srgb, var(--danger, #b42318) 35%, var(--line));
+      background: color-mix(in srgb, var(--danger, #b42318) 8%, var(--surface));
+      color: var(--muted);
+      font-size: .78rem;
+      text-align: center;
+    }
+    .offline-banner.show { display: block; }
+    .auth-actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .auth-actions button {
+      font-size: .74rem;
+      padding: .45rem .65rem;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      cursor: pointer;
+    }
+    .auth-actions button.primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: transparent;
+    }
+    .login-screen, .gate-screen {
+      padding: 28px 8px;
+      text-align: center;
+    }
+    .login-screen h2, .gate-screen h2 { margin-bottom: .75rem; }
+    .login-screen p, .gate-screen p { color: var(--muted); margin-bottom: 1rem; line-height: 1.45; }
+    .pilot-notice {
+      margin: -8px 0 14px;
+      padding: 7px 10px;
+      border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line));
+      border-radius: 9px;
+      background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+      color: var(--muted);
+      font-size: .76rem;
+      line-height: 1.35;
+      text-align: center;
+    }
+    .app-loading {
+      padding: 28px 8px;
+      text-align: center;
+      color: var(--muted);
+      font-size: .92rem;
     }
     h1, h2, h3, p { margin: 0; }
     h1 { font-size: clamp(1.65rem, 4.5vw, 2.15rem); letter-spacing: 0; font-weight: 760; }
@@ -230,6 +303,18 @@
       flex: 1;
       height: 1px;
       background: color-mix(in srgb, var(--line) 82%, transparent);
+    }
+    .list-subgroup {
+      margin: 0 0 14px;
+    }
+    .list-subgroup:last-child {
+      margin-bottom: 0;
+    }
+    .list-subgroup-title {
+      margin: 0 24px 6px;
+      color: color-mix(in srgb, var(--muted) 88%, var(--text));
+      font-size: .82rem;
+      font-weight: 700;
     }
     .task-group.highlight {
       border-top: 2px solid var(--sand);
@@ -381,6 +466,42 @@
       display: block;
       line-height: 1.12;
     }
+    .supplier-edit-row {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 82px;
+      min-height: 100%;
+      padding: .45rem .3rem;
+      border: 0;
+      border-right: 1px solid color-mix(in srgb, var(--soft-blue) 34%, var(--line));
+      border-radius: 0;
+      color: var(--soft-blue);
+      background: color-mix(in srgb, var(--soft-blue) 13%, var(--surface));
+      font-weight: 650;
+      font-size: .78rem;
+      line-height: 1.12;
+      text-align: center;
+      white-space: normal;
+      z-index: 2;
+      display: grid;
+      place-content: center;
+      gap: 5px;
+      box-shadow: inset 1px 0 0 rgba(255,255,255,.42);
+      cursor: pointer;
+    }
+    .supplier-edit-row .line-icon {
+      width: 17px;
+      height: 17px;
+      margin-inline: auto;
+    }
+    .supplier-list-row {
+      cursor: default;
+    }
+    .supplier-list-row.completed .list-row-content {
+      padding-left: 92px;
+    }
     .supplier-progress {
       display: grid;
       gap: 7px;
@@ -405,6 +526,7 @@
       font-weight: 700;
       text-align: center;
       box-shadow: none;
+      cursor: pointer;
     }
     .supplier-step::before,
     .supplier-check::before {
@@ -920,6 +1042,124 @@
       background: color-mix(in srgb, var(--surface-strong) 24%, var(--surface));
       font-weight: 620;
     }
+    .mgmt-module-grid {
+      display: grid;
+      gap: 12px;
+    }
+    .mgmt-module-card {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 14px;
+      min-height: 72px;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: color-mix(in srgb, var(--surface) 86%, transparent);
+      text-align: right;
+      box-shadow: 0 1px 4px rgba(0,0,0,.025);
+    }
+    .mgmt-module-card strong {
+      display: block;
+      font-size: 1.05rem;
+      margin-bottom: 4px;
+    }
+    .member-list {
+      display: grid;
+      gap: 0;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+      background: color-mix(in srgb, var(--surface) 86%, transparent);
+    }
+    .member-row {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .member-row:last-child {
+      border-bottom: 0;
+    }
+    .member-row.inactive {
+      opacity: 0.72;
+    }
+    .member-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .member-name {
+      font-size: 1.02rem;
+      font-weight: 760;
+    }
+    .member-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      border: 1px solid var(--line);
+    }
+    .member-badge.active {
+      color: var(--status-done);
+      border-color: color-mix(in srgb, var(--status-done) 35%, var(--line));
+    }
+    .member-badge.inactive {
+      color: var(--danger);
+      border-color: color-mix(in srgb, var(--danger) 35%, var(--line));
+    }
+    .member-meta {
+      display: grid;
+      gap: 4px;
+      font-size: 0.92rem;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    .member-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .member-actions button {
+      min-height: 36px;
+      padding: 0 12px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--surface) 92%, transparent);
+      font-size: 0.9rem;
+    }
+    .member-actions button.danger {
+      color: var(--danger);
+      border-color: color-mix(in srgb, var(--danger) 35%, var(--line));
+    }
+    .member-confirm {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid color-mix(in srgb, var(--danger) 25%, var(--line));
+      background: color-mix(in srgb, var(--danger) 6%, var(--surface));
+    }
+    .member-confirm-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .invite-form {
+      display: grid;
+      gap: 10px;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--surface) 86%, transparent);
+    }
+    .invite-form input {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0 12px;
+      background: var(--surface);
+    }
     #createForm {
       display: grid;
       gap: 0;
@@ -1189,6 +1429,20 @@
       opacity: 1;
       transform: translateX(50%) translateY(0);
     }
+    .toast.saving {
+      background: color-mix(in srgb, var(--soft-blue) 72%, #3B352E);
+    }
+    .supplier-step.saving,
+    .supplier-check.saving {
+      opacity: .72;
+      outline: 2px solid color-mix(in srgb, var(--soft-blue) 55%, transparent);
+      outline-offset: 1px;
+      animation: supplier-saving-pulse 1s ease-in-out infinite;
+    }
+    @keyframes supplier-saving-pulse {
+      0%, 100% { opacity: .72; }
+      50% { opacity: 1; }
+    }
     [data-theme="dark"] button {
       background: linear-gradient(180deg, #474D47 0%, #414741 100%);
       border-color: var(--line);
@@ -1262,6 +1516,7 @@
       border-color: rgba(255,255,255,.07);
     }
     [data-theme="dark"] .complete-row,
+    [data-theme="dark"] .supplier-edit-row,
     [data-theme="dark"] button.add-inline {
       color: var(--accent);
       border-color: rgba(167,240,112,.18);
@@ -1340,11 +1595,13 @@
     <header class="topbar">
       <div class="brand">
         <strong>משימות ישיבת בת עין</strong>
-        <span id="roleLabel">מצב משתמש רגיל</span>
+        <span id="roleLabel">טוען...</span>
       </div>
+      <div id="authActions" class="auth-actions"></div>
     </header>
-    <div class="mockup-notice">מוקאפ לבדיקה • הנתונים נשמרים רק במכשיר זה</div>
-    <main id="app" aria-live="polite"></main>
+    <div id="pilotNotice" class="pilot-notice">פיילוט — הנתונים משותפים בין משתמשי הישיבה</div>
+    <div id="offlineBanner" class="offline-banner" role="status">אין חיבור לאינטרנט — השינויים נשמרים במכשיר בלבד</div>
+    <main id="app" aria-live="polite"><p class="app-loading">טוען נתונים...</p></main>
   </div>
   <nav id="bottomNav" class="bottom-nav user" aria-label="ניווט ראשי"></nav>
   <div id="toast" class="toast" role="status"></div>
@@ -1378,7 +1635,7 @@
       return `<span class="icon-label">${lineIcon(name)}<span>${text}</span></span>`;
     }
     // helpers משותפים מה-bundle — מקור יחיד, בלי כפילות inline
-    if (!BatAyinAdapters?.createSupabaseTasksAdapter || !BatAyinAdapters?.createSupabaseSuppliersAdapter) {
+    if (!BatAyinAdapters?.createSupabaseTasksAdapter || !BatAyinAdapters?.createSupabaseSuppliersAdapter || !BatAyinAdapters?.createSupabaseOrgMembersAdapter) {
       throw new Error("Adapters bundle failed to load.");
     }
     const {
@@ -1394,8 +1651,10 @@
       createAsyncRepository,
       createSupabaseTasksAdapter,
       createSupabaseSuppliersAdapter,
+      createSupabaseOrgMembersAdapter,
       createLocalTasksAdapter,
       createLocalSuppliersAdapter,
+      createLocalOrgMembersAdapter,
       BASE_CATEGORIES: baseCategories,
       BASE_PEOPLE: basePeople,
       loadCategories,
@@ -1423,6 +1682,7 @@
       taskDueRank,
       filterPersonalTasks,
       filterManagementPeople,
+      buildManagementTaskAssignees,
       filterVisibleDoneTasks,
       filterOpenTasks,
       isArchivedDone,
@@ -1435,15 +1695,39 @@
       sortOptions,
       resolveCurrentSort,
       taskGroupTitle: taskGroupTitleDomain,
+      buildManagementAssigneePriorityGroups,
+      buildManagementPriorityChronologicalGroups,
       filterVisibleSuppliers,
       findSupplier,
       findVisibleSupplier,
       canAccessSupplier: canAccessSupplierDomain,
       supplierProgress: supplierProgressDomain,
-      personalOwner: personalOwnerDomain
+      canAccessOrgAdmin,
+      canPromoteMember,
+      canDemoteMember,
+      canDeactivateMember,
+      canReactivateMember,
+      orgMemberRoleLabel,
+      findOrgMember,
+      sortOrgMembers,
+      countActiveManagers,
+      isLastActiveManager,
+      lastManagerBlockReason,
+      personalOwner: personalOwnerDomain,
+      PILOT_APP_URL,
+      getPilotOAuthRedirectUrl,
+      PILOT_SUPABASE_URL,
+      PILOT_SUPABASE_ANON_KEY,
+      isSupabasePlaceholder,
+      resolvePilotDataBackend,
+      isPilotDebugEnabled,
+      loadPilotAuthContext,
+      migrateLocalPilotData,
+      DEMO_USER_OWNER,
+      DEMO_MANAGER_OWNER
     } = BatAyinAdapters;
-    let categories = loadCategories();
-    let people = loadPeople();
+    let categories = [];
+    let people = [];
     const statusMeta = {
       progress: { label: "בתהליך", dot: "progress", icon: "progress" },
       done: { label: "הושלם", dot: "done", icon: "done" }
@@ -1457,47 +1741,36 @@
       ["high", "גבוהה"]
     ];
     const params = new URLSearchParams(location.search);
-    const DEBUG_BACKEND_STORAGE_KEY = "beit-debug-backend";
-    try {
-      if (params.get("debugBackend") === "supabase") {
-        sessionStorage.setItem(DEBUG_BACKEND_STORAGE_KEY, "supabase");
-      }
-    } catch {}
-    function isDebugSupabaseBackendEnabled() {
-      if (params.get("debugBackend") === "supabase") return true;
-      try {
-        return sessionStorage.getItem(DEBUG_BACKEND_STORAGE_KEY) === "supabase";
-      } catch {
-        return false;
-      }
+    const DATA_BACKEND = resolvePilotDataBackend(params);
+    const PILOT_DEBUG = isPilotDebugEnabled(params);
+    // כתובת OAuth — קבועה מ-pilotConfig (לא window.location.origin)
+    const OAUTH_REDIRECT_URL = getPilotOAuthRedirectUrl();
+    if (PILOT_DEBUG) {
+      console.warn("[pilot-debug] debug mode enabled.");
     }
-    const SUPABASE_URL = "https://jxjxjvxbxpgvlarzbohm.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4anhqdnhieHBndmxhcnpib2htIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5NTgyNjUsImV4cCI6MjA5NTUzNDI2NX0.g1W8SJWTRc3FYeZJIVdLBTKcSfHVgfQQZ_brjRKest4";
-    const DATA_BACKEND = isDebugSupabaseBackendEnabled() ? "supabase" : "local";
-    if (DATA_BACKEND === "supabase") {
-      console.warn("[debug] DATA_BACKEND=supabase — tasks via Supabase; suppliers stay local.");
+    if (DATA_BACKEND === "local") {
+      console.warn("[pilot-debug] DATA_BACKEND=local — localStorage only.");
+      people = loadPeople();
+      categories = loadCategories();
     }
     const repositoryAdapters = {};
 
-    function isSupabasePlaceholder(value) {
-      if (!value || typeof value !== "string") return true;
-      return value.includes("your-project") || value.includes("your-supabase-anon-key");
-    }
     function createSupabaseClientSafe() {
       try {
-        if (isSupabasePlaceholder(SUPABASE_URL) || isSupabasePlaceholder(SUPABASE_ANON_KEY)) {
+        if (isSupabasePlaceholder(PILOT_SUPABASE_URL) || isSupabasePlaceholder(PILOT_SUPABASE_ANON_KEY)) {
           return null;
         }
         if (!window.supabase || typeof window.supabase.createClient !== "function") {
           console.warn("Supabase client library is not available.");
           return null;
         }
-        return window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        return window.supabase.createClient(PILOT_SUPABASE_URL, PILOT_SUPABASE_ANON_KEY, {
           auth: {
             persistSession: true,
             autoRefreshToken: true,
-            detectSessionInUrl: false,
-            flowType: "pkce"
+            detectSessionInUrl: true,
+            flowType: "pkce",
+            redirectTo: OAUTH_REDIRECT_URL
           }
         });
       } catch (error) {
@@ -1522,30 +1795,20 @@
         return { ok: false, error };
       }
     }
-    window.testSupabaseConnection = testSupabaseConnection;
+    if (PILOT_DEBUG) {
+      window.testSupabaseConnection = testSupabaseConnection;
+    }
 
     function debugAuthTrace(step, detail) {
       console.warn(`[debug][auth][${step}]`, detail);
       return detail;
     }
-    function persistDebugBackendForOAuth() {
-      try {
-        if (isDebugSupabaseBackendEnabled()) {
-          sessionStorage.setItem(DEBUG_BACKEND_STORAGE_KEY, "supabase");
-        }
-      } catch {}
-    }
     function restoreDebugBackendQuery(query) {
-      try {
-        if (sessionStorage.getItem(DEBUG_BACKEND_STORAGE_KEY) === "supabase") {
-          query.set("debugBackend", "supabase");
-        }
-      } catch {}
+      if (DATA_BACKEND === "local") query.set("debugBackend", "local");
       return query;
     }
     function getDebugSupabaseRedirectUrl() {
-      persistDebugBackendForOAuth();
-      return `${window.location.origin}${window.location.pathname}`;
+      return getPilotOAuthRedirectUrl();
     }
     function isSupabaseOAuthCallbackUrl() {
       const query = new URLSearchParams(window.location.search);
@@ -1564,6 +1827,19 @@
         isCallback: isSupabaseOAuthCallbackUrl()
       };
     }
+    function cleanOAuthCallbackUrl() {
+      const query = new URLSearchParams(window.location.search);
+      query.delete("code");
+      query.delete("state");
+      restoreDebugBackendQuery(query);
+      const search = query.toString();
+      window.history.replaceState({}, document.title, `${window.location.pathname}${search ? `?${search}` : ""}`);
+    }
+    async function unregisterServiceWorkersForAuth() {
+      if (!("serviceWorker" in navigator)) return;
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((reg) => reg.unregister()));
+    }
     async function consumeSupabaseOAuthCallback() {
       const callbackUrl = readSupabaseAuthCallbackUrl();
       debugAuthTrace("3-callback-url", callbackUrl);
@@ -1571,28 +1847,7 @@
         return debugAuthTrace("3-consume-skip", { ok: true, consumed: false, reason: "no oauth callback in url" });
       }
       try {
-        const query = new URLSearchParams(window.location.search);
-        const code = query.get("code");
-        if (code) {
-          debugAuthTrace("4-exchange-start", { method: "pkce", codeLength: code.length });
-          const { data, error } = await supabaseClient.auth.exchangeCodeForSession(code);
-          debugAuthTrace("4-exchange-result", {
-            error: error?.message || null,
-            userId: data?.session?.user?.id || null,
-            email: data?.session?.user?.email || null
-          });
-          if (error) throw error;
-          if (!data?.session) {
-            throw new Error("exchangeCodeForSession succeeded but session is null.");
-          }
-          query.delete("code");
-          query.delete("state");
-          restoreDebugBackendQuery(query);
-          const search = query.toString();
-          window.history.replaceState({}, document.title, `${window.location.pathname}${search ? `?${search}` : ""}`);
-          return debugAuthTrace("3-consume-done", { ok: true, consumed: true, method: "pkce", userId: data.session.user.id });
-        }
-        debugAuthTrace("4-exchange-start", { method: "hash", hash: callbackUrl.hash.slice(0, 80) });
+        debugAuthTrace("4-exchange-start", { method: "pkce-auto", codeLength: callbackUrl.code?.length || 0 });
         const { data, error } = await supabaseClient.auth.getSession();
         debugAuthTrace("4-getSession-result", {
           error: error?.message || null,
@@ -1601,13 +1856,10 @@
         });
         if (error) throw error;
         if (!data?.session) {
-          throw new Error("OAuth hash callback present but getSession returned null.");
+          throw new Error("OAuth callback without session — PKCE verifier missing or expired.");
         }
-        const hashQuery = new URLSearchParams(window.location.search);
-        restoreDebugBackendQuery(hashQuery);
-        const hashSearch = hashQuery.toString();
-        window.history.replaceState({}, document.title, `${window.location.pathname}${hashSearch ? `?${hashSearch}` : ""}`);
-        return debugAuthTrace("3-consume-done", { ok: true, consumed: true, method: "hash", userId: data.session.user.id });
+        cleanOAuthCallbackUrl();
+        return debugAuthTrace("3-consume-done", { ok: true, consumed: true, method: "pkce", userId: data.session.user.id });
       } catch (error) {
         debugAuthTrace("5-session-null", {
           at: "consumeSupabaseOAuthCallback",
@@ -1650,71 +1902,72 @@
         return { ok: false, reason: error?.message || String(error), session: null, restored: false, error };
       }
     }
-    async function debugSupabaseSignInWithGoogle() {
+    async function signInWithGoogle() {
       if (!supabaseClient) {
+        toast("Supabase לא מוגדר");
         return { ok: false, reason: "Supabase is not configured." };
       }
       try {
-        const redirectTo = getDebugSupabaseRedirectUrl();
+        // ניקוי SW ברקע — בלי await לפני OAuth (אנדרואיד חוסם ניווט אחרי await)
+        void unregisterServiceWorkersForAuth();
+        const redirectTo = getPilotOAuthRedirectUrl();
         debugAuthTrace("1-signInWithOAuth", { provider: "google", redirectTo });
         const { data, error } = await supabaseClient.auth.signInWithOAuth({
           provider: "google",
-          options: { redirectTo }
-        });
-        debugAuthTrace("1-signInWithOAuth-result", {
-          error: error?.message || null,
-          url: data?.url || null
+          options: { redirectTo, skipBrowserRedirect: false }
         });
         if (error) {
-          console.warn("[debug] Google sign-in failed.", error);
+          console.warn("Google sign-in failed.", error);
+          toast("התחברות נכשלה");
           return { ok: false, reason: error.message || String(error), error };
         }
-        console.warn("[debug] Google sign-in started.", redirectTo);
+        // skipBrowserRedirect=false (ברירת מחדל) — Supabase מנווט מיד בתוך אותה קריאה
         return { ok: true, redirectTo, url: data?.url || null };
       } catch (error) {
-        console.warn("[debug] Google sign-in failed.", error);
+        console.warn("Google sign-in failed.", error);
+        toast("התחברות נכשלה");
         return { ok: false, reason: error?.message || String(error), error };
       }
     }
-    async function debugSupabaseSignOut() {
+    async function signOut() {
       if (!supabaseClient) {
         return { ok: false, reason: "Supabase is not configured." };
       }
       try {
         const { error } = await supabaseClient.auth.signOut();
         if (error) {
-          console.warn("[debug] Supabase sign-out failed.", error);
+          toast("יציאה נכשלה");
           return { ok: false, reason: error.message || String(error), error };
         }
-        console.warn("[debug] Supabase signed out.");
+        applyPilotAuthContext({ status: "signed_out", role: "user", userId: "", email: "", displayName: "", orgPeople: [] });
+        state.tasks = [];
+        state.suppliers = [];
+        render();
         return { ok: true };
       } catch (error) {
-        console.warn("[debug] Supabase sign-out failed.", error);
+        toast("יציאה נכשלה");
         return { ok: false, reason: error?.message || String(error), error };
       }
     }
+    async function debugSupabaseSignInWithGoogle() {
+      return signInWithGoogle();
+    }
+    async function debugSupabaseSignOut() {
+      return signOut();
+    }
+    window.signInWithGoogle = signInWithGoogle;
+    window.signOut = signOut;
     window.bootstrapSupabaseAuthSession = bootstrapSupabaseAuthSession;
     window.debugSupabaseSignInWithGoogle = debugSupabaseSignInWithGoogle;
     window.debugSupabaseSignOut = debugSupabaseSignOut;
     window.consumeSupabaseOAuthCallback = consumeSupabaseOAuthCallback;
 
-    const handoffRole = (() => {
-      try {
-        const role = sessionStorage.getItem("beit-mockup-role");
-        sessionStorage.removeItem("beit-mockup-role");
-        return role;
-      } catch {
-        return null;
-      }
-    })();
-    const requestedRole = params.get("mockup") || handoffRole;
-    const initialRole = requestedRole === "manager" ? "manager" : "user";
-
     const NO_SUPABASE_AUTH_SESSION_REASON =
-      "No Supabase auth session. Run await debugSupabaseSignInWithGoogle() first.";
+      "No Supabase auth session. Sign in with Google first.";
 
     const supabaseTasksAdapter = createSupabaseTasksAdapter(supabaseClient);
     const supabaseSuppliersAdapter = createSupabaseSuppliersAdapter(supabaseClient);
+    const supabaseOrgMembersAdapter = createSupabaseOrgMembersAdapter(supabaseClient);
 
     async function testSupabaseReadStateIsolation() {
       try {
@@ -1740,11 +1993,15 @@
         return { ok: false, reason: error?.message || String(error), error };
       }
     }
-    window.testSupabaseReadStateIsolation = testSupabaseReadStateIsolation;
+    if (PILOT_DEBUG) window.testSupabaseReadStateIsolation = testSupabaseReadStateIsolation;
 
     const localTasksAdapter = createLocalTasksAdapter();
     repositoryAdapters.local = { taskAdapter: localTasksAdapter };
-    repositoryAdapters.supabase = { taskAdapter: supabaseTasksAdapter, supplierAdapter: supabaseSuppliersAdapter };
+    repositoryAdapters.supabase = {
+      taskAdapter: supabaseTasksAdapter,
+      supplierAdapter: supabaseSuppliersAdapter,
+      orgMembersAdapter: supabaseOrgMembersAdapter
+    };
     const taskAdapter = repositoryAdapters[DATA_BACKEND].taskAdapter;
     const tasksRepository = createAsyncRepository(taskAdapter, [
       "loadTasks",
@@ -1764,6 +2021,7 @@
       } catch (error) {
         console.warn("Task bootstrap failed.", error);
         state.tasks = [];
+        toast("שגיאה בטעינת משימות");
       }
       render();
     }
@@ -1778,7 +2036,7 @@
       };
       const blockers = [];
       if (DATA_BACKEND !== "supabase") {
-        blockers.push("Add ?debugBackend=supabase to activate Supabase task backend.");
+        blockers.push("Pilot uses Supabase backend. Remove ?debugBackend=local to test live CRUD.");
       }
       if (!supabaseClient) {
         blockers.push("Supabase is not configured.");
@@ -1798,7 +2056,7 @@
         steps.load = Array.isArray(tasks);
         const sampleTask = {
           title: `[DEBUG] CRUD ${Date.now()}`,
-          owner: "צבי",
+          owner: state.userOwner || personalOwner(),
           category: "office",
           priority: "normal",
           status: "progress",
@@ -1822,7 +2080,7 @@
         steps.complete = tasks.find(task => task.id === taskId)?.status === "done";
         tasks = await tasksRepository.reopenTask(tasks, taskId);
         steps.reopen = tasks.find(task => task.id === taskId)?.status === "progress";
-        tasks = await tasksRepository.deleteTaskSoft(tasks, taskId, "צבי");
+        tasks = await tasksRepository.deleteTaskSoft(tasks, taskId, personalOwner());
         steps.delete = Boolean(tasks.find(task => task.id === taskId)?.deleted_at);
         const passed = Object.entries(steps).filter(([, ok]) => ok).map(([name]) => name);
         const failed = Object.entries(steps).filter(([, ok]) => !ok).map(([name]) => name);
@@ -1844,7 +2102,7 @@
         };
       }
     }
-    window.testSupabaseTaskCrudViaRepository = testSupabaseTaskCrudViaRepository;
+    if (PILOT_DEBUG) window.testSupabaseTaskCrudViaRepository = testSupabaseTaskCrudViaRepository;
     async function testSupabaseSupplierCrud() {
       const steps = {
         load: false,
@@ -1953,11 +2211,16 @@
         };
       }
     }
-    window.testSupabaseSupplierCrud = testSupabaseSupplierCrud;
+    if (PILOT_DEBUG) window.testSupabaseSupplierCrud = testSupabaseSupplierCrud;
     const state = {
-      role: initialRole,
-      view: location.hash.replace("#", "") || (initialRole === "manager" ? "management" : "all"),
+      authStatus: DATA_BACKEND === "local" ? "ready" : "loading",
+      role: DATA_BACKEND === "local" ? "user" : "user",
+      userOwner: DATA_BACKEND === "local" ? DEMO_USER_OWNER : "",
+      userId: "",
+      userEmail: "",
+      view: location.hash.replace("#", "") || "all",
       lastList: "all",
+      taskReturnRoute: "all",
       editingNotes: false,
       editingTitle: false,
       addingUpdate: false,
@@ -1973,14 +2236,24 @@
       allSort: "date",
       draftDate: "",
       supplierPrefill: "",
+      orgPeople: [],
+      orgCategories: [],
+      orgMembers: [],
+      orgMembersLoading: false,
+      orgMembersError: "",
+      orgMembersLoaded: false,
+      memberConfirm: null,
+      showInviteForm: false,
       tasks: [],
       suppliers: [],
       prefs: loadPreferences()
     };
     const localSuppliersAdapter = createLocalSuppliersAdapter();
+    const localOrgMembersAdapter = createLocalOrgMembersAdapter();
     repositoryAdapters.local.supplierAdapter = localSuppliersAdapter;
-    // ספקים תמיד local ב-runtime — גם כש-debug backend=supabase (V2 יעבור דרך DATA_BACKEND)
-    const supplierAdapter = repositoryAdapters.local.supplierAdapter;
+    repositoryAdapters.local.orgMembersAdapter = localOrgMembersAdapter;
+    const supplierAdapter = repositoryAdapters[DATA_BACKEND].supplierAdapter;
+    const orgMembersAdapter = repositoryAdapters[DATA_BACKEND].orgMembersAdapter;
     const suppliersRepository = createAsyncRepository(supplierAdapter, [
       "loadSuppliers",
       "saveSuppliers",
@@ -1989,6 +2262,14 @@
       "deleteSupplierOrderSoft",
       "updateSupplierStage",
       "markAllSupplierStages"
+    ]);
+    const orgMembersRepository = createAsyncRepository(orgMembersAdapter, [
+      "loadOrgMembers",
+      "promoteMember",
+      "demoteMember",
+      "deactivateMember",
+      "reactivateMember",
+      "prepareInvitation"
     ]);
     async function loadSuppliers() {
       return suppliersRepository.loadSuppliers();
@@ -1999,6 +2280,7 @@
       } catch (error) {
         console.warn("Supplier bootstrap failed.", error);
         state.suppliers = [];
+        toast("שגיאה בטעינת ספקים");
       }
     }
 
@@ -2008,22 +2290,156 @@
     const app = $("app");
 
     async function save() {
-      state.tasks = await tasksRepository.saveTasks(state.tasks);
-      state.suppliers = await suppliersRepository.saveSuppliers(state.suppliers);
-      savePreferences(state.prefs);
+      try {
+        state.tasks = await tasksRepository.saveTasks(state.tasks);
+        state.suppliers = await suppliersRepository.saveSuppliers(state.suppliers);
+        savePreferences(state.prefs);
+      } catch (error) {
+        console.warn("Save failed.", error);
+        toast(error?.message === "STORAGE_QUOTA_EXCEEDED"
+          ? "אין מספיק מקום לשמירה במכשיר"
+          : "שגיאה בשמירת הנתונים");
+        throw error;
+      }
     }
-    function toast(text) {
-      $("toast").textContent = text;
-      $("toast").classList.add("show");
-      setTimeout(() => $("toast").classList.remove("show"), 1600);
+    let toastHideTimer = null;
+    function clearToastTimer() {
+      if (!toastHideTimer) return;
+      clearTimeout(toastHideTimer);
+      toastHideTimer = null;
     }
-    const accessCtx = () => ({ role: state.role, userOwner: "עדינה" });
+    function toast(text, durationMs = 1600) {
+      clearToastTimer();
+      const el = $("toast");
+      el.textContent = text;
+      el.classList.remove("saving");
+      el.classList.add("show");
+      if (durationMs > 0) {
+        toastHideTimer = setTimeout(() => el.classList.remove("show"), durationMs);
+      }
+    }
+    /** הודעת שמירה — נשארת עד סיום הפעולה */
+    function toastSaving(text = "שומר...") {
+      clearToastTimer();
+      const el = $("toast");
+      el.textContent = text;
+      el.classList.add("show", "saving");
+    }
+    function supplierStageSaveTarget(el) {
+      return el?.closest?.(".supplier-step, .supplier-check, .detail-row-main") || null;
+    }
+    function setSupplierStageSaving(target, active) {
+      target?.classList.toggle("saving", active);
+    }
+    function storageErrorMessage(error) {
+      return error?.message === "STORAGE_QUOTA_EXCEEDED"
+        ? "אין מספיק מקום לשמירה במכשיר"
+        : "שגיאה בשמירת הנתונים";
+    }
+    function updateOfflineBanner() {
+      const banner = $("offlineBanner");
+      if (!banner) return;
+      banner.classList.toggle("show", navigator.onLine === false);
+    }
+    const accessCtx = () => ({
+      role: state.role,
+      userId: state.userId || "",
+      userOwner: DATA_BACKEND === "supabase" ? state.userOwner : (state.userOwner || DEMO_USER_OWNER)
+    });
+    // קטלוג מבצעים/קטגוריות — Supabase: רק מ-auth; local: localStorage
+    function syncPeopleCatalog(orgPeople = state.orgPeople) {
+      if (DATA_BACKEND === "supabase") {
+        people = Array.isArray(orgPeople) && orgPeople.length ? [...orgPeople] : [];
+        return;
+      }
+      people = loadPeople();
+    }
+    function syncCategoriesCatalog(orgCategories = state.orgCategories) {
+      if (DATA_BACKEND === "supabase") {
+        categories = Array.isArray(orgCategories) && orgCategories.length ? [...orgCategories] : [];
+        return;
+      }
+      categories = loadCategories();
+    }
+    function resolveTaskOwner(form) {
+      const picked = state.role === "manager"
+        ? (form.owner?.value || people[0] || personalOwner())
+        : personalOwner();
+      if (DATA_BACKEND === "supabase" && state.orgPeople.length && !state.orgPeople.includes(picked)) {
+        return personalOwner();
+      }
+      return picked;
+    }
+    function applyPilotAuthContext(auth) {
+      state.authStatus = auth.status;
+      state.role = auth.role;
+      state.userId = auth.userId || "";
+      state.userOwner = auth.displayName || (DATA_BACKEND === "local" ? state.userOwner || DEMO_USER_OWNER : state.userOwner);
+      state.userEmail = auth.email || "";
+      state.orgPeople = auth.orgPeople || [];
+      state.orgCategories = auth.orgCategories || [];
+      syncPeopleCatalog(state.orgPeople);
+      syncCategoriesCatalog(state.orgCategories);
+      if (auth.status === "ready" && !location.hash.replace("#", "")) {
+        state.view = defaultRoute();
+        location.hash = state.view;
+      }
+    }
+    async function refreshPilotAuth() {
+      if (DATA_BACKEND === "local") {
+        applyPilotAuthContext({
+          status: "ready",
+          role: state.role,
+          userId: "local",
+          email: "local@test",
+          displayName: state.userOwner || DEMO_USER_OWNER,
+          orgPeople: loadPeople(),
+          orgCategories: loadCategories()
+        });
+        return;
+      }
+      const auth = await loadPilotAuthContext(supabaseClient);
+      applyPilotAuthContext(auth);
+    }
+    function loginScreen() {
+      return `<section class="login-screen">
+        <h2>ברוכים הבאים</h2>
+        <p>התחברו עם חשבון Google של הישיבה כדי לראות משימות ורכש משותפים.</p>
+        <button class="primary" type="button" id="googleSignIn">התחברות עם Google</button>
+      </section>`;
+    }
+    function gateScreen(title, message, showSignOut = true) {
+      return `<section class="gate-screen">
+        <h2>${title}</h2>
+        <p>${message}</p>
+        ${showSignOut ? `<button type="button" id="signOutBtn">יציאה</button>` : ""}
+      </section>`;
+    }
+    function renderAuthActions() {
+      const box = $("authActions");
+      if (!box) return;
+      if (DATA_BACKEND === "local") {
+        box.innerHTML = "";
+        return;
+      }
+      if (state.authStatus === "ready") {
+        box.innerHTML = `<button type="button" id="signOutBtn">יציאה</button>`;
+        return;
+      }
+      if (state.authStatus === "signed_out") {
+        // כפתור ההתחברות הראשי נמצא במסך loginScreen — לא לשכפל id
+        box.innerHTML = "";
+        return;
+      }
+      box.innerHTML = "";
+    }
     function cat(id) { return resolveCategory(categories, id); }
     function isOverdue(task) { return isTaskOverdue(task); }
     function taskDueLabel(task) { return buildTaskDueLabel(task); }
     function personalOwner() { return personalOwnerDomain(accessCtx()); }
     function personalTasks(tasks) { return filterPersonalTasks(tasks, accessCtx()); }
     function managementPeople() { return filterManagementPeople(people, accessCtx()); }
+    function managementTaskAssignees() { return buildManagementTaskAssignees(people, accessCtx()); }
     function activeTasks(tasks = state.tasks) { return filterActiveTasks(tasks); }
     function visibleDoneTasks(tasks = state.tasks, includeArchive = false) {
       return filterVisibleDoneTasks(tasks, includeArchive);
@@ -2045,13 +2461,25 @@
         toast("אין הרשאה להזמנה זו");
         return false;
       }
-      state.suppliers = await suppliersRepository.updateSupplierOrder(state.suppliers, id, updater);
-      render();
-      return true;
+      try {
+        state.suppliers = await suppliersRepository.updateSupplierOrder(state.suppliers, id, updater);
+        render();
+        return true;
+      } catch (error) {
+        console.warn("Update supplier failed.", error);
+        toast(storageErrorMessage(error));
+        return false;
+      }
     }
     async function createSupplierOrder(item) {
-      state.suppliers = await suppliersRepository.createSupplierOrder(state.suppliers, item);
-      return item;
+      try {
+        state.suppliers = await suppliersRepository.createSupplierOrder(state.suppliers, item);
+        return item;
+      } catch (error) {
+        console.warn("Create supplier order failed.", error);
+        toast(storageErrorMessage(error));
+        throw error;
+      }
     }
     async function deleteSupplierOrderSoft(id) {
       const item = getSupplier(id);
@@ -2060,40 +2488,108 @@
         toast("אין הרשאה להזמנה זו");
         return false;
       }
-      state.suppliers = await suppliersRepository.deleteSupplierOrderSoft(state.suppliers, id, personalOwner());
-      render();
-      return true;
+      try {
+        state.suppliers = await suppliersRepository.deleteSupplierOrderSoft(state.suppliers, id, personalOwner());
+        render();
+        return true;
+      } catch (error) {
+        console.warn("Delete supplier order failed.", error);
+        toast(storageErrorMessage(error));
+        return false;
+      }
     }
     function updateSupplierOrder(id, patchOrUpdater) {
       return updateSupplier(id, patchOrUpdater);
     }
-    async function updateSupplierStage(id, step, checked, dateValue = null) {
-      const item = getSupplier(id);
-      if (!canAccessSupplier(item)) {
+    async function updateSupplierStage(id, step, checked, dateValue = null, options = {}) {
+      const before = getSupplier(id);
+      if (!canAccessSupplier(before)) {
         navigate("suppliers");
         toast("אין הרשאה להזמנה זו");
-        return false;
+        return { ok: false, justCompleted: false };
       }
-      state.suppliers = await suppliersRepository.updateSupplierStage(state.suppliers, id, step, checked, dateValue);
-      render();
-      return true;
+      const saveTarget = supplierStageSaveTarget(options.saveTarget);
+      setSupplierStageSaving(saveTarget, true);
+      toastSaving();
+      try {
+        state.suppliers = await suppliersRepository.updateSupplierStage(state.suppliers, id, step, checked, dateValue);
+        setSupplierStageSaving(saveTarget, false);
+        render();
+        const after = getSupplier(id);
+        const justCompleted = Boolean(before && after && !supplierProgress(before).complete && supplierProgress(after).complete);
+        if (justCompleted) toast(`"${after.supplier}" הועבר להושלמו`);
+        else if (options.successMessage) toast(options.successMessage);
+        return { ok: true, justCompleted };
+      } catch (error) {
+        setSupplierStageSaving(saveTarget, false);
+        console.warn("Update supplier stage failed.", error);
+        toast(storageErrorMessage(error));
+        return { ok: false, justCompleted: false };
+      }
     }
-    async function markAllSupplierStages(id) {
-      const item = getSupplier(id);
-      if (!canAccessSupplier(item)) {
+    async function markAllSupplierStages(id, options = {}) {
+      const before = getSupplier(id);
+      if (!canAccessSupplier(before)) {
         navigate("suppliers");
         toast("אין הרשאה להזמנה זו");
-        return false;
+        return { ok: false, justCompleted: false };
       }
-      state.suppliers = await suppliersRepository.markAllSupplierStages(state.suppliers, id);
-      render();
-      return true;
+      const saveTarget = supplierStageSaveTarget(options.saveTarget);
+      setSupplierStageSaving(saveTarget, true);
+      toastSaving();
+      try {
+        state.suppliers = await suppliersRepository.markAllSupplierStages(state.suppliers, id);
+        setSupplierStageSaving(saveTarget, false);
+        render();
+        const after = getSupplier(id);
+        const justCompleted = Boolean(before && after && !supplierProgress(before).complete && supplierProgress(after).complete);
+        if (justCompleted) toast(`"${after.supplier}" הועבר להושלמו`);
+        else if (options.successMessage) toast(options.successMessage);
+        return { ok: true, justCompleted };
+      } catch (error) {
+        setSupplierStageSaving(saveTarget, false);
+        console.warn("Mark all supplier stages failed.", error);
+        toast(storageErrorMessage(error));
+        return { ok: false, justCompleted: false };
+      }
     }
     function validBackRoute(view) {
       if (state.role === "manager") {
-        return ["all", "done", "management", "suppliers"].includes(view) || view.startsWith("person:") || view.startsWith("category:") || view.startsWith("filter:");
+        return ["all", "done", "management", "mgmt-tasks", "mgmt-members", "suppliers"].includes(view)
+          || view.startsWith("person:")
+          || view.startsWith("category:")
+          || view.startsWith("filter:");
       }
       return ["all", "done", "suppliers"].includes(view);
+    }
+    /** מסך אב לחזרה — היררכיה קבועה, בלי קפיצות */
+    function parentRoute(view = state.view) {
+      if (view === "mgmt-tasks" || view === "mgmt-members") return "management";
+      if (view.startsWith("category:") || view.startsWith("person:") || view.startsWith("filter:")) return "mgmt-tasks";
+      if (view.startsWith("supplier:") || view === "supplier-create") return "suppliers";
+      if (view.startsWith("task:")) {
+        return validBackRoute(state.taskReturnRoute) ? state.taskReturnRoute : defaultRoute();
+      }
+      if (view === "create") {
+        return validBackRoute(state.lastList) ? state.lastList : (state.role === "manager" ? "management" : "all");
+      }
+      return null;
+    }
+    function backRouteFor(view = state.view) {
+      return parentRoute(view) ?? defaultRoute();
+    }
+    function syncListRoute(view) {
+      if (!view.startsWith("task:") && !view.startsWith("supplier:") && validBackRoute(view)) {
+        state.lastList = view;
+      }
+    }
+    function isManagerAdminView(view) {
+      return view === "management" || view === "mgmt-tasks" || view === "mgmt-members";
+    }
+    function guardManagerAdminView(view) {
+      if (state.role === "manager" || !isManagerAdminView(view)) return view;
+      toast("אין הרשאה לניהול ארגון");
+      return "all";
     }
     function defaultRoute() {
       return state.role === "manager" ? "management" : "all";
@@ -2101,10 +2597,13 @@
     function normalizeView(view) {
       if (!view || view === "today") return defaultRoute();
       if (state.role === "user") {
+        if (isManagerAdminView(view) || view.startsWith("person:") || view.startsWith("category:") || view.startsWith("filter:")) {
+          return "all";
+        }
         if (["all", "done", "prefs", "create", "suppliers", "supplier-create"].includes(view) || view.startsWith("task:") || view.startsWith("supplier:")) return view;
         return "all";
       }
-      if (["management", "all", "done", "prefs", "create", "suppliers", "supplier-create"].includes(view)) return view;
+      if (["management", "mgmt-tasks", "mgmt-members", "all", "done", "prefs", "create", "suppliers", "supplier-create"].includes(view)) return view;
       if (view.startsWith("task:") || view.startsWith("supplier:") || view.startsWith("person:") || view.startsWith("category:") || view.startsWith("filter:")) return view;
       return "management";
     }
@@ -2120,6 +2619,33 @@
     }
     function openTasks() {
       return filterOpenTasks(state.tasks);
+    }
+    /** משימות פתוחות לפי קטגוריה — אותה לוגיקה לסיכום ולרשימה */
+    function mgmtVisibleCategoryTasks(categoryId) {
+      return activeTasks().filter((t) => t.category === categoryId && t.status !== "done");
+    }
+    /** שורות קטגוריה לסיכום ניהול — נגזר מהמשימות, לא מהקטלוג */
+    function buildMgmtCategoryRows() {
+      const countById = new Map();
+      for (const task of activeTasks()) {
+        if (task.status === "done") continue;
+        const id = task.category || "uncategorized";
+        countById.set(id, (countById.get(id) || 0) + 1);
+      }
+      const rows = [];
+      const seen = new Set();
+      categories.forEach((category, index) => {
+        const count = countById.get(category.id) || 0;
+        if (count > 0) {
+          rows.push({ category, index, count });
+          seen.add(category.id);
+        }
+      });
+      for (const [id, count] of countById) {
+        if (seen.has(id) || count <= 0) continue;
+        rows.push({ category: cat(id), index: rows.length, count });
+      }
+      return rows;
     }
     function resetScroll() {
       window.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -2137,17 +2663,36 @@
       state.addingPerson = false;
       state.deletingPerson = false;
       state.peopleToDelete = [];
-      const normalized = normalizeView(view);
+      state.memberConfirm = null;
+      state.showInviteForm = false;
+      const normalized = guardManagerAdminView(normalizeView(view));
       if (normalized !== "done" && !normalized.startsWith("filter:done")) state.showDoneArchive = false;
       if (normalized !== "supplier-create") state.supplierPrefill = "";
-      if (!normalized.startsWith("task:") && validBackRoute(normalized)) state.lastList = normalized;
+      if (normalized.startsWith("task:")) {
+        state.taskReturnRoute = validBackRoute(state.lastList) ? state.lastList : defaultRoute();
+      } else {
+        syncListRoute(normalized);
+      }
       setRoute(normalized);
+      if (normalized === "mgmt-members") {
+        if (canAccessOrgAdmin(accessCtx())) {
+          state.orgMembersLoading = true;
+          state.orgMembersError = "";
+        }
+        void ensureOrgMembersLoaded();
+      }
       render();
       resetScroll();
     }
     async function createTask(task) {
-      state.tasks = await tasksRepository.createTask(state.tasks, task);
-      return task;
+      try {
+        state.tasks = await tasksRepository.createTask(state.tasks, task);
+        return task;
+      } catch (error) {
+        console.warn("Create task failed.", error);
+        toast(storageErrorMessage(error));
+        throw error;
+      }
     }
     async function updateTask(id, patch) {
       const task = getTask(id);
@@ -2163,9 +2708,15 @@
           return false;
         }
       }
-      state.tasks = await tasksRepository.updateTask(state.tasks, id, patch);
-      render();
-      return true;
+      try {
+        state.tasks = await tasksRepository.updateTask(state.tasks, id, patch);
+        render();
+        return true;
+      } catch (error) {
+        console.warn("Update task failed.", error);
+        toast(storageErrorMessage(error));
+        return false;
+      }
     }
     async function deleteTaskSoft(id) {
       const task = getTask(id);
@@ -2173,9 +2724,15 @@
         toast("רק מנהל יכול למחוק משימה");
         return false;
       }
-      state.tasks = await tasksRepository.deleteTaskSoft(state.tasks, id, personalOwner());
-      render();
-      return true;
+      try {
+        state.tasks = await tasksRepository.deleteTaskSoft(state.tasks, id, personalOwner());
+        render();
+        return true;
+      } catch (error) {
+        console.warn("Delete task failed.", error);
+        toast(storageErrorMessage(error));
+        return false;
+      }
     }
     async function completeTask(id) {
       const task = getTask(id);
@@ -2184,9 +2741,15 @@
         toast("אין הרשאה למשימה זו");
         return false;
       }
-      state.tasks = await tasksRepository.completeTask(state.tasks, id);
-      render();
-      return true;
+      try {
+        state.tasks = await tasksRepository.completeTask(state.tasks, id);
+        render();
+        return true;
+      } catch (error) {
+        console.warn("Complete task failed.", error);
+        toast(storageErrorMessage(error));
+        return false;
+      }
     }
     async function reopenTask(id) {
       const task = getTask(id);
@@ -2199,13 +2762,67 @@
         toast("רק מנהל יכול להחזיר משימה לתהליך");
         return false;
       }
-      state.tasks = await tasksRepository.reopenTask(state.tasks, id);
-      render();
-      return true;
+      try {
+        state.tasks = await tasksRepository.reopenTask(state.tasks, id);
+        render();
+        return true;
+      } catch (error) {
+        console.warn("Reopen task failed.", error);
+        toast(storageErrorMessage(error));
+        return false;
+      }
     }
     function render() {
-      $("roleLabel").textContent = state.role === "manager" ? "מצב צבי / מנהל" : "מצב משתמש רגיל";
-      const normalized = normalizeView(state.view);
+      renderAuthActions();
+      const notice = document.getElementById("pilotNotice");
+      if (notice) notice.style.display = DATA_BACKEND === "supabase" ? "" : "none";
+
+      if (state.authStatus === "loading") {
+        $("roleLabel").textContent = "טוען...";
+        app.innerHTML = `<p class="app-loading">טוען...</p>`;
+        $("bottomNav").innerHTML = "";
+        bindAuthButtons();
+        return;
+      }
+      if (DATA_BACKEND === "supabase" && state.authStatus === "signed_out") {
+        $("roleLabel").textContent = "לא מחובר";
+        app.innerHTML = loginScreen();
+        $("bottomNav").innerHTML = "";
+        bindAuthButtons();
+        return;
+      }
+      if (state.authStatus === "not_org_member") {
+        $("roleLabel").textContent = "אין הרשאה";
+        app.innerHTML = gateScreen(
+          "אין גישה לפיילוט",
+          "החשבון שלכם לא משויך לישיבת בת עין. פנו למנהל המערכת להוספה."
+        );
+        $("bottomNav").innerHTML = "";
+        bindAuthButtons();
+        return;
+      }
+      if (state.authStatus === "missing_profile") {
+        $("roleLabel").textContent = "פרופיל חסר";
+        app.innerHTML = gateScreen(
+          "לא ניתן ליצור פרופיל",
+          "התחברות הצליחה אך לא ניתן ליצור פרופיל. נסו שוב או פנו למנהל."
+        );
+        $("bottomNav").innerHTML = "";
+        bindAuthButtons();
+        return;
+      }
+      if (state.authStatus === "error") {
+        $("roleLabel").textContent = "שגיאה";
+        app.innerHTML = gateScreen("שגיאת התחברות", "אירעה שגיאה. בדקו חיבור לאינטרנט ונסו שוב.");
+        $("bottomNav").innerHTML = "";
+        bindAuthButtons();
+        return;
+      }
+
+      $("roleLabel").textContent = state.role === "manager"
+        ? `מנהל · ${state.userOwner}`
+        : state.userOwner || "משתמש";
+      const normalized = guardManagerAdminView(normalizeView(state.view));
       if (normalized !== state.view) {
         setRoute(normalized, true);
       }
@@ -2229,14 +2846,16 @@
     }
     function route() {
       const view = state.view;
-      if (view === "management") return managementScreen();
+      if (view === "management") return managementHubScreen();
+      if (view === "mgmt-tasks") return mgmtTasksScreen();
+      if (view === "mgmt-members") return orgMembersScreen();
       if (view === "all") return openTasksScreen();
       if (view === "today") return openTasksScreen();
       if (view === "done") return doneScreen();
       if (view === "prefs") return prefsScreen();
       if (view === "create") return createScreen();
       if (view === "suppliers") return suppliersScreen();
-      if (view === "supplier-create") return supplierCreateScreen();
+      if (view === "supplier-create") return supplierFormScreen();
       if (view.startsWith("task:")) return detailScreen(view.split(":")[1]);
       if (view.startsWith("supplier:")) return supplierDetailScreen(view.split(":")[1]);
       if (view.startsWith("person:")) {
@@ -2247,7 +2866,7 @@
       if (view.startsWith("category:")) {
         const category = decodeURIComponent(view.split(":")[1]);
         const c = cat(category);
-        const tasks = sortTasks(activeTasks().filter(t => t.category === category && t.status !== "done"), currentSort("category"));
+        const tasks = sortTasks(mgmtVisibleCategoryTasks(category), currentSort("category"));
         return listScreen(c.label, tasks, true, "משימות לפי קטגוריה", true, false, "category");
       }
       if (view.startsWith("filter:done")) return listScreen("משימות שהושלמו", sortTasks(visibleDoneTasks(state.tasks, state.showDoneArchive), currentSort("org")), true, state.showDoneArchive ? "כל הארגון · כולל ארכיון" : "כל הארגון", true, false, "org");
@@ -2314,8 +2933,39 @@
     function taskGroupTitle(task, sortMode = state.allSort) {
       return taskGroupTitleDomain(task, sortMode, categories);
     }
-    function renderTaskList(tasks, showOwner, emptyText, sortMode = state.allSort) {
+    function managementAssigneeOrder() {
+      const owner = personalOwner();
+      const others = managementPeople();
+      return owner && !others.includes(owner) ? [...others, owner] : others;
+    }
+    function renderManagementOrgDateTaskList(tasks, showOwner) {
+      const groups = buildManagementPriorityChronologicalGroups(tasks);
+      return groups.map((priorityGroup) => `
+        <div class="list-group">
+          <h3 class="list-group-title">${escapeHtml(priorityGroup.title)}</h3>
+          ${priorityGroup.tasks.map((task) => listRow(task, showOwner)).join("")}
+        </div>`).join("");
+    }
+    function renderManagementOrgTaskList(tasks, showOwner) {
+      const groups = buildManagementAssigneePriorityGroups(tasks, managementAssigneeOrder());
+      return groups.map((assigneeGroup) => `
+        <div class="list-group">
+          <h3 class="list-group-title">${escapeHtml(assigneeGroup.title)}</h3>
+          ${assigneeGroup.priorityGroups.map((priorityGroup) => `
+            <div class="list-subgroup">
+              <h4 class="list-subgroup-title">${escapeHtml(priorityGroup.title)}</h4>
+              ${priorityGroup.tasks.map((task) => listRow(task, showOwner)).join("")}
+            </div>`).join("")}
+        </div>`).join("");
+    }
+    function renderTaskList(tasks, showOwner, emptyText, sortMode = state.allSort, sortContext = "personal") {
       if (!tasks.length) return `<div class="empty">${emptyText}</div>`;
+      if (sortContext === "org" && sortMode === "owner") {
+        return renderManagementOrgTaskList(tasks, showOwner);
+      }
+      if (sortContext === "org" && sortMode === "date") {
+        return renderManagementOrgDateTaskList(tasks, showOwner);
+      }
       if (!["category", "owner"].includes(sortMode)) {
         return tasks.map(t => listRow(t, showOwner)).join("");
       }
@@ -2334,15 +2984,16 @@
     }
     function listScreen(title, tasks, showOwner, subtitle = "", sortable = false, showCreate = false, sortContext = "personal") {
       const sortMode = currentSort(sortContext);
+      const backTarget = parentRoute(state.view);
       return `
         <section class="hero">
-          ${state.role === "manager" && state.view !== "all" && state.view !== "done" ? `<button class="back" data-nav="management">${lineIcon("back")} חזרה</button>` : ""}
+          ${state.role === "manager" && backTarget ? `<button class="back" data-nav="${backTarget}">${lineIcon("back")} חזרה</button>` : ""}
           <h1>${title}</h1>
           ${subtitle ? `<p class="screen-subtitle">${subtitle}</p>` : ""}
           ${sortable ? sortControls(sortContext) : ""}
         </section>
         <section class="list">
-          ${sortable ? renderTaskList(tasks, showOwner, "אין משימות להצגה.", sortMode) : tasks.length ? tasks.map(t => listRow(t, showOwner)).join("") : `<div class="empty">אין משימות להצגה.</div>`}
+          ${sortable ? renderTaskList(tasks, showOwner, "אין משימות להצגה.", sortMode, sortContext) : tasks.length ? tasks.map(t => listRow(t, showOwner)).join("") : `<div class="empty">אין משימות להצגה.</div>`}
         </section>
         ${showCreate ? `<section class="section"><button class="mgmt-row wide" data-nav="create"><span><strong>יצירת משימה חדשה</strong><span class="muted">הוספה מהירה למשימות שלי</span></span><span class="row-left-icon">${lineIcon("add")}</span></button></section>` : ""}`;
     }
@@ -2417,7 +3068,7 @@
       return `
         <section class="detail-head">
           <div class="screen-title">פרטי משימה</div>
-          <button class="back" data-nav="${validBackRoute(state.lastList) ? state.lastList : "all"}">${lineIcon("back")} חזרה</button>
+          <button class="back" data-nav="${backRouteFor(state.view)}">${lineIcon("back")} חזרה</button>
           <div class="detail-meta-strip">
             <span class="category">${lineIcon(c.icon)} ${c.label}</span>
           </div>
@@ -2482,26 +3133,51 @@
     function missingTaskScreen() {
       return `
         <section class="hero">
-          <button class="back" data-nav="${validBackRoute(state.lastList) ? state.lastList : "all"}">${lineIcon("back")} חזרה</button>
+          <button class="back" data-nav="${backRouteFor(state.view)}">${lineIcon("back")} חזרה</button>
           <h1>המשימה לא נמצאה</h1>
         </section>`;
     }
-    function managementScreen() {
+    function managementHubScreen() {
+      return `
+        <section class="hero">
+          <h1>ניהול</h1>
+          <p class="screen-subtitle">מרכז ניהול הארגון</p>
+        </section>
+        <section class="mgmt-module-grid">
+          <button class="mgmt-module-card" data-nav="mgmt-tasks">
+            <span class="mgmt-module-icon">${lineIcon("list")}</span>
+            <span><strong>משימות</strong><span class="muted">תמונת מצב, קטגוריות ומבצעים</span></span>
+            <span class="row-left-icon">${lineIcon("back")}</span>
+          </button>
+          <button class="mgmt-module-card" data-nav="suppliers">
+            <span class="mgmt-module-icon">${lineIcon("money")}</span>
+            <span><strong>ספקים</strong><span class="muted">הזמנות, תשלומים וחשבוניות</span></span>
+            <span class="row-left-icon">${lineIcon("back")}</span>
+          </button>
+          <button class="mgmt-module-card" data-nav="mgmt-members">
+            <span class="mgmt-module-icon">${lineIcon("user")}</span>
+            <span><strong>חברי ארגון</strong><span class="muted">תפקידים, הרשאות וחברות</span></span>
+            <span class="row-left-icon">${lineIcon("back")}</span>
+          </button>
+        </section>`;
+    }
+    function mgmtTasksScreen() {
       const visibleTasks = activeTasks();
+      const openTasks = visibleTasks.filter(t => t.status !== "done");
       const progress = visibleTasks.filter(t => t.status === "progress").length;
       const done = visibleDoneTasks(visibleTasks).length;
-      const assignees = managementPeople();
-      const openTasks = visibleTasks.filter(t => t.status !== "done");
-      const categoryOpenCount = (id) => openTasks.filter(t => t.category === id).length;
-      const personOpenCount = (person) => openTasks.filter(t => t.owner === person).length;
-      const countBadge = (count) => `<span class="management-count ${count ? "" : "zero"}">${count}</span>`;
+      const assignees = managementTaskAssignees();
+      const categoryRows = buildMgmtCategoryRows();
+      const personTaskCount = (person) => openTasks.filter(t => t.owner === person).length;
+      const countBadge = (count) => `<span class="management-count">${count}</span>`;
       const categoryColors = ["var(--status-done)", "var(--soft-blue)", "var(--sand)", "var(--status-progress)", "var(--accent)", "var(--danger)"];
       const personColors = ["var(--accent)", "var(--soft-blue)", "var(--status-progress)", "var(--sand)", "var(--status-done)", "var(--danger)"];
       const categoryColor = (category, index) => categoryColors[index % categoryColors.length];
       const personColor = (person, index) => personColors[index % personColors.length];
       return `
         <section class="hero">
-          <h1>ניהול</h1>
+          <button class="back" data-nav="${backRouteFor("mgmt-tasks")}">${lineIcon("back")} חזרה</button>
+          <h1>ניהול משימות</h1>
           <p class="screen-subtitle">תמונת מצב ארגונית</p>
         </section>
         <section class="management-tiles">
@@ -2510,26 +3186,182 @@
         </section>
         <section class="section">
           <h2>קטגוריות</h2>
-          <div class="management-list">${categories.slice(0,5).map((c, index) => `<button class="management-list-row" style="--row-color: ${categoryColor(c, index)}" data-nav="category:${c.id}"><span class="name">${c.label}</span>${countBadge(categoryOpenCount(c.id))}</button>`).join("")}</div>
+          <div class="management-list">${categoryRows.length ? categoryRows.map(({ category: c, index, count }) => `<button class="management-list-row" style="--row-color: ${categoryColor(c, index)}" data-nav="category:${c.id}"><span class="name">${c.label}</span>${countBadge(count)}</button>`).join("") : `<div class="empty">אין משימות פתוחות בקטגוריות.</div>`}</div>
         </section>
         <section class="section">
           <h2>מבצעים</h2>
-          <div class="management-list">${assignees.map((p, index) => `<button class="management-list-row" style="--row-color: ${personColor(p, index)}" data-nav="person:${encodeURIComponent(p)}"><span class="name">${p}</span>${countBadge(personOpenCount(p))}</button>`).join("")}</div>
+          <div class="management-list">${assignees.map((row, index) => `<button class="management-list-row" style="--row-color: ${personColor(row.person, index)}" data-nav="person:${encodeURIComponent(row.person)}"><span class="name">${escapeHtml(row.label)}</span>${countBadge(personTaskCount(row.person))}</button>`).join("")}</div>
         </section>
         <section class="section">
           <button class="mgmt-row create-row" data-nav="create"><strong>יצירת משימה חדשה</strong><span class="row-left-icon">${lineIcon("add")}</span></button>
         </section>`;
     }
+    function formatMemberDate(value) {
+      if (!value) return "—";
+      try {
+        return formatHebrewDate(String(value).slice(0, 10));
+      } catch {
+        return "—";
+      }
+    }
+    async function ensureOrgMembersLoaded() {
+      if (!canAccessOrgAdmin(accessCtx())) {
+        state.orgMembersError = "אין הרשאה לניהול חברי ארגון.";
+        return;
+      }
+      state.orgMembersLoading = true;
+      state.orgMembersError = "";
+      render();
+      try {
+        state.orgMembers = sortOrgMembers(await orgMembersRepository.loadOrgMembers());
+        state.orgMembersLoaded = true;
+      } catch (error) {
+        console.warn("Org members load failed.", error);
+        state.orgMembers = [];
+        state.orgMembersError = error?.message || "שגיאה בטעינת חברי ארגון";
+      } finally {
+        state.orgMembersLoading = false;
+        render();
+      }
+    }
+    function memberConfirmMarkup(member, action) {
+      const labels = {
+        promote: "לקדם למנהל",
+        demote: "להוריד למשתמש",
+        deactivate: "להשבית",
+        reactivate: "להפעיל מחדש"
+      };
+      return `
+        <div class="member-confirm">
+          <p>לאשר ${labels[action]} את ${escapeHtml(member.displayName)}?</p>
+          <div class="member-confirm-actions">
+            <button type="button" class="primary" data-member-confirm="${member.userId}:${action}">אישור</button>
+            <button type="button" data-member-cancel>ביטול</button>
+          </div>
+        </div>`;
+    }
+    function memberRowMarkup(member) {
+      const confirm = state.memberConfirm?.userId === member.userId ? state.memberConfirm.action : null;
+      const actions = [];
+      if (canPromoteMember(accessCtx(), member)) {
+        actions.push(`<button type="button" data-member-action="${member.userId}:promote">קידום למנהל</button>`);
+      }
+      if (canDemoteMember(accessCtx(), state.orgMembers, member)) {
+        actions.push(`<button type="button" data-member-action="${member.userId}:demote">הורדה למשתמש</button>`);
+      }
+      if (canDeactivateMember(accessCtx(), state.orgMembers, member)) {
+        actions.push(`<button type="button" class="danger" data-member-action="${member.userId}:deactivate">השבתה</button>`);
+      }
+      if (canReactivateMember(accessCtx(), member)) {
+        actions.push(`<button type="button" data-member-action="${member.userId}:reactivate">הפעלה מחדש</button>`);
+      }
+      return `
+        <article class="member-row ${member.isActive ? "" : "inactive"}">
+          <div class="member-head">
+            <div class="member-name">${escapeHtml(member.displayName)}</div>
+            <span class="member-badge ${member.isActive ? "active" : "inactive"}">${member.isActive ? "פעיל" : "לא פעיל"}</span>
+          </div>
+          <div class="member-meta">
+            <span>${escapeHtml(member.email || "—")}</span>
+            <span>תפקיד: ${orgMemberRoleLabel(member.role)}</span>
+            <span>כניסה ראשונה: ${formatMemberDate(member.firstLoginAt)}</span>
+            <span>פעילות אחרונה: ${formatMemberDate(member.lastActivityAt)}</span>
+          </div>
+          <div class="member-actions">${actions.join("") || `<span class="muted">אין פעולות זמינות</span>`}</div>
+          ${confirm ? memberConfirmMarkup(member, confirm) : ""}
+        </article>`;
+    }
+    function orgMembersScreen() {
+      if (!canAccessOrgAdmin(accessCtx())) {
+        return `<section class="hero"><h1>אין הרשאה</h1><p class="screen-subtitle">רק מנהלים יכולים לנהל חברי ארגון.</p></section>`;
+      }
+      if (state.orgMembersLoading) {
+        return `
+          <section class="hero">
+            <button class="back" data-nav="management">${lineIcon("back")} חזרה</button>
+            <h1>חברי ארגון</h1>
+            <p class="screen-subtitle">טוען...</p>
+          </section>
+          <p class="app-loading">טוען חברי ארגון...</p>`;
+      }
+      if (state.orgMembersError) {
+        return `
+          <section class="hero">
+            <button class="back" data-nav="management">${lineIcon("back")} חזרה</button>
+            <h1>חברי ארגון</h1>
+            <p class="screen-subtitle">שגיאה בטעינה</p>
+          </section>
+          <div class="empty">${escapeHtml(state.orgMembersError)}</div>
+          <section class="section"><button class="mgmt-row wide" type="button" id="reloadOrgMembers"><strong>נסו שוב</strong></button></section>`;
+      }
+      const members = sortOrgMembers(state.orgMembers || []);
+      const inviteSection = state.showInviteForm
+        ? `<form class="invite-form" id="inviteMemberForm">
+            <label for="inviteMemberEmail">אימייל לחברות עתידית</label>
+            <input id="inviteMemberEmail" type="email" required placeholder="name@example.com" autocomplete="email">
+            <p class="muted">ההזמנה תישמר במערכת. שליחת מייל תתווסף בעתיד.</p>
+            <div class="member-confirm-actions">
+              <button type="submit" class="primary">שמירת הזמנה</button>
+              <button type="button" id="cancelInviteForm">ביטול</button>
+            </div>
+          </form>`
+        : `<button class="mgmt-row create-row" type="button" id="showInviteForm"><strong>הוספת חבר</strong><span class="row-left-icon">${lineIcon("add")}</span></button>`;
+      return `
+        <section class="hero">
+          <button class="back" data-nav="management">${lineIcon("back")} חזרה</button>
+          <h1>חברי ארגון</h1>
+          <p class="screen-subtitle">${members.length} חברים · ${countActiveManagers(members)} מנהלים פעילים</p>
+        </section>
+        <section class="section">
+          ${inviteSection}
+        </section>
+        <section class="member-list">
+          ${members.length ? members.map(memberRowMarkup).join("") : `<div class="empty">אין חברי ארגון להצגה.</div>`}
+        </section>`;
+    }
+    async function runOrgMemberAction(userId, action) {
+      const ctx = accessCtx();
+      if (!canAccessOrgAdmin(ctx)) {
+        toast("אין הרשאה לניהול חברי ארגון");
+        return;
+      }
+      let result;
+      if (action === "promote") result = await orgMembersRepository.promoteMember(state.orgMembers, userId, ctx);
+      else if (action === "demote") result = await orgMembersRepository.demoteMember(state.orgMembers, userId, ctx);
+      else if (action === "deactivate") result = await orgMembersRepository.deactivateMember(state.orgMembers, userId, ctx);
+      else if (action === "reactivate") result = await orgMembersRepository.reactivateMember(state.orgMembers, userId, ctx);
+      else return;
+      state.memberConfirm = null;
+      if (!result?.ok) {
+        toast(result?.reason || "הפעולה נכשלה");
+        render();
+        return;
+      }
+      state.orgMembers = result.members;
+      syncPeopleCatalogFromMembers(result.members);
+      toast("העדכון נשמר");
+      render();
+    }
+    function syncPeopleCatalogFromMembers(members) {
+      if (DATA_BACKEND !== "supabase") return;
+      const activeNames = members.filter((member) => member.isActive).map((member) => member.displayName).filter(Boolean);
+      if (activeNames.length) {
+        state.orgPeople = [...activeNames].sort((a, b) => a.localeCompare(b, "he"));
+        syncPeopleCatalog(state.orgPeople);
+      }
+    }
     function supplierStepsMarkup(item) {
       return `<div class="supplier-steps">${supplierSteps.map(step => {
         const date = item.step_dates[step.id];
-        return `<span class="supplier-step step-${step.id} ${item.steps[step.id] ? "done" : ""}">${item.steps[step.id] ? "✓ " : ""}${step.label}${date ? `<br><small>${formatHebrewDate(date)}</small>` : ""}</span>`;
+        return `<div class="supplier-step step-${step.id} ${item.steps[step.id] ? "done" : ""}" data-supplier-date-trigger="${item.id}:${step.id}" role="button" tabindex="0" aria-label="${step.label}">${item.steps[step.id] ? "✓ " : ""}${step.label}${date ? `<br><small>${formatHebrewDate(date)}</small>` : ""}<input class="supplier-step-date-native" type="date" data-supplier-step-date="${item.id}:${step.id}" value="${escapeHtml(item.step_dates[step.id] || "")}" tabindex="-1"></div>`;
       }).join("")}</div>`;
-    }    function supplierRow(item) {
+    }
+    function supplierRow(item) {
       const progress = supplierProgress(item);
       const assignees = item.allAssignees ? "כולם" : item.assignees.join(", ") || "ללא שיוך";
       return `
-        <div class="list-row ${progress.complete ? "completed" : ""}" data-open-supplier="${item.id}" role="button" tabindex="0">
+        <div class="list-row supplier-list-row ${progress.complete ? "completed" : ""}">
+          <button class="supplier-edit-row" type="button" data-edit-supplier="${item.id}" aria-label="עריכת הזמנה">${lineIcon("edit")}<span class="complete-label">עריכה</span></button>
           <div class="list-row-content">
             <div class="category">${lineIcon("money")} ספקים / רכש</div>
             <div class="task-title">${escapeHtml(item.supplier)}</div>
@@ -2578,16 +3410,28 @@
       if (!item) {
         return `<section class="hero"><button class="back" data-nav="suppliers">${lineIcon("back")} חזרה</button><h1>ההזמנה לא נמצאה</h1></section>`;
       }
-      const progress = supplierProgress(item);
-      const assignees = item.allAssignees ? "כולם" : item.assignees.join(", ") || "ללא שיוך";
+      return supplierFormScreen(item);
+    }
+    function supplierAssigneePickerMarkup(item = null) {
+      const allChecked = item?.allAssignees ? "checked" : "";
+      const disableAssignees = item?.allAssignees ? "disabled" : "";
       return `
-        <section class="detail-head">
-          <div class="screen-title">פרטי ספק / הזמנה</div>
-          <button class="back" data-nav="suppliers">${lineIcon("back")} חזרה</button>
-          <div class="detail-meta-strip"><span class="category">${lineIcon("money")} ספקים / רכש</span></div>
-          <div class="detail-title-row"><h1>${escapeHtml(item.supplier)}</h1></div>
-          <p class="screen-subtitle">${escapeHtml(item.description || "ללא תיאור הזמנה")}</p>
-        </section>
+        <div class="chips">
+          <label class="chip supplier-assignee"><input name="supplierAll" type="checkbox" value="all" ${allChecked}> כולם</label>
+          ${people.map(person => {
+            const checked = item && !item.allAssignees && item.assignees.includes(person) ? "checked" : "";
+            return `<label class="chip supplier-assignee"><input name="supplierAssignee" type="checkbox" value="${escapeHtml(person)}" ${checked} ${disableAssignees}> ${escapeHtml(person)}</label>`;
+          }).join("")}
+        </div>`;
+    }
+    function supplierDueDateField(dueDate = "") {
+      const label = dueDate ? formatHebrewDate(dueDate) : "בחר תאריך";
+      return `
+        <div class="form-group"><h2>תאריך יעד / ביצוע</h2><div class="supplier-check" data-supplier-due-date-trigger role="button" tabindex="0"><span class="supplier-check-text"><strong>תאריך יעד / ביצוע</strong><span class="supplier-check-date" id="supplierDateLabel">${label}</span></span><input class="supplier-step-date-native" id="supplierDate" type="date" value="${escapeHtml(dueDate)}"></div></div>`;
+    }
+    function supplierStepsPanel(item) {
+      const progress = supplierProgress(item);
+      return `
         <section class="detail-panel">
           <div class="detail-row">
             <h2>שלבי מעקב</h2>
@@ -2596,55 +3440,39 @@
               <div class="supplier-checklist">
                 ${supplierSteps.map(step => `<div class="supplier-check step-${step.id} ${item.steps[step.id] ? "done" : ""}" data-supplier-date-trigger="${item.id}:${step.id}" role="button" tabindex="0"><span class="supplier-check-text"><strong>${step.label}</strong><span class="supplier-check-date">${item.step_dates[step.id] ? formatHebrewDate(item.step_dates[step.id]) : "ללא תאריך"}</span></span><input type="checkbox" data-supplier-step="${item.id}:${step.id}" aria-label="${step.label}" ${item.steps[step.id] ? "checked" : ""}><input class="supplier-step-date-native" type="date" data-supplier-step-date="${item.id}:${step.id}" value="${escapeHtml(item.step_dates[step.id] || "")}"></div>`).join("")}
               </div>
-              <div class="detail-actions"><button class="soft" data-supplier-all="${item.id}">סמן הכל</button></div>
-            </div>
-          </div>
-          <div class="detail-row">
-            <h2>פרטים</h2>
-            <div class="detail-row-main">
-              ${item.amount ? `<p>סכום: ${escapeHtml(item.amount)}</p>` : `<p class="muted">סכום לא ידוע.</p>`}
-              <p>${item.due_date ? `תאריך יעד / ביצוע: ${formatHebrewDate(item.due_date)}` : "אין תאריך יעד."}</p>
-              <p>שיוך: ${escapeHtml(assignees)}</p>
-            </div>
-          </div>
-          <div class="detail-row">
-            <h2>הערות</h2>
-            <div class="detail-row-main"><p class="linked-text">${item.notes ? renderLinkedText(item.notes) : "אין הערות."}</p></div>
-          </div>
-          <div class="detail-row">
-            <h2>קישורים / מסמכים</h2>
-            <div class="detail-row-main">
-              ${item.links.length ? `<div class="supplier-links">${item.links.map(link => `<a class="supplier-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(link)}</a>`).join("")}</div>` : `<p class="muted">אין קישורים עדיין.</p>`}
-              <p class="linked-text" style="margin-top:10px;">${item.document_notes ? renderLinkedText(item.document_notes) : "אפשר לרשום כאן שם מסמך, צילום מסך או מיקום זמני עד חיבור Supabase Storage."}</p>
+              <div class="detail-actions"><button class="soft" type="button" data-supplier-all="${item.id}">סמן הכל</button></div>
             </div>
           </div>
         </section>`;
     }
-    function supplierAssigneePickerMarkup() {
-      return `
-        <div class="chips">
-          <label class="chip supplier-assignee"><input name="supplierAll" type="checkbox" value="all"> כולם</label>
-          ${people.map(person => `<label class="chip supplier-assignee"><input name="supplierAssignee" type="checkbox" value="${escapeHtml(person)}"> ${escapeHtml(person)}</label>`).join("")}
-        </div>`;
-    }
-    function supplierCreateScreen() {
+    function supplierFormScreen(item = null) {
+      const isEdit = Boolean(item);
+      const initialName = isEdit ? item.supplier : state.supplierPrefill;
+      const initialDescription = isEdit ? item.description : "";
+      const initialAmount = isEdit ? item.amount : "";
+      const initialLinks = isEdit ? item.links.join("\n") : "";
+      const initialDocuments = isEdit ? item.document_notes : "";
+      const initialNotes = isEdit ? item.notes : "";
+      const createStepDates = isEdit ? "" : `
+          <div class="form-group"><h2>תאריכי שלבים</h2><div class="supplier-checklist">${supplierSteps.map(step => `<div class="supplier-check step-${step.id}" data-new-step-date-trigger="${step.id}" role="button" tabindex="0"><span class="supplier-check-text"><strong>${step.label}</strong><span class="supplier-check-date" id="newStepDateLabel-${step.id}">בחר תאריך</span></span><input class="supplier-step-date-native" id="newStepDate-${step.id}" type="date" data-new-step-date="${step.id}"></div>`).join("")}</div></div>`;
       return `
         <section class="hero">
           <button class="back" data-nav="suppliers">${lineIcon("back")} חזרה</button>
-          <h1>הזמנת ספק חדשה</h1>
-          <p class="screen-subtitle">מעקב רכש פשוט: הזמנה, קבלה, תשלום וחשבונית</p>
+          <h1>${isEdit ? escapeHtml(item.supplier) : "הזמנת ספק חדשה"}</h1>
+          <p class="screen-subtitle">${isEdit ? "עריכת פרטי ההזמנה" : "מעקב רכש פשוט: הזמנה, קבלה, תשלום וחשבונית"}</p>
         </section>
-        <form id="supplierForm">
-          <div class="form-group"><h2>שם הספק</h2><input id="supplierName" required value="${escapeHtml(state.supplierPrefill)}" placeholder="לדוגמה: ספק ירקות"></div>
-          <div class="form-group"><h2>תיאור ההזמנה / הרכישה</h2><textarea id="supplierDescription" required placeholder="מה מזמינים?"></textarea></div>
-          <div class="form-group"><h2>סכום</h2><input id="supplierAmount" placeholder="אם ידוע, לדוגמה ₪680"></div>
-          <div class="form-group"><h2>תאריך יעד / ביצוע</h2><div class="supplier-check" data-supplier-due-date-trigger role="button" tabindex="0"><span class="supplier-check-text"><strong>תאריך יעד / ביצוע</strong><span class="supplier-check-date" id="supplierDateLabel">בחר תאריך</span></span><input class="supplier-step-date-native" id="supplierDate" type="date"></div></div>
-          <div class="form-group"><h2>תאריכי שלבים</h2><div class="supplier-checklist">${supplierSteps.map(step => `<div class="supplier-check step-${step.id}" data-new-step-date-trigger="${step.id}" role="button" tabindex="0"><span class="supplier-check-text"><strong>${step.label}</strong><span class="supplier-check-date" id="newStepDateLabel-${step.id}">בחר תאריך</span></span><input class="supplier-step-date-native" id="newStepDate-${step.id}" type="date" data-new-step-date="${step.id}"></div>`).join("")}</div></div>
-          <div class="form-group"><h2>שיוך משתמשים</h2>${supplierAssigneePickerMarkup()}</div>
-          <div class="form-group"><h2>קישורים</h2><textarea id="supplierLinks" placeholder="קישור אחד בכל שורה"></textarea><div id="supplierLinksPreview" class="supplier-links supplier-link-preview"></div></div>
-          <div class="form-group"><h2>מסמכים / צילום מסך</h2><textarea id="supplierDocuments" placeholder="תיאור מסמך, שם קובץ או מקום זמני. בהמשך אפשר לחבר ל-Supabase Storage."></textarea></div>
-          <div class="form-group"><h2>הערות</h2><textarea id="supplierNotes" placeholder="הערות פנימיות"></textarea></div>
-          <button class="primary" type="submit" style="width:100%;">צור הזמנת ספק</button>
+        ${isEdit ? supplierStepsPanel(item) : ""}
+        <form id="supplierForm" data-supplier-id="${isEdit ? item.id : ""}">
+          <div class="form-group"><h2>שם הספק</h2><input id="supplierName" required value="${escapeHtml(initialName)}" placeholder="לדוגמה: ספק ירקות"></div>
+          <div class="form-group"><h2>תיאור ההזמנה / הרכישה</h2><textarea id="supplierDescription" required placeholder="מה מזמינים?">${escapeHtml(initialDescription)}</textarea></div>
+          <div class="form-group"><h2>סכום</h2><input id="supplierAmount" value="${escapeHtml(initialAmount)}" placeholder="אם ידוע, לדוגמה ₪680"></div>
+          ${supplierDueDateField(isEdit ? item.due_date : "")}
+          ${createStepDates}
+          <div class="form-group"><h2>שיוך משתמשים</h2>${supplierAssigneePickerMarkup(item)}</div>
+          <div class="form-group"><h2>קישורים</h2><textarea id="supplierLinks" placeholder="קישור אחד בכל שורה">${escapeHtml(initialLinks)}</textarea><div id="supplierLinksPreview" class="supplier-links supplier-link-preview"></div></div>
+          <div class="form-group"><h2>מסמכים / צילום מסך</h2><textarea id="supplierDocuments" placeholder="תיאור מסמך, שם קובץ או מקום זמני">${escapeHtml(initialDocuments)}</textarea></div>
+          <div class="form-group"><h2>הערות</h2><textarea id="supplierNotes" placeholder="הערות פנימיות">${escapeHtml(initialNotes)}</textarea></div>
+          <button class="primary" type="submit" style="width:100%;">${isEdit ? "שמור שינויים" : "צור הזמנת ספק"}</button>
         </form>`;
     }
     function prefsScreen() {
@@ -2662,7 +3490,7 @@
             <button type="button" data-theme-choice="dark" class="${state.prefs.dark ? "active" : ""}">מצב כהה</button>
           </div>
         </section>
-        ${state.role === "manager" ? `<section class="prefs-line danger-zone">
+        ${state.role === "manager" && DATA_BACKEND !== "supabase" ? `<section class="prefs-line danger-zone">
           <h2>ניקוי משימות</h2>
           <p>${clearPrompt.detail}</p>
           <button class="danger${clearPrompt.cls}" id="clearAllTasks" type="button">${clearPrompt.text}</button>
@@ -2676,7 +3504,7 @@
         }
         return `<label class="chip"><input name="category" type="radio" value="${c.id}" ${i===0 ? "checked" : ""}> ${lineIcon(c.icon)} ${c.label}</label>`;
       }).join("");
-      const canManageCategories = state.role === "manager";
+      const canManageCategories = state.role === "manager" && DATA_BACKEND !== "supabase";
       const deleteButton = canManageCategories && categories.length ? `<button class="delete-category" type="button" id="startDeleteCategory">${state.deletingCategory ? "ביטול מחיקה" : "מחק קטגוריה"}</button>` : "";
       const confirm = state.deletingCategory && state.categoriesToDelete.length
         ? `<div class="quick-actions" style="margin-top:10px;"><button class="danger final" type="button" id="confirmDeleteCategory">אשר מחיקה (${state.categoriesToDelete.length})</button><button type="button" id="cancelDeleteCategory">ביטול</button></div>`
@@ -2697,22 +3525,27 @@
         }
         return `<label class="chip"><input name="owner" type="radio" value="${person}" ${i===0 ? "checked" : ""}> ${person}</label>`;
       }).join("");
-      const deleteButton = people.length ? `<button class="delete-category" type="button" id="startDeletePerson">${state.deletingPerson ? "ביטול מחיקה" : "מחק מבצע"}</button>` : "";
+      const deleteButton = people.length && DATA_BACKEND !== "supabase"
+        ? `<button class="delete-category" type="button" id="startDeletePerson">${state.deletingPerson ? "ביטול מחיקה" : "מחק מבצע"}</button>`
+        : "";
       const confirm = state.deletingPerson && state.peopleToDelete.length
         ? `<div class="quick-actions" style="margin-top:10px;"><button class="danger final" type="button" id="confirmDeletePerson">אשר מחיקה (${state.peopleToDelete.length})</button><button type="button" id="cancelDeletePerson">ביטול</button></div>`
         : "";
       const help = state.deletingPerson
         ? `<p class="muted" style="margin-top:10px; color: var(--danger);">בחר מבצע אחד או יותר למחיקה. רק המסומנים במסגרת אדומה יימחקו.</p>`
         : "";
+      const addPersonButton = DATA_BACKEND === "supabase"
+        ? ""
+        : `<button class="add-inline" type="button" id="showPersonInput">הוספת מבצע +</button>`;
       return `
-        <div class="chips">${items}<button class="add-inline" type="button" id="showPersonInput">הוספת מבצע +</button>${deleteButton}</div>
+        <div class="chips">${items}${addPersonButton}${deleteButton}</div>
         ${help}
         ${confirm}`;
     }
     function createScreen() {
       return `
         <section class="hero">
-          <button class="back" data-nav="${state.role === "manager" ? "management" : "all"}">${lineIcon("back")} חזרה</button>
+          <button class="back" data-nav="${backRouteFor("create")}">${lineIcon("back")} חזרה</button>
           <h1>משימה חדשה</h1>
         </section>
         <form id="createForm">
@@ -2720,10 +3553,10 @@
           <div class="form-group">
             <h2>קטגוריה</h2>
             ${categoryPickerMarkup()}
-            ${categories.length ? "" : `<p class="muted" style="margin-top:10px;">אין קטגוריות כרגע. אפשר ליצור משימה ללא קטגוריה או להוסיף קטגוריה חדשה.</p>`}
-            ${state.addingCategory ? `<div class="quick-actions add-panel"><input id="newCategoryName" placeholder="שם קטגוריה"><button class="primary" type="button" id="saveCategory">שמור קטגוריה</button><button type="button" id="cancelCategory">ביטול</button></div>` : ""}
+            ${categories.length ? "" : `<p class="muted" style="margin-top:10px;">${DATA_BACKEND === "supabase" ? "אין קטגוריות זמינות בארגון כרגע." : "אין קטגוריות כרגע. אפשר ליצור משימה ללא קטגוריה או להוסיף קטגוריה חדשה."}</p>`}
+            ${state.addingCategory && DATA_BACKEND !== "supabase" ? `<div class="quick-actions add-panel"><input id="newCategoryName" placeholder="שם קטגוריה"><button class="primary" type="button" id="saveCategory">שמור קטגוריה</button><button type="button" id="cancelCategory">ביטול</button></div>` : ""}
           </div>
-          ${state.role === "manager" ? `<div class="form-group"><h2>מבצע</h2>${peoplePickerMarkup()}${people.length ? "" : `<p class="muted" style="margin-top:10px;">אין מבצעים כרגע. אפשר ליצור משימה ללא מבצע או להוסיף מבצע חדש.</p>`}${state.addingPerson ? `<div class="quick-actions add-panel"><input id="newPersonName" placeholder="שם מבצע"><button class="primary" type="button" id="savePerson">שמור מבצע</button><button type="button" id="cancelPerson">ביטול</button></div>` : ""}</div>` : ""}
+          ${state.role === "manager" ? `<div class="form-group"><h2>מבצע</h2>${peoplePickerMarkup()}${people.length ? "" : `<p class="muted" style="margin-top:10px;">${DATA_BACKEND === "supabase" ? "אין חברי ארגון זמינים לשיוך כרגע." : "אין מבצעים כרגע. אפשר ליצור משימה ללא מבצע או להוסיף מבצע חדש."}</p>`}${state.addingPerson && DATA_BACKEND !== "supabase" ? `<div class="quick-actions add-panel"><input id="newPersonName" placeholder="שם מבצע"><button class="primary" type="button" id="savePerson">שמור מבצע</button><button type="button" id="cancelPerson">ביטול</button></div>` : ""}</div>` : ""}
           <div class="form-group"><h2>יעד</h2><div class="segmented"><button type="button" data-due-choice="today" class="active">היום</button><button type="button" data-due-choice="tomorrow">מחר</button><button type="button" data-due-choice="date">בחר תאריך</button><button type="button" data-due-choice="none">ללא יעד</button></div><input id="newDate" type="date" style="display:none; margin-top:10px;"></div>
           <div class="form-group"><h2>עדיפות</h2><div class="chips"><label class="chip"><input name="priority" type="radio" value="normal" checked> רגילה</label><label class="chip"><input name="priority" type="radio" value="high"> גבוהה</label></div></div>
           <div class="form-group"><h2>הערות</h2><textarea id="newNotes" placeholder="פרטים קצרים"></textarea></div>
@@ -2738,7 +3571,71 @@
       nav.className = `bottom-nav ${state.role === "manager" ? "manager" : "user"}`;
       nav.innerHTML = items.map(([view,label,iconName]) => `<button data-nav="${view}" class="${state.view === view ? "active" : ""}"><span>${lineIcon(iconName)}</span><span>${label}</span></button>`).join("");
     }
+    let authButtonsBound = false;
+    function bindAuthButtons() {
+      if (authButtonsBound) return;
+      authButtonsBound = true;
+      document.addEventListener("click", (event) => {
+        const target = event.target instanceof Element ? event.target.closest("#googleSignIn, #signOutBtn") : null;
+        if (!target) return;
+        if (target.id === "googleSignIn") {
+          void signInWithGoogle();
+          return;
+        }
+        if (target.id === "signOutBtn") {
+          event.preventDefault();
+          void signOut();
+        }
+      });
+    }
     function bindPage() {
+      bindAuthButtons();
+      document.querySelectorAll("[data-member-action]").forEach(el => el.addEventListener("click", e => {
+        const [userId, action] = e.currentTarget.dataset.memberAction.split(":");
+        state.memberConfirm = { userId, action };
+        render();
+      }));
+      document.querySelectorAll("[data-member-confirm]").forEach(el => el.addEventListener("click", async e => {
+        const [userId, action] = e.currentTarget.dataset.memberConfirm.split(":");
+        await runOrgMemberAction(userId, action);
+      }));
+      document.querySelectorAll("[data-member-cancel]").forEach(el => el.addEventListener("click", () => {
+        state.memberConfirm = null;
+        render();
+      }));
+      $("reloadOrgMembers")?.addEventListener("click", () => {
+        state.orgMembersLoaded = false;
+        void ensureOrgMembersLoaded();
+      });
+      $("showInviteForm")?.addEventListener("click", () => {
+        state.showInviteForm = true;
+        render();
+      });
+      $("cancelInviteForm")?.addEventListener("click", () => {
+        state.showInviteForm = false;
+        render();
+      });
+      $("inviteMemberForm")?.addEventListener("submit", async e => {
+        e.preventDefault();
+        const email = $("inviteMemberEmail")?.value?.trim() || "";
+        if (!email) {
+          toast("הזינו כתובת אימייל");
+          return;
+        }
+        try {
+          const result = await orgMembersRepository.prepareInvitation(email, "user");
+          if (!result?.ok) {
+            toast(result?.reason || "שגיאה בשמירת הזמנה");
+            return;
+          }
+          state.showInviteForm = false;
+          toast("ההזמנה נשמרה — שליחת מייל תתווסף בעתיד");
+          render();
+        } catch (error) {
+          console.warn("Prepare invitation failed.", error);
+          toast(error?.message || "שגיאה בשמירת הזמנה");
+        }
+      });
       document.querySelectorAll("[data-nav]").forEach(el => el.addEventListener("click", e => navigate(e.currentTarget.dataset.nav)));
       document.querySelectorAll("[data-supplier-new]").forEach(el => el.addEventListener("click", e => {
         state.supplierPrefill = e.currentTarget.dataset.supplierNew || "";
@@ -2757,13 +3654,9 @@
         e.preventDefault();
         navigate(`task:${e.currentTarget.dataset.open}`);
       }));
-      document.querySelectorAll("[data-open-supplier]").forEach(el => el.addEventListener("click", e => {
-        navigate(`supplier:${e.currentTarget.dataset.openSupplier}`);
-      }));
-      document.querySelectorAll("[data-open-supplier]").forEach(el => el.addEventListener("keydown", e => {
-        if (e.key !== "Enter" && e.key !== " ") return;
-        e.preventDefault();
-        navigate(`supplier:${e.currentTarget.dataset.openSupplier}`);
+      document.querySelectorAll("[data-edit-supplier]").forEach(el => el.addEventListener("click", e => {
+        e.stopPropagation();
+        navigate(`supplier:${e.currentTarget.dataset.editSupplier}`);
       }));
       function openSupplierStepDate(container) {
         const input = container.querySelector("[data-supplier-step-date]");
@@ -2773,12 +3666,14 @@
       }
       document.querySelectorAll("[data-supplier-date-trigger]").forEach(el => {
         el.addEventListener("click", e => {
+          e.stopPropagation();
           if (e.target.closest("input[type='checkbox']")) return;
           openSupplierStepDate(e.currentTarget);
         });
         el.addEventListener("keydown", e => {
           if (e.key !== "Enter" && e.key !== " ") return;
           e.preventDefault();
+          e.stopPropagation();
           openSupplierStepDate(e.currentTarget);
         });
       });      function openSupplierDueDate() {
@@ -2820,17 +3715,26 @@
         e.currentTarget.closest(".supplier-check")?.classList.toggle("done", Boolean(e.currentTarget.value));
       }));      document.querySelectorAll("[data-supplier-step]").forEach(el => el.addEventListener("change", async e => {
         const [id, step] = e.currentTarget.dataset.supplierStep.split(":");
-        if (await updateSupplierStage(id, step, e.currentTarget.checked)) toast("שלב ההזמנה עודכן");
+        await updateSupplierStage(id, step, e.currentTarget.checked, null, {
+          saveTarget: e.currentTarget,
+          successMessage: "שלב ההזמנה עודכן"
+        });
       }));
       document.querySelectorAll("[data-supplier-step-date]").forEach(el => el.addEventListener("change", async e => {
         const [id, step] = e.currentTarget.dataset.supplierStepDate.split(":");
         const value = e.currentTarget.value;
         const current = getSupplier(id);
-        if (await updateSupplierStage(id, step, value ? true : Boolean(current?.steps[step]), value)) toast("תאריך השלב נשמר");
+        await updateSupplierStage(id, step, value ? true : Boolean(current?.steps[step]), value, {
+          saveTarget: e.currentTarget,
+          successMessage: "תאריך השלב נשמר"
+        });
       }));
       document.querySelectorAll("[data-supplier-all]").forEach(el => el.addEventListener("click", async e => {
         const id = e.currentTarget.dataset.supplierAll;
-        if (await markAllSupplierStages(id)) toast("כל שלבי ההזמנה סומנו");
+        await markAllSupplierStages(id, {
+          saveTarget: e.currentTarget.closest(".detail-row-main"),
+          successMessage: "כל שלבי ההזמנה סומנו"
+        });
       }));      $("supplierForm")?.addEventListener("change", e => {
         if (e.target.name !== "supplierAll") return;
         document.querySelectorAll('input[name="supplierAssignee"]').forEach(input => {
@@ -2851,13 +3755,42 @@
       $("supplierLinks")?.addEventListener("paste", () => setTimeout(updateSupplierLinksPreview, 0));
       updateSupplierLinksPreview();      $("supplierForm")?.addEventListener("submit", async e => {
         e.preventDefault();
+        const editId = $("supplierForm")?.dataset.supplierId || "";
         const allAssignees = Boolean(document.querySelector('input[name="supplierAll"]')?.checked);
-        const assignees = allAssignees ? [] : [...document.querySelectorAll('input[name="supplierAssignee"]:checked')].map(input => input.value);
+        let assignees = allAssignees ? [] : [...document.querySelectorAll('input[name="supplierAssignee"]:checked')].map(input => input.value);
+        if (DATA_BACKEND === "supabase" && state.orgPeople.length) {
+          assignees = assignees.filter(name => state.orgPeople.includes(name));
+        }
         if (!allAssignees && !assignees.length) {
           toast("בחר שיוך או כולם");
           return;
         }
         const links = $("supplierLinks").value.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+        const formValues = {
+          supplier: $("supplierName").value.trim(),
+          description: $("supplierDescription").value.trim(),
+          amount: $("supplierAmount").value.trim(),
+          due_date: $("supplierDate").value,
+          notes: $("supplierNotes").value.trim(),
+          document_notes: $("supplierDocuments").value.trim(),
+          links,
+          assignees,
+          allAssignees
+        };
+        if (editId) {
+          const existing = getSupplier(editId);
+          if (!existing || !canAccessSupplier(existing)) {
+            navigate("suppliers");
+            toast("אין הרשאה להזמנה זו");
+            return;
+          }
+          const saved = await updateSupplierOrder(editId, { ...existing, ...formValues });
+          if (saved) {
+            toast("השינויים נשמרו");
+            navigate("suppliers");
+          }
+          return;
+        }
         const stepDates = supplierSteps.reduce((acc, step) => {
           acc[step.id] = $(`newStepDate-${step.id}`)?.value || "";
           return acc;
@@ -2868,15 +3801,7 @@
         }, {});
         const item = normalizeSupplier({
           id: `s${Date.now()}`,
-          supplier: $("supplierName").value.trim(),
-          description: $("supplierDescription").value.trim(),
-          amount: $("supplierAmount").value.trim(),
-          due_date: $("supplierDate").value,
-          notes: $("supplierNotes").value.trim(),
-          document_notes: $("supplierDocuments").value.trim(),
-          links,
-          assignees,
-          allAssignees,
+          ...formValues,
           steps: initialSteps,
           step_dates: stepDates,
           created_at: isoDateFromOffset(0)
@@ -2931,7 +3856,7 @@
         if (!confirm("למחוק את המשימה? המחיקה רכה ותסתיר אותה מהרשימות.")) return;
         if (await deleteTaskSoft(id)) {
           toast("המשימה נמחקה");
-          navigate(state.lastList || "management");
+          navigate(backRouteFor(state.view));
         }
       });
       document.querySelectorAll("[data-priority]").forEach(el => el.addEventListener("click", async (e) => {
@@ -3023,7 +3948,7 @@
         const text = $("newUpdateInput").value.trim();
         if (!text) return toast("כתוב עדכון");
         state.addingUpdate = false;
-        await updateTask(id, { updates: [...t.updates, { by: state.role === "manager" ? "צבי" : "עדינה", text, created_at: isoDateFromOffset(0), notify_participants: true, notification_status: "pending" }] });
+        await updateTask(id, { updates: [...t.updates, { by: state.userOwner || personalOwner(), text, created_at: isoDateFromOffset(0), notify_participants: true, notification_status: "pending" }] });
         toast("נוסף עדכון");
       });
       document.querySelectorAll("[data-edit-update]").forEach(el => el.addEventListener("click", e => {
@@ -3064,6 +3989,7 @@
         render();
       }));
       $("clearAllTasks")?.addEventListener("click", async () => {
+        if (DATA_BACKEND === "supabase") return;
         if (state.clearAllStep < 2) {
           state.clearAllStep += 1;
           render();
@@ -3091,11 +4017,20 @@
       $("saveCategory")?.addEventListener("click", () => {
         const name = $("newCategoryName").value.trim();
         if (!name) return toast("כתוב שם קטגוריה");
+        if (DATA_BACKEND === "supabase") {
+          state.addingCategory = false;
+          state.deletingCategory = false;
+          state.categoriesToDelete = [];
+          syncCategoriesCatalog(state.orgCategories);
+          render();
+          toast("בפיילוט קטגוריות מנוהלות ב-Supabase");
+          return;
+        }
         const category = { id: `custom-${Date.now()}`, label: name, icon: "office" };
         const custom = readCustomCategories();
         custom.push(category);
         saveCustomCategories(custom);
-        categories = loadCategories();
+        syncCategoriesCatalog();
         state.addingCategory = false;
         state.deletingCategory = false;
         state.categoriesToDelete = [];
@@ -3130,13 +4065,20 @@
       $("confirmDeleteCategory")?.addEventListener("click", async () => {
         const ids = state.categoriesToDelete;
         if (!ids.length) return;
+        if (DATA_BACKEND === "supabase") {
+          state.deletingCategory = false;
+          state.categoriesToDelete = [];
+          syncCategoriesCatalog(state.orgCategories);
+          render();
+          return;
+        }
         const hidden = readHiddenCategoryIds();
         ids.filter(id => baseCategories.some(c => c.id === id)).forEach(id => {
           if (!hidden.includes(id)) hidden.push(id);
         });
         saveHiddenCategoryIds(hidden);
         saveCustomCategories(readCustomCategories().filter(c => !ids.includes(c.id)));
-        categories = loadCategories();
+        syncCategoriesCatalog();
         const fallbackCategory = categories[0]?.id || "uncategorized";
         state.tasks = await tasksRepository.saveTasks(state.tasks.map(t => ids.includes(t.category) ? { ...t, category: fallbackCategory } : t));
         state.deletingCategory = false;
@@ -3161,10 +4103,19 @@
       $("savePerson")?.addEventListener("click", () => {
         const name = $("newPersonName").value.trim();
         if (!name) return toast("כתוב שם מבצע");
+        if (DATA_BACKEND === "supabase") {
+          state.addingPerson = false;
+          state.deletingPerson = false;
+          state.peopleToDelete = [];
+          syncPeopleCatalog(state.orgPeople);
+          render();
+          toast("בפיילוט ניתן לשייך רק חברי ארגון קיימים");
+          return;
+        }
         const custom = readCustomPeople();
         if (!allKnownPeople().includes(name)) custom.push(name);
         saveCustomPeople(custom);
-        people = loadPeople();
+        syncPeopleCatalog();
         state.addingPerson = false;
         state.deletingPerson = false;
         state.peopleToDelete = [];
@@ -3199,14 +4150,21 @@
       $("confirmDeletePerson")?.addEventListener("click", async () => {
         const names = state.peopleToDelete;
         if (!names.length) return;
+        if (DATA_BACKEND === "supabase") {
+          state.deletingPerson = false;
+          state.peopleToDelete = [];
+          syncPeopleCatalog(state.orgPeople);
+          render();
+          return;
+        }
         const hidden = readHiddenPeople();
         names.filter(name => basePeople.includes(name)).forEach(name => {
           if (!hidden.includes(name)) hidden.push(name);
         });
         saveHiddenPeople(hidden);
         saveCustomPeople(readCustomPeople().filter(name => !names.includes(name)));
-        people = loadPeople();
-        const fallbackOwner = people[0] || "ללא מבצע";
+        syncPeopleCatalog();
+        const fallbackOwner = people[0] || personalOwner() || "ללא מבצע";
         state.tasks = await tasksRepository.saveTasks(state.tasks.map(t => names.includes(t.owner) ? { ...t, owner: fallbackOwner } : t));
         state.deletingPerson = false;
         state.peopleToDelete = [];
@@ -3225,7 +4183,7 @@
       $("createForm")?.addEventListener("submit", async (e) => {
         e.preventDefault();
         const form = e.currentTarget;
-        const owner = state.role === "manager" ? (form.owner?.value || people[0] || "ללא מבצע") : "עדינה";
+        const owner = resolveTaskOwner(form);
         const dueChoice = document.querySelector("[data-due-choice].active").dataset.dueChoice;
         if (dueChoice === "date" && !$("newDate").value) {
           $("newDate").focus();
@@ -3259,8 +4217,9 @@
           updates: []
         };
         await createTask(task);
+        const created = state.tasks.find(item => item.title === task.title && item.owner === owner) || state.tasks[0];
         toast("המשימה נוצרה");
-        navigate(`task:${task.id}`);
+        navigate(`task:${created?.id || task.id}`);
       });
     }
     function escapeHtml(text) {
@@ -3283,51 +4242,108 @@
       });
     }
     window.addEventListener("hashchange", () => {
-      state.view = location.hash.replace("#", "") || defaultRoute();
+      const nextView = location.hash.replace("#", "") || defaultRoute();
+      state.view = nextView;
+      syncListRoute(nextView);
       render();
       resetScroll();
     });
-    let debugAuthListenerReady = false;
-    function registerDebugSupabaseAuthListener() {
-      if (!supabaseClient || debugAuthListenerReady) return;
-      debugAuthListenerReady = true;
-      supabaseClient.auth.onAuthStateChange((event, session) => {
-        console.warn("[debug] Supabase auth event:", event, session?.user?.email || "none");
-        if (DATA_BACKEND !== "supabase") return;
-        if (event === "SIGNED_IN" && session) bootstrapTasks();
+    let authListenerReady = false;
+    function registerPilotAuthListener() {
+      if (!supabaseClient || authListenerReady || DATA_BACKEND !== "supabase") return;
+      authListenerReady = true;
+      supabaseClient.auth.onAuthStateChange(async (event, session) => {
+        if (PILOT_DEBUG) console.warn("[pilot] auth event:", event, session?.user?.email || "none");
+        if (event === "SIGNED_IN" && session) {
+          await refreshPilotAuth();
+          if (state.authStatus === "ready") {
+            if (state.role === "manager") {
+              const migration = await migrateLocalPilotData({
+                isManager: true,
+                tasksRepository,
+                suppliersRepository
+              });
+              if (migration.migratedTasks || migration.migratedSuppliers) {
+                toast(`הועברו ${migration.migratedTasks} משימות ו-${migration.migratedSuppliers} הזמנות`);
+              }
+            }
+            await bootstrapSuppliers();
+            await bootstrapTasks();
+          }
+          render();
+        }
         if (event === "SIGNED_OUT") {
+          applyPilotAuthContext({ status: "signed_out", role: "user", userId: "", email: "", displayName: "", orgPeople: [] });
           state.tasks = [];
+          state.suppliers = [];
           render();
         }
       });
     }
     async function initRuntime() {
-      debugAuthTrace("2-initRuntime-start", readSupabaseAuthCallbackUrl());
+      await window.__authBoot;
+      // ניקוי SW ישן מביקורים קודמים — גם בדפדפן רגיל (לא רק PWA)
+      if (DATA_BACKEND === "supabase") {
+        await unregisterServiceWorkersForAuth();
+      }
+      updateOfflineBanner();
+      window.addEventListener("online", updateOfflineBanner);
+      window.addEventListener("offline", updateOfflineBanner);
+
+      if (DATA_BACKEND === "local") {
+        people = loadPeople();
+        categories = loadCategories();
+        registerPilotAuthListener();
+        await bootstrapSuppliers();
+        await bootstrapTasks();
+        registerServiceWorker();
+        return;
+      }
+
       const consumeResult = await consumeSupabaseOAuthCallback();
-      if (!location.hash || isSupabaseOAuthCallbackUrl()) {
-        location.hash = defaultRoute();
+      await refreshPilotAuth();
+
+      if (consumeResult.consumed && state.authStatus !== "ready") {
+        toast("התחברות נכשלה — נסו שוב");
       }
-      state.view = location.hash.replace("#", "") || defaultRoute();
-      const sessionResult = await bootstrapSupabaseAuthSession();
-      if (consumeResult.consumed && !sessionResult.session) {
-        debugAuthTrace("5-session-null", {
-          at: "initRuntime-after-consume",
-          consumeResult,
-          sessionResult
-        });
+
+      if (state.authStatus === "ready") {
+        if (!location.hash || isSupabaseOAuthCallbackUrl()) {
+          location.hash = defaultRoute();
+        }
+        state.view = location.hash.replace("#", "") || defaultRoute();
+        if (state.role === "manager") {
+          const migration = await migrateLocalPilotData({
+            isManager: true,
+            tasksRepository,
+            suppliersRepository
+          });
+          if (migration.migratedTasks || migration.migratedSuppliers) {
+            toast(`הועברו ${migration.migratedTasks} משימות ו-${migration.migratedSuppliers} הזמנות מהמכשיר`);
+          } else if (!migration.ok && migration.reason) {
+            console.warn("Migration skipped/failed.", migration.reason);
+          }
+        }
+        registerPilotAuthListener();
+        await bootstrapSuppliers();
+        await bootstrapTasks();
+        registerServiceWorker();
+        render();
+      } else {
+        render();
       }
-      registerDebugSupabaseAuthListener();
-      await bootstrapSuppliers();
-      await bootstrapTasks();
     }
 
     // hooks ל-validation-harness.js — לא משנה runtime רגיל
     window.__validationHooks = {
       localTasksAdapter,
       localSuppliersAdapter,
+      localOrgMembersAdapter,
       supplierAdapter,
+      orgMembersAdapter,
       tasksRepository,
       suppliersRepository,
+      orgMembersRepository,
       state,
       isoDateFromOffset,
       toIsoDateOnly,
@@ -3336,6 +4352,18 @@
       canEditTaskContent,
       canDeleteTask,
       canAccessSupplier,
+      canAccessOrgAdmin,
+      canPromoteMember,
+      canDemoteMember,
+      canDeactivateMember,
+      canReactivateMember,
+      countActiveManagers,
+      isLastActiveManager,
+      lastManagerBlockReason,
+      findOrgMember,
+      sortOrgMembers,
+      orgMemberRoleLabel,
+      accessCtx,
       isArchivedDone,
       visibleDoneTasks,
       activeTasks,
@@ -3343,15 +4371,48 @@
       supabaseClient,
       bootstrapTasks,
       bootstrapSuppliers,
-      loadSuppliers
+      loadSuppliers,
+      render,
+      guardManagerAdminView,
+      parentRoute,
+      backRouteFor,
+      navigate,
+      mgmtVisibleCategoryTasks,
+      buildMgmtCategoryRows
     };
-    window.__appReady = initRuntime().finally(() => registerServiceWorker());
+    window.__appReady = Promise.all([
+      initRuntime(),
+      (function loadValidationHarnessIfNeeded() {
+        const harnessParams = new URLSearchParams(location.search);
+        if (
+          harnessParams.get("debug") !== "1"
+          && harnessParams.get("debugBackend") !== "local"
+          && harnessParams.get("debugBackend") !== "supabase"
+        ) {
+          window.__validation = {
+            ready: true,
+            runAll: async () => [],
+            runSuite: async () => ({ suite: "stub", ok: true, steps: [], failed: [] })
+          };
+          return Promise.resolve();
+        }
+        return new Promise((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = "./validation-harness.js";
+          script.onload = resolve;
+          script.onerror = () => reject(new Error("validation-harness.js failed to load"));
+          document.body.appendChild(script);
+        });
+      })()
+    ]);
+    let serviceWorkerRegistered = false;
+    let swReloadScheduled = false;
     function registerServiceWorker() {
-      if (!("serviceWorker" in navigator)) return;
-      let refreshing = false;
+      if (serviceWorkerRegistered || !("serviceWorker" in navigator)) return;
+      serviceWorkerRegistered = true;
       navigator.serviceWorker.addEventListener("controllerchange", () => {
-        if (refreshing) return;
-        refreshing = true;
+        if (swReloadScheduled) return;
+        swReloadScheduled = true;
         window.location.reload();
       });
       navigator.serviceWorker.register("./service-worker.js").then((registration) => {
@@ -3373,6 +4434,5 @@
       }).catch(() => {});
     }
   </script>
-  <script src="./validation-harness.js"></script>
 </body>
 </html>

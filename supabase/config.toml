@@ -1,0 +1,13 @@
+# Supabase Auth — production URLs (push with: supabase login && supabase link && supabase config push)
+project_id = "jxjxjvxbxpgvlarzbohm"
+
+[auth]
+site_url = "https://bat-ayin-tasks.vercel.app"
+additional_redirect_urls = [
+  "https://bat-ayin-tasks.vercel.app/index.html",
+  "https://bat-ayin-tasks.vercel.app/**",
+  "https://yeshivat-batayn.netlify.app/index.html",
+  "https://yeshivat-batayn.netlify.app/**",
+  "http://127.0.0.1:8899/index.html",
+  "http://127.0.0.1:8899/**"
+]

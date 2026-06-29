@@ -35,7 +35,7 @@ export async function runBuildSuite() {
 
   await suite.step("bundle-exports", "outputs/adapters.js exports BatAyinAdapters factories", () => {
     const js = readFileSync("outputs/adapters.js", "utf8");
-    for (const name of ["createSupabaseTasksAdapter", "createSupabaseSuppliersAdapter", "normalizeTask", "normalizeSupplier", "createAsyncRepository"]) {
+    for (const name of ["createSupabaseTasksAdapter", "createSupabaseSuppliersAdapter", "createSupabaseOrgMembersAdapter", "normalizeTask", "normalizeSupplier", "createAsyncRepository"]) {
       if (!js.includes(name)) throw new Error(`missing export symbol: ${name}`);
     }
   });
@@ -88,9 +88,11 @@ export async function runPwaSuite() {
     if (!html.includes("serviceWorker.register")) throw new Error("SW registration missing");
   });
 
-  await suite.step("html-harness-script", "index.html loads validation-harness.js", () => {
+  await suite.step("html-harness-script", "index.html loads validation harness when debugging", () => {
     const html = readFileSync("outputs/index.html", "utf8");
-    if (!html.includes("validation-harness.js")) throw new Error("validation-harness script tag missing");
+    if (!html.includes("validation-harness.js") && !html.includes("__validation")) {
+      throw new Error("validation harness bootstrap missing");
+    }
   });
 
   const iconPaths = [
@@ -132,10 +134,43 @@ export async function runRuntimeBundleSuite() {
     if (!html.includes("@supabase/supabase-js")) throw new Error("Supabase CDN script missing");
   });
 
-  await suite.step("data-backend-default", "DATA_BACKEND defaults to local", () => {
+  await suite.step("data-backend-default", "Pilot resolves supabase by default", () => {
     const html = readFileSync("outputs/index.html", "utf8");
-    if (!html.includes('isDebugSupabaseBackendEnabled() ? "supabase" : "local"')) {
-      throw new Error("DATA_BACKEND local default pattern missing");
+    if (!html.includes("resolvePilotDataBackend")) {
+      throw new Error("resolvePilotDataBackend missing");
+    }
+    if (!html.includes("resolvePilotDataBackend(params)")) {
+      throw new Error("Pilot DATA_BACKEND resolution missing");
+    }
+  });
+
+  await suite.step("oauth-redirect-url", "OAuth redirect uses production URL not location.origin", () => {
+    const html = readFileSync("outputs/index.html", "utf8");
+    if (!html.includes("getPilotOAuthRedirectUrl")) {
+      throw new Error("getPilotOAuthRedirectUrl missing from index.html");
+    }
+    if (html.includes("window.location.origin}${window.location.pathname}")) {
+      throw new Error("OAuth redirect still uses window.location.origin");
+    }
+    if (html.includes("127.0.0.1:8899")) {
+      throw new Error("hardcoded 127.0.0.1:8899 in index.html");
+    }
+  });
+
+  await suite.step("localhost-debug-stays-local", "localhost validation bypasses production redirect", () => {
+    const html = readFileSync("outputs/index.html", "utf8");
+    if (!html.includes('search.includes("debugBackend=local")')) {
+      throw new Error("localhost debug redirect bypass missing");
+    }
+  });
+
+  await suite.step("supabase-catalog-isolation", "Supabase runtime uses auth catalogs not localStorage", () => {
+    const html = readFileSync("outputs/index.html", "utf8");
+    for (const marker of ["syncPeopleCatalog", "syncCategoriesCatalog", "orgCategories", "orgPeople", "mgmt-members", "orgMembersRepository", "managementHubScreen"]) {
+      if (!html.includes(marker)) throw new Error(`missing ${marker}`);
+    }
+    if (html.includes("let categories = loadCategories()")) {
+      throw new Error("categories still initialized from loadCategories() at module scope");
     }
   });
 

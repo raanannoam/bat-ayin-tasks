@@ -29,10 +29,8 @@ export function mapAppTaskToSupabaseInsert(
   const category = appTask?.category;
   let categoryId: string | null = null;
   if (category && category !== "uncategorized") {
+    // קטגוריה מקומית שאין ב-Supabase — משימה בלי קטגוריה (לא שגיאה)
     categoryId = writeCtx.categoryIdBySlug.get(category) ?? null;
-    if (!categoryId) {
-      return { ok: false, code: "category_not_found" };
-    }
   }
   const dueDate = appTask?.dueDate ?? appTask?.due_date ?? null;
   const dueLabel = appTask?.dueLabel ?? null;

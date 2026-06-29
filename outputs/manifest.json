@@ -2,7 +2,7 @@
   "name": "ניהול משימות ישיבת בת עין",
   "short_name": "משימות ישיבה",
   "description": "ניהול משימות פנימי לישיבת בת עין",
-  "start_url": "./",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "dir": "rtl",

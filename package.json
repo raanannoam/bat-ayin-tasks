@@ -10,6 +10,7 @@
     "validate:static": "node scripts/validate/run.mjs --static-only",
     "validate:browser": "node scripts/validate/run.mjs --browser-only",
     "validate:supabase": "npm run build:all && node scripts/validate/run.mjs --supabase-debug --require-supabase",
+    "qa:full": "node scripts/verify-full-qa.mjs",
     "test": "npm run validate"
   },
   "devDependencies": {

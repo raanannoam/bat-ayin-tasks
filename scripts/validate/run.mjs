@@ -27,7 +27,7 @@ export async function main(argv = process.argv.slice(2)) {
     console.log("\n=== browser integration validation ===");
     const server = await startStaticServer();
     try {
-      const query = opts.supabaseDebug ? "?debugBackend=supabase" : "";
+      const query = opts.supabaseDebug ? "?debugBackend=supabase" : "?debugBackend=local";
       await withBrowserPage(server.baseUrl, async (page) => {
         const browserResults = await runBrowserValidation(page, {
           supabase: true,

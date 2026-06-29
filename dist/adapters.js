@@ -26,45 +26,71 @@ var BatAyinAdapters = (() => {
     DEFAULT_PREFS: () => DEFAULT_PREFS,
     DEMO_MANAGER_OWNER: () => DEMO_MANAGER_OWNER,
     DEMO_USER_OWNER: () => DEMO_USER_OWNER,
+    PILOT_APP_URL: () => PILOT_APP_URL,
+    PILOT_MIGRATION_STORAGE_KEY: () => PILOT_MIGRATION_STORAGE_KEY,
+    PILOT_SUPABASE_ANON_KEY: () => PILOT_SUPABASE_ANON_KEY,
+    PILOT_SUPABASE_URL: () => PILOT_SUPABASE_URL,
     SUPPLIER_STEPS: () => SUPPLIER_STEPS,
     ageLabel: () => ageLabel,
     allKnownPeople: () => allKnownPeople,
+    buildManagementAssigneePriorityGroups: () => buildManagementAssigneePriorityGroups,
+    buildManagementPriorityChronologicalGroups: () => buildManagementPriorityChronologicalGroups,
+    buildManagementTaskAssignees: () => buildManagementTaskAssignees,
     buildTaskDueLabel: () => buildTaskDueLabel,
+    canAccessOrgAdmin: () => canAccessOrgAdmin,
     canAccessSupplier: () => canAccessSupplier,
     canAccessTask: () => canAccessTask,
+    canDeactivateMember: () => canDeactivateMember,
     canDeleteTask: () => canDeleteTask,
+    canDemoteMember: () => canDemoteMember,
     canEditTaskContent: () => canEditTaskContent,
+    canPromoteMember: () => canPromoteMember,
+    canReactivateMember: () => canReactivateMember,
+    countActiveManagers: () => countActiveManagers,
     createAsyncRepository: () => createAsyncRepository,
+    createLocalOrgMembersAdapter: () => createLocalOrgMembersAdapter,
     createLocalSuppliersAdapter: () => createLocalSuppliersAdapter,
     createLocalTasksAdapter: () => createLocalTasksAdapter,
+    createSupabaseOrgMembersAdapter: () => createSupabaseOrgMembersAdapter,
     createSupabaseSuppliersAdapter: () => createSupabaseSuppliersAdapter,
     createSupabaseTasksAdapter: () => createSupabaseTasksAdapter,
     dateFromIso: () => dateFromIso,
     daysBetween: () => daysBetween,
     daysFromTodayIso: () => daysFromTodayIso,
     defaultTaskReminder: () => defaultTaskReminder,
+    ensurePilotProfile: () => ensurePilotProfile,
     filterActiveTasks: () => filterActiveTasks,
     filterManagementPeople: () => filterManagementPeople,
     filterOpenTasks: () => filterOpenTasks,
     filterPersonalTasks: () => filterPersonalTasks,
     filterVisibleDoneTasks: () => filterVisibleDoneTasks,
     filterVisibleSuppliers: () => filterVisibleSuppliers,
+    findOrgMember: () => findOrgMember,
     findSupplier: () => findSupplier,
     findTask: () => findTask,
     findVisibleSupplier: () => findVisibleSupplier,
     findVisibleTask: () => findVisibleTask,
     formatHebrewDate: () => formatHebrewDate,
     getDateBucketFromIso: () => getDateBucketFromIso,
+    getPilotOAuthRedirectUrl: () => getPilotOAuthRedirectUrl,
     isArchivedDone: () => isArchivedDone,
+    isLastActiveManager: () => isLastActiveManager,
+    isPersonalTask: () => isPersonalTask,
+    isPilotDebugEnabled: () => isPilotDebugEnabled,
+    isSupabasePlaceholder: () => isSupabasePlaceholder,
     isTaskOverdue: () => isTaskOverdue,
     isoDateFromOffset: () => isoDateFromOffset,
+    lastManagerBlockReason: () => lastManagerBlockReason,
     loadCategories: () => loadCategories,
     loadPeople: () => loadPeople,
+    loadPilotAuthContext: () => loadPilotAuthContext,
     loadPreferences: () => loadPreferences,
     loadSupabaseTasksWriteContext: () => loadSupabaseTasksWriteContext,
     mapAppTaskToSupabaseInsert: () => mapAppTaskToSupabaseInsert,
+    migrateLocalPilotData: () => migrateLocalPilotData,
     normalizeSupplier: () => normalizeSupplier,
     normalizeTask: () => normalizeTask,
+    orgMemberRoleLabel: () => orgMemberRoleLabel,
     personalOwner: () => personalOwner,
     priorityLabel: () => priorityLabel,
     readCustomCategories: () => readCustomCategories,
@@ -74,6 +100,7 @@ var BatAyinAdapters = (() => {
     relativeAgeLabel: () => relativeAgeLabel,
     resolveCategory: () => resolveCategory,
     resolveCurrentSort: () => resolveCurrentSort,
+    resolvePilotDataBackend: () => resolvePilotDataBackend,
     safeArrayStorage: () => safeArrayStorage,
     safeObjectStorage: () => safeObjectStorage,
     safeParseStorage: () => safeParseStorage,
@@ -83,6 +110,7 @@ var BatAyinAdapters = (() => {
     saveHiddenPeople: () => saveHiddenPeople,
     savePreferences: () => savePreferences,
     sortOptions: () => sortOptions,
+    sortOrgMembers: () => sortOrgMembers,
     sortTasks: () => sortTasks,
     startOfToday: () => startOfToday,
     supplierProgress: () => supplierProgress,
@@ -218,6 +246,7 @@ var BatAyinAdapters = (() => {
       status: row.status === "done" ? "done" : "progress",
       priority: row.priority === "high" ? "high" : "normal",
       category: ctx.categorySlugById.get(row.category_id || "") || "office",
+      assigneeId: row.assignee_id || void 0,
       owner: ctx.profileNameById.get(row.assignee_id || "") || "\u05DC\u05D0 \u05D9\u05D3\u05D5\u05E2",
       due_date: dueDate,
       dueLabel: row.due_label ?? null,
@@ -341,7 +370,7 @@ var BatAyinAdapters = (() => {
       const authUserId = authData.session.user.id;
       const batAyin = client.schema("bat_ayin");
       const [categoriesResult, membersResult] = await Promise.all([
-        batAyin.from("categories").select("id, slug").eq("organization_id", DEFAULT_ORGANIZATION_ID).eq("is_active", true).is("deleted_at", null),
+        batAyin.from("categories").select("id, slug, name, icon, sort_order").eq("organization_id", DEFAULT_ORGANIZATION_ID).eq("is_active", true).is("deleted_at", null).order("sort_order", { ascending: true }),
         batAyin.from("organization_members").select("user_id, role, is_active").eq("organization_id", DEFAULT_ORGANIZATION_ID).eq("is_active", true)
       ]);
       if (categoriesResult.error) {
@@ -384,13 +413,20 @@ var BatAyinAdapters = (() => {
         profileRows = profilesResult.data || [];
       }
       const profileIdByName = buildProfileIdByName(profileRows);
+      const categoryRows = categoriesResult.data || [];
+      const categoryCatalog = categoryRows.map((row) => ({
+        id: row.slug,
+        label: row.name,
+        icon: row.icon || "office"
+      }));
       return {
         ok: true,
         ctx: {
           organizationId: DEFAULT_ORGANIZATION_ID,
           authUserId,
           authUserRole: currentMember.role === "manager" ? "manager" : "user",
-          categoryIdBySlug: buildCategoryIdBySlug(categoriesResult.data),
+          categoryIdBySlug: buildCategoryIdBySlug(categoryRows),
+          categoryCatalog,
           profileIdByName,
           profileNameById: buildProfileNameById(profileRows),
           allowedAssigneeIds: new Set(userIds),
@@ -604,9 +640,6 @@ var BatAyinAdapters = (() => {
     let categoryId = null;
     if (category && category !== "uncategorized") {
       categoryId = writeCtx.categoryIdBySlug.get(category) ?? null;
-      if (!categoryId) {
-        return { ok: false, code: "category_not_found" };
-      }
     }
     const dueDate = appTask?.dueDate ?? appTask?.due_date ?? null;
     const dueLabel = appTask?.dueLabel ?? null;
@@ -1186,6 +1219,303 @@ var BatAyinAdapters = (() => {
     };
   }
 
+  // src/domain/organization/orgMemberFilters.ts
+  function sortOrgMembers(members) {
+    return [...members].sort((a, b) => a.displayName.localeCompare(b.displayName, "he"));
+  }
+  function findOrgMember(members, userId) {
+    return members.find((member) => member.userId === userId);
+  }
+
+  // src/data/adapters/supabase/loadSupabaseOrgMembersWriteContext.ts
+  async function loadSupabaseOrgMembersWriteContext(client) {
+    try {
+      if (!client) {
+        return { ok: false, reason: "Supabase is not configured.", code: "supabase_not_configured" };
+      }
+      const { data: authData, error: authError } = await client.auth.getSession();
+      if (authError) {
+        return {
+          ok: false,
+          reason: authError.message || "Auth check failed.",
+          code: "auth_check_failed",
+          error: authError
+        };
+      }
+      if (!authData.session) {
+        return { ok: false, reason: NO_SUPABASE_AUTH_SESSION_REASON, code: "auth_session_missing" };
+      }
+      const authUserId = authData.session.user.id;
+      const { data: memberRow, error: memberError } = await client.schema("bat_ayin").from("organization_members").select("role, is_active").eq("organization_id", DEFAULT_ORGANIZATION_ID).eq("user_id", authUserId).maybeSingle();
+      if (memberError) {
+        return {
+          ok: false,
+          reason: memberError.message || String(memberError),
+          code: "membership_load_failed",
+          error: memberError
+        };
+      }
+      if (!memberRow?.is_active) {
+        return {
+          ok: false,
+          reason: "Signed-in user is not an active member of this organization.",
+          code: "not_org_member"
+        };
+      }
+      if (memberRow.role !== "manager") {
+        return {
+          ok: false,
+          reason: "Only managers can administer organization members.",
+          code: "not_org_manager"
+        };
+      }
+      return {
+        ok: true,
+        ctx: {
+          organizationId: DEFAULT_ORGANIZATION_ID,
+          authUserId,
+          authUserRole: "manager"
+        }
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { ok: false, reason: message, code: "unexpected_error", error };
+    }
+  }
+
+  // src/data/adapters/supabase/mapDbOrgMemberRowToApp.ts
+  function mapDbOrgMemberRowToApp(row) {
+    return {
+      userId: row.user_id,
+      displayName: row.display_name || "",
+      email: row.email || "",
+      role: row.role === "manager" ? "manager" : "user",
+      isActive: Boolean(row.is_active),
+      firstLoginAt: row.first_login_at,
+      lastActivityAt: row.last_activity_at,
+      memberSince: row.member_since
+    };
+  }
+  function mapDbOrgMemberRowsToApp(rows) {
+    return (rows || []).map(mapDbOrgMemberRowToApp);
+  }
+
+  // src/data/adapters/supabase/supabaseOrgMembersReadAdapter.ts
+  function createSupabaseOrgMembersReadAdapter(client) {
+    return {
+      async loadOrgMembers() {
+        if (!client) throw new Error("Supabase is not configured.");
+        const contextResult = await loadSupabaseOrgMembersWriteContext(client);
+        if (!contextResult.ok) {
+          throw new Error(contextResult.reason || contextResult.code || "Org members context failed.");
+        }
+        const batAyin = client.schema("bat_ayin");
+        const { data, error } = await batAyin.rpc("list_organization_members", {
+          p_organization_id: contextResult.ctx.organizationId
+        });
+        if (error) throw error;
+        return sortOrgMembers(mapDbOrgMemberRowsToApp(data || []));
+      }
+    };
+  }
+
+  // src/domain/organization/orgMemberPermissions.ts
+  function canAccessOrgAdmin(ctx) {
+    return ctx.role === "manager";
+  }
+  function countActiveManagers(members) {
+    return members.filter((member) => member.role === "manager" && member.isActive).length;
+  }
+  function isLastActiveManager(members, targetUserId) {
+    const target = members.find((member) => member.userId === targetUserId);
+    if (!target || target.role !== "manager" || !target.isActive) return false;
+    return countActiveManagers(members) <= 1;
+  }
+  function lastManagerBlockReason(action) {
+    if (action === "demote") {
+      return "\u05DC\u05D0 \u05E0\u05D9\u05EA\u05DF \u05DC\u05D4\u05D5\u05E8\u05D9\u05D3 \u05DC\u05EA\u05E4\u05E7\u05D9\u05D3 \u05DE\u05E9\u05EA\u05DE\u05E9 \u05D0\u05EA \u05D4\u05DE\u05E0\u05D4\u05DC \u05D4\u05E4\u05E2\u05D9\u05DC \u05D4\u05D0\u05D7\u05E8\u05D5\u05DF \u05D1\u05D0\u05E8\u05D2\u05D5\u05DF.";
+    }
+    return "\u05DC\u05D0 \u05E0\u05D9\u05EA\u05DF \u05DC\u05D4\u05E9\u05D1\u05D9\u05EA \u05D0\u05EA \u05D4\u05DE\u05E0\u05D4\u05DC \u05D4\u05E4\u05E2\u05D9\u05DC \u05D4\u05D0\u05D7\u05E8\u05D5\u05DF \u05D1\u05D0\u05E8\u05D2\u05D5\u05DF.";
+  }
+  function canPromoteMember(ctx, member) {
+    if (!canAccessOrgAdmin(ctx) || !member) return false;
+    return member.isActive && member.role === "user";
+  }
+  function canDemoteMember(ctx, members, member) {
+    if (!canAccessOrgAdmin(ctx) || !member) return false;
+    if (!member.isActive || member.role !== "manager") return false;
+    return !isLastActiveManager(members, member.userId);
+  }
+  function canDeactivateMember(ctx, members, member) {
+    if (!canAccessOrgAdmin(ctx) || !member || !member.isActive) return false;
+    if (member.role === "manager" && isLastActiveManager(members, member.userId)) return false;
+    return true;
+  }
+  function canReactivateMember(ctx, member) {
+    if (!canAccessOrgAdmin(ctx) || !member) return false;
+    return !member.isActive;
+  }
+  function orgMemberRoleLabel(role) {
+    return role === "manager" ? "\u05DE\u05E0\u05D4\u05DC" : "\u05DE\u05E9\u05EA\u05DE\u05E9";
+  }
+
+  // src/data/adapters/supabase/supabaseOrgMembersWriteAdapter.ts
+  function actionError(code, reason) {
+    return { ok: false, code, reason };
+  }
+  function inviteError(code, reason) {
+    return { ok: false, code, reason };
+  }
+  function createSupabaseOrgMembersWriteAdapter(client) {
+    const readAdapter = createSupabaseOrgMembersReadAdapter(client);
+    async function reloadMembers() {
+      return readAdapter.loadOrgMembers();
+    }
+    return {
+      async promoteMember(members, userId, ctx) {
+        if (!client) return actionError("supabase_not_configured", "Supabase is not configured.");
+        const member = findOrgMember(members, userId);
+        if (!canPromoteMember(ctx, member)) {
+          return actionError("forbidden", "\u05D0\u05D9\u05DF \u05D4\u05E8\u05E9\u05D0\u05D4 \u05DC\u05E7\u05D3\u05DD \u05D7\u05D1\u05E8 \u05D6\u05D4.");
+        }
+        const contextResult = await loadSupabaseOrgMembersWriteContext(client);
+        if (!contextResult.ok) {
+          return actionError(contextResult.code || "context_failed", contextResult.reason || "Context failed.");
+        }
+        const batAyin = client.schema("bat_ayin");
+        const { error } = await batAyin.rpc("update_organization_member_role", {
+          p_organization_id: contextResult.ctx.organizationId,
+          p_user_id: userId,
+          p_new_role: "manager"
+        });
+        if (error) {
+          return actionError("rpc_failed", error.message || String(error));
+        }
+        return { ok: true, members: await reloadMembers() };
+      },
+      async demoteMember(members, userId, ctx) {
+        if (!client) return actionError("supabase_not_configured", "Supabase is not configured.");
+        const member = findOrgMember(members, userId);
+        if (!canDemoteMember(ctx, members, member)) {
+          if (member && member.role === "manager") {
+            return actionError("last_manager", lastManagerBlockReason("demote"));
+          }
+          return actionError("forbidden", "\u05D0\u05D9\u05DF \u05D4\u05E8\u05E9\u05D0\u05D4 \u05DC\u05D4\u05D5\u05E8\u05D9\u05D3 \u05EA\u05E4\u05E7\u05D9\u05D3 \u05DC\u05D7\u05D1\u05E8 \u05D6\u05D4.");
+        }
+        const contextResult = await loadSupabaseOrgMembersWriteContext(client);
+        if (!contextResult.ok) {
+          return actionError(contextResult.code || "context_failed", contextResult.reason || "Context failed.");
+        }
+        const batAyin = client.schema("bat_ayin");
+        const { error } = await batAyin.rpc("update_organization_member_role", {
+          p_organization_id: contextResult.ctx.organizationId,
+          p_user_id: userId,
+          p_new_role: "user"
+        });
+        if (error) {
+          const message = error.message || String(error);
+          if (message.includes("last active manager")) {
+            return actionError("last_manager", lastManagerBlockReason("demote"));
+          }
+          return actionError("rpc_failed", message);
+        }
+        return { ok: true, members: await reloadMembers() };
+      },
+      async deactivateMember(members, userId, ctx) {
+        if (!client) return actionError("supabase_not_configured", "Supabase is not configured.");
+        const member = findOrgMember(members, userId);
+        if (!canDeactivateMember(ctx, members, member)) {
+          if (member?.role === "manager") {
+            return actionError("last_manager", lastManagerBlockReason("deactivate"));
+          }
+          return actionError("forbidden", "\u05D0\u05D9\u05DF \u05D4\u05E8\u05E9\u05D0\u05D4 \u05DC\u05D4\u05E9\u05D1\u05D9\u05EA \u05D7\u05D1\u05E8 \u05D6\u05D4.");
+        }
+        const contextResult = await loadSupabaseOrgMembersWriteContext(client);
+        if (!contextResult.ok) {
+          return actionError(contextResult.code || "context_failed", contextResult.reason || "Context failed.");
+        }
+        const batAyin = client.schema("bat_ayin");
+        const { error } = await batAyin.rpc("set_organization_member_active", {
+          p_organization_id: contextResult.ctx.organizationId,
+          p_user_id: userId,
+          p_is_active: false
+        });
+        if (error) {
+          const message = error.message || String(error);
+          if (message.includes("last active manager")) {
+            return actionError("last_manager", lastManagerBlockReason("deactivate"));
+          }
+          return actionError("rpc_failed", message);
+        }
+        return { ok: true, members: await reloadMembers() };
+      },
+      async reactivateMember(members, userId, ctx) {
+        if (!client) return actionError("supabase_not_configured", "Supabase is not configured.");
+        const member = findOrgMember(members, userId);
+        if (!canReactivateMember(ctx, member)) {
+          return actionError("forbidden", "\u05D0\u05D9\u05DF \u05D4\u05E8\u05E9\u05D0\u05D4 \u05DC\u05D4\u05E4\u05E2\u05D9\u05DC \u05D7\u05D1\u05E8 \u05D6\u05D4.");
+        }
+        const contextResult = await loadSupabaseOrgMembersWriteContext(client);
+        if (!contextResult.ok) {
+          return actionError(contextResult.code || "context_failed", contextResult.reason || "Context failed.");
+        }
+        const batAyin = client.schema("bat_ayin");
+        const { error } = await batAyin.rpc("set_organization_member_active", {
+          p_organization_id: contextResult.ctx.organizationId,
+          p_user_id: userId,
+          p_is_active: true
+        });
+        if (error) {
+          return actionError("rpc_failed", error.message || String(error));
+        }
+        return { ok: true, members: await reloadMembers() };
+      },
+      async prepareInvitation(email, role = "user") {
+        if (!client) return inviteError("supabase_not_configured", "Supabase is not configured.");
+        const contextResult = await loadSupabaseOrgMembersWriteContext(client);
+        if (!contextResult.ok) {
+          return inviteError(contextResult.code || "context_failed", contextResult.reason || "Context failed.");
+        }
+        const batAyin = client.schema("bat_ayin");
+        const { data, error } = await batAyin.rpc("prepare_organization_invitation", {
+          p_organization_id: contextResult.ctx.organizationId,
+          p_email: email.trim(),
+          p_role: role
+        });
+        if (error) {
+          return inviteError("rpc_failed", error.message || String(error));
+        }
+        return { ok: true, invitationId: String(data) };
+      }
+    };
+  }
+
+  // src/data/adapters/supabase/supabaseOrgMembersAdapter.ts
+  function createSupabaseOrgMembersAdapter(client) {
+    const readAdapter = createSupabaseOrgMembersReadAdapter(client);
+    const writeAdapter = createSupabaseOrgMembersWriteAdapter(client);
+    return {
+      loadOrgMembers() {
+        return readAdapter.loadOrgMembers();
+      },
+      promoteMember(members, userId, ctx) {
+        return writeAdapter.promoteMember(members, userId, ctx);
+      },
+      demoteMember(members, userId, ctx) {
+        return writeAdapter.demoteMember(members, userId, ctx);
+      },
+      deactivateMember(members, userId, ctx) {
+        return writeAdapter.deactivateMember(members, userId, ctx);
+      },
+      reactivateMember(members, userId, ctx) {
+        return writeAdapter.reactivateMember(members, userId, ctx);
+      },
+      prepareInvitation(email, role) {
+        return writeAdapter.prepareInvitation(email, role);
+      }
+    };
+  }
+
   // src/data/shared/browserStorage.ts
   function safeParseStorage(key, fallback) {
     try {
@@ -1205,7 +1535,15 @@ var BatAyinAdapters = (() => {
     return value && typeof value === "object" && !Array.isArray(value) ? value : fallback;
   }
   function writeStorageJson(key, value) {
-    localStorage.setItem(key, JSON.stringify(value));
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+      const name = error instanceof DOMException ? error.name : "";
+      if (name === "QuotaExceededError") {
+        throw new Error("STORAGE_QUOTA_EXCEEDED");
+      }
+      throw error;
+    }
   }
 
   // src/data/adapters/local/starterTasks.ts
@@ -1402,6 +1740,98 @@ var BatAyinAdapters = (() => {
     };
   }
 
+  // src/data/catalog/basePeople.ts
+  var BASE_PEOPLE = ["\u05E2\u05D3\u05D9\u05E0\u05D4", "\u05D0\u05D1\u05D9", "\u05D7\u05D9\u05D4", "\u05E6\u05D1\u05D9"];
+  var HIDDEN_PEOPLE_KEY = "beit-hidden-people";
+  var CUSTOM_PEOPLE_KEY = "beit-people";
+
+  // src/data/adapters/local/localOrgMembersAdapter.ts
+  function starterMembers() {
+    const roles = {
+      \u05E6\u05D1\u05D9: "manager",
+      \u05E2\u05D3\u05D9\u05E0\u05D4: "user",
+      \u05D0\u05D1\u05D9: "user",
+      \u05D7\u05D9\u05D4: "user"
+    };
+    return BASE_PEOPLE.map((name, index) => ({
+      userId: `local-member-${index + 1}`,
+      displayName: name,
+      email: `${name}@example.com`,
+      role: roles[name] || "user",
+      isActive: true,
+      firstLoginAt: "2024-01-01T00:00:00.000Z",
+      lastActivityAt: "2024-06-01T00:00:00.000Z",
+      memberSince: "2024-01-01T00:00:00.000Z"
+    }));
+  }
+  function actionError2(code, reason) {
+    return { ok: false, code, reason };
+  }
+  function createLocalOrgMembersAdapter() {
+    return {
+      loadOrgMembers() {
+        return sortOrgMembers(starterMembers());
+      },
+      promoteMember(members, userId, ctx) {
+        const member = findOrgMember(members, userId);
+        if (!canPromoteMember(ctx, member)) {
+          return actionError2("forbidden", "\u05D0\u05D9\u05DF \u05D4\u05E8\u05E9\u05D0\u05D4 \u05DC\u05E7\u05D3\u05DD.");
+        }
+        return {
+          ok: true,
+          members: members.map(
+            (row) => row.userId === userId ? { ...row, role: "manager" } : row
+          )
+        };
+      },
+      demoteMember(members, userId, ctx) {
+        const member = findOrgMember(members, userId);
+        if (!canDemoteMember(ctx, members, member)) {
+          if (member?.role === "manager") {
+            return actionError2("last_manager", lastManagerBlockReason("demote"));
+          }
+          return actionError2("forbidden", "\u05D0\u05D9\u05DF \u05D4\u05E8\u05E9\u05D0\u05D4 \u05DC\u05D4\u05D5\u05E8\u05D9\u05D3 \u05EA\u05E4\u05E7\u05D9\u05D3.");
+        }
+        return {
+          ok: true,
+          members: members.map(
+            (row) => row.userId === userId ? { ...row, role: "user" } : row
+          )
+        };
+      },
+      deactivateMember(members, userId, ctx) {
+        const member = findOrgMember(members, userId);
+        if (!canDeactivateMember(ctx, members, member)) {
+          if (member?.role === "manager") {
+            return actionError2("last_manager", lastManagerBlockReason("deactivate"));
+          }
+          return actionError2("forbidden", "\u05D0\u05D9\u05DF \u05D4\u05E8\u05E9\u05D0\u05D4 \u05DC\u05D4\u05E9\u05D1\u05D9\u05EA.");
+        }
+        return {
+          ok: true,
+          members: members.map(
+            (row) => row.userId === userId ? { ...row, isActive: false } : row
+          )
+        };
+      },
+      reactivateMember(members, userId, ctx) {
+        const member = findOrgMember(members, userId);
+        if (!canReactivateMember(ctx, member)) {
+          return actionError2("forbidden", "\u05D0\u05D9\u05DF \u05D4\u05E8\u05E9\u05D0\u05D4 \u05DC\u05D4\u05E4\u05E2\u05D9\u05DC.");
+        }
+        return {
+          ok: true,
+          members: members.map(
+            (row) => row.userId === userId ? { ...row, isActive: true } : row
+          )
+        };
+      },
+      prepareInvitation(email) {
+        return { ok: true, invitationId: `local-invite-${email.trim().toLowerCase()}` };
+      }
+    };
+  }
+
   // src/data/shared/createAsyncRepository.ts
   function createAsyncRepository(adapter, methods) {
     const repository = {};
@@ -1443,11 +1873,6 @@ var BatAyinAdapters = (() => {
   function saveCustomCategories(categories) {
     writeStorageJson(CUSTOM_CATEGORIES_KEY, categories);
   }
-
-  // src/data/catalog/basePeople.ts
-  var BASE_PEOPLE = ["\u05E2\u05D3\u05D9\u05E0\u05D4", "\u05D0\u05D1\u05D9", "\u05D7\u05D9\u05D4", "\u05E6\u05D1\u05D9"];
-  var HIDDEN_PEOPLE_KEY = "beit-hidden-people";
-  var CUSTOM_PEOPLE_KEY = "beit-people";
 
   // src/data/catalog/peopleService.ts
   function loadPeople() {
@@ -1496,7 +1921,7 @@ var BatAyinAdapters = (() => {
   var DEMO_USER_OWNER = "\u05E2\u05D3\u05D9\u05E0\u05D4";
   var DEMO_MANAGER_OWNER = "\u05E6\u05D1\u05D9";
   function personalOwner(ctx) {
-    return ctx.role === "manager" ? DEMO_MANAGER_OWNER : ctx.userOwner ?? DEMO_USER_OWNER;
+    return ctx.userOwner;
   }
 
   // src/domain/shared/ageLabels.ts
@@ -1566,11 +1991,28 @@ var BatAyinAdapters = (() => {
   }
 
   // src/domain/tasks/taskFilters.ts
+  function isPersonalTask(task, ctx) {
+    if (ctx.userId && task.assigneeId) {
+      return task.assigneeId === ctx.userId;
+    }
+    return task.owner === personalOwner(ctx);
+  }
   function filterPersonalTasks(tasks, ctx) {
-    return tasks.filter((t) => t.owner === personalOwner(ctx));
+    return tasks.filter((t) => isPersonalTask(t, ctx));
   }
   function filterManagementPeople(people, ctx) {
     return people.filter((person) => person !== personalOwner(ctx));
+  }
+  function buildManagementTaskAssignees(people, ctx) {
+    const owner = personalOwner(ctx);
+    const rows = [];
+    if (owner) {
+      rows.push({ label: "\u05D0\u05E0\u05D9", person: owner });
+    }
+    for (const person of filterManagementPeople(people, ctx)) {
+      rows.push({ label: person, person });
+    }
+    return rows;
   }
   function isArchivedDone(task) {
     return task.status === "done" && daysBetween(task.completed_at || task.created_at) >= 90;
@@ -1587,7 +2029,8 @@ var BatAyinAdapters = (() => {
   // src/domain/tasks/taskPermissions.ts
   function canAccessTask(ctx, task) {
     if (!task || task.deleted_at) return false;
-    return ctx.role === "manager" || task.owner === DEMO_USER_OWNER;
+    if (ctx.role === "manager") return true;
+    return isPersonalTask(task, ctx);
   }
   function canEditTaskContent(ctx, task) {
     if (!task || !canAccessTask(ctx, task)) return false;
@@ -1624,20 +2067,92 @@ var BatAyinAdapters = (() => {
     return "";
   }
   function sortTasks(tasks, sortMode, categories) {
+    const priorityDiff = (a, b) => (a.priority === "high" ? 0 : 1) - (b.priority === "high" ? 0 : 1);
+    const dueDiff = (a, b) => taskDueRank(a) - taskDueRank(b) || buildTaskDueLabel(a).localeCompare(buildTaskDueLabel(b), "he") || (a.title ?? "").localeCompare(b.title ?? "", "he");
     return [...tasks].sort((a, b) => {
-      const priorityDiff = (a.priority === "high" ? 0 : 1) - (b.priority === "high" ? 0 : 1);
-      if (priorityDiff) return priorityDiff;
+      if (sortMode === "owner") {
+        return (a.owner ?? "").localeCompare(b.owner ?? "", "he") || priorityDiff(a, b) || dueDiff(a, b);
+      }
+      const byPriority = priorityDiff(a, b);
+      if (byPriority) return byPriority;
       if (sortMode === "category") {
         return resolveCategory(categories, a.category).label.localeCompare(
           resolveCategory(categories, b.category).label,
           "he"
-        ) || taskDueRank(a) - taskDueRank(b) || buildTaskDueLabel(a).localeCompare(buildTaskDueLabel(b), "he") || (a.title ?? "").localeCompare(b.title ?? "", "he");
+        ) || dueDiff(a, b);
       }
-      if (sortMode === "owner") {
-        return (a.owner ?? "").localeCompare(b.owner ?? "", "he") || taskDueRank(a) - taskDueRank(b) || buildTaskDueLabel(a).localeCompare(buildTaskDueLabel(b), "he") || (a.title ?? "").localeCompare(b.title ?? "", "he");
-      }
-      return taskDueRank(a) - taskDueRank(b) || buildTaskDueLabel(a).localeCompare(buildTaskDueLabel(b), "he") || (a.title ?? "").localeCompare(b.title ?? "", "he");
+      return dueDiff(a, b);
     });
+  }
+
+  // src/domain/tasks/managementTaskGroups.ts
+  function taskCreatedAtMs(task) {
+    const raw = task.created_at;
+    if (!raw) return 0;
+    const ms = Date.parse(raw);
+    return Number.isFinite(ms) ? ms : 0;
+  }
+  function sortTasksChronologicalNewestFirst(tasks) {
+    return [...tasks].sort(
+      (a, b) => taskCreatedAtMs(b) - taskCreatedAtMs(a) || String(b.id ?? "").localeCompare(String(a.id ?? "")) || (a.title ?? "").localeCompare(b.title ?? "", "he")
+    );
+  }
+  function buildManagementPriorityChronologicalGroups(tasks) {
+    const groups = [];
+    const highTasks = sortTasksChronologicalNewestFirst(
+      tasks.filter((task) => task.priority === "high")
+    );
+    const normalTasks = sortTasksChronologicalNewestFirst(
+      tasks.filter((task) => task.priority !== "high")
+    );
+    if (highTasks.length) {
+      groups.push({ priority: "high", title: "\u05E2\u05D3\u05D9\u05E4\u05D5\u05EA \u05D2\u05D1\u05D5\u05D4\u05D4", tasks: highTasks });
+    }
+    if (normalTasks.length) {
+      groups.push({ priority: "normal", title: "\u05E2\u05D3\u05D9\u05E4\u05D5\u05EA \u05E0\u05DE\u05D5\u05DB\u05D4", tasks: normalTasks });
+    }
+    return groups;
+  }
+  function sortTasksByDueDate(tasks) {
+    return [...tasks].sort(
+      (a, b) => taskDueRank(a) - taskDueRank(b) || buildTaskDueLabel(a).localeCompare(buildTaskDueLabel(b), "he") || (a.title ?? "").localeCompare(b.title ?? "", "he")
+    );
+  }
+  function buildManagementAssigneePriorityGroups(tasks, assigneeOrder = []) {
+    const byAssignee = /* @__PURE__ */ new Map();
+    for (const task of tasks) {
+      const assignee = task.owner?.trim() || "\u05DC\u05DC\u05D0 \u05E9\u05D9\u05D5\u05DA";
+      const bucket = byAssignee.get(assignee);
+      if (bucket) bucket.push(task);
+      else byAssignee.set(assignee, [task]);
+    }
+    const orderedAssignees = [
+      ...assigneeOrder.filter((name) => byAssignee.has(name)),
+      ...[...byAssignee.keys()].filter((name) => !assigneeOrder.includes(name)).sort((a, b) => a.localeCompare(b, "he"))
+    ];
+    return orderedAssignees.map((assignee) => {
+      const assigneeTasks = byAssignee.get(assignee) || [];
+      const highTasks = sortTasksByDueDate(assigneeTasks.filter((task) => task.priority === "high"));
+      const normalTasks = sortTasksByDueDate(
+        assigneeTasks.filter((task) => task.priority !== "high")
+      );
+      const priorityGroups = [];
+      if (highTasks.length) {
+        priorityGroups.push({
+          priority: "high",
+          title: `\u05E2\u05D3\u05D9\u05E4\u05D5\u05EA ${priorityLabel("high")}`,
+          tasks: highTasks
+        });
+      }
+      if (normalTasks.length) {
+        priorityGroups.push({
+          priority: "normal",
+          title: `\u05E2\u05D3\u05D9\u05E4\u05D5\u05EA ${priorityLabel("normal")}`,
+          tasks: normalTasks
+        });
+      }
+      return { assignee, title: assignee, priorityGroups };
+    }).filter((group) => group.priorityGroups.length > 0);
   }
 
   // src/domain/suppliers/supplierPermissions.ts
@@ -1669,6 +2184,184 @@ var BatAyinAdapters = (() => {
   function findVisibleSupplier(suppliers, id, ctx) {
     const item = findSupplier(suppliers, id);
     return canAccessSupplier(ctx, item) ? item ?? null : null;
+  }
+
+  // src/pilot/pilotConfig.ts
+  var PILOT_SUPABASE_URL = "https://jxjxjvxbxpgvlarzbohm.supabase.co";
+  var PILOT_APP_URL = "https://bat-ayin-tasks.vercel.app";
+  function getPilotOAuthRedirectUrl() {
+    return `${PILOT_APP_URL}/index.html`;
+  }
+  var PILOT_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4anhqdnhieHBndmxhcnpib2htIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5NTgyNjUsImV4cCI6MjA5NTUzNDI2NX0.g1W8SJWTRc3FYeZJIVdLBTKcSfHVgfQQZ_brjRKest4";
+  var PILOT_MIGRATION_STORAGE_KEY = "beit-pilot-migrated";
+  function resolvePilotDataBackend(searchParams) {
+    if (searchParams.get("debugBackend") === "local") return "local";
+    return "supabase";
+  }
+  function isPilotDebugEnabled(searchParams) {
+    const backend = searchParams.get("debugBackend");
+    return searchParams.get("debug") === "1" || backend === "local" || backend === "supabase";
+  }
+  function isSupabasePlaceholder(value) {
+    if (!value || typeof value !== "string") return true;
+    return value.includes("your-project") || value.includes("your-supabase-anon-key");
+  }
+
+  // src/pilot/ensurePilotProfile.ts
+  async function ensurePilotProfile(client, user) {
+    const existing = await client.from("profiles").select("id, display_name, email").eq("id", user.id).maybeSingle();
+    if (existing.error) {
+      return { ok: false, code: "profile_load_failed", reason: existing.error.message };
+    }
+    if (existing.data) {
+      return { ok: true, profile: existing.data };
+    }
+    const email = user.email?.trim() || "";
+    if (!email) {
+      return { ok: false, code: "email_missing", reason: "Google account has no email." };
+    }
+    const meta = user.user_metadata || {};
+    const displayName = String(meta.full_name || meta.name || email.split("@")[0] || "\u05DE\u05E9\u05EA\u05DE\u05E9").trim() || "\u05DE\u05E9\u05EA\u05DE\u05E9";
+    const inserted = await client.from("profiles").insert({ id: user.id, email, display_name: displayName }).select("id, display_name, email").single();
+    if (inserted.error) {
+      return { ok: false, code: "profile_create_failed", reason: inserted.error.message };
+    }
+    return { ok: true, profile: inserted.data };
+  }
+
+  // src/pilot/loadPilotAuthContext.ts
+  async function loadPilotAuthContext(client) {
+    const empty = {
+      status: "signed_out",
+      role: "user",
+      userId: "",
+      email: "",
+      displayName: "",
+      orgPeople: [],
+      orgCategories: []
+    };
+    if (!client) {
+      return { ...empty, status: "error", code: "supabase_not_configured", reason: "Supabase is not configured." };
+    }
+    try {
+      const { data: authData, error: authError } = await client.auth.getSession();
+      if (authError) {
+        return { ...empty, status: "error", code: "auth_check_failed", reason: authError.message };
+      }
+      if (!authData.session?.user) {
+        return empty;
+      }
+      const user = authData.session.user;
+      const profileResult = await ensurePilotProfile(client, user);
+      if (!profileResult.ok) {
+        const status = profileResult.code === "profile_create_failed" ? "missing_profile" : "error";
+        return {
+          ...empty,
+          status,
+          userId: user.id,
+          email: user.email || "",
+          code: profileResult.code,
+          reason: profileResult.reason
+        };
+      }
+      const ctxResult = await loadSupabaseTasksWriteContext(client);
+      if (!ctxResult.ok) {
+        const status = ctxResult.code === "not_org_member" ? "not_org_member" : "error";
+        return {
+          ...empty,
+          status,
+          userId: user.id,
+          email: user.email || "",
+          displayName: profileResult.profile.display_name,
+          code: ctxResult.code,
+          reason: ctxResult.reason
+        };
+      }
+      const orgPeople = [...ctxResult.ctx.profileIdByName.keys()].sort((a, b) => a.localeCompare(b, "he"));
+      const orgCategories = ctxResult.ctx.categoryCatalog.map((row) => ({
+        id: row.id,
+        label: row.label,
+        icon: row.icon
+      }));
+      const displayName = ctxResult.ctx.profileNameById.get(user.id) || profileResult.profile.display_name || "";
+      return {
+        status: "ready",
+        role: ctxResult.ctx.authUserRole,
+        userId: user.id,
+        email: user.email || profileResult.profile.email,
+        displayName,
+        orgPeople,
+        orgCategories
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { ...empty, status: "error", code: "unexpected_error", reason: message };
+    }
+  }
+
+  // src/pilot/migrateLocalPilotData.ts
+  function readLocalTasks() {
+    const tasks = safeParseStorage("beit-tasks", []);
+    return Array.isArray(tasks) ? tasks.filter((t) => t && !t.deleted_at) : [];
+  }
+  function readLocalSuppliers() {
+    const suppliers = safeParseStorage("beit-suppliers", []);
+    return Array.isArray(suppliers) ? suppliers.filter((s) => s && !s.deleted_at) : [];
+  }
+  function migrationDone() {
+    try {
+      return localStorage.getItem(PILOT_MIGRATION_STORAGE_KEY) === "done";
+    } catch {
+      return false;
+    }
+  }
+  function markMigrationDone() {
+    try {
+      localStorage.setItem(PILOT_MIGRATION_STORAGE_KEY, "done");
+    } catch {
+    }
+  }
+  async function migrateLocalPilotData(options) {
+    if (!options.isManager) {
+      return { ok: true, skipped: true, migratedTasks: 0, migratedSuppliers: 0, reason: "not_manager" };
+    }
+    if (migrationDone()) {
+      return { ok: true, skipped: true, migratedTasks: 0, migratedSuppliers: 0, reason: "already_migrated" };
+    }
+    const localTasks = readLocalTasks();
+    const localSuppliers = readLocalSuppliers();
+    if (!localTasks.length && !localSuppliers.length) {
+      markMigrationDone();
+      return { ok: true, skipped: true, migratedTasks: 0, migratedSuppliers: 0, reason: "no_local_data" };
+    }
+    let migratedTasks = 0;
+    let migratedSuppliers = 0;
+    try {
+      let remoteTasks = await options.tasksRepository.loadTasks();
+      if (!remoteTasks.length && localTasks.length) {
+        for (const task of localTasks) {
+          const { id: _dropId, ...taskBody } = task;
+          remoteTasks = await options.tasksRepository.createTask(remoteTasks, taskBody);
+          migratedTasks += 1;
+        }
+      }
+      let remoteSuppliers = await options.suppliersRepository.loadSuppliers();
+      if (!remoteSuppliers.length && localSuppliers.length) {
+        for (const supplier of localSuppliers) {
+          const { id: _dropId, ...supplierBody } = supplier;
+          remoteSuppliers = await options.suppliersRepository.createSupplierOrder(
+            remoteSuppliers,
+            supplierBody
+          );
+          migratedSuppliers += 1;
+        }
+      }
+      markMigrationDone();
+      return { ok: true, skipped: false, migratedTasks, migratedSuppliers };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { ok: false, skipped: false, migratedTasks, migratedSuppliers, reason: message };
+    }
   }
   return __toCommonJS(adaptersBundle_exports);
 })();

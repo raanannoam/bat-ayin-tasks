@@ -3,14 +3,43 @@ import { daysBetween } from "../../data/shared/dateUtils.js";
 import { personalOwner, type AccessContext } from "../shared/appRoles.js";
 import { filterActiveTasks } from "./taskActive.js";
 
+/** האם משימה שייכת למשתמש המחובר — uid ב-Supabase, שם ב-local */
+export function isPersonalTask(task: AppTask, ctx: AccessContext): boolean {
+  if (ctx.userId && task.assigneeId) {
+    return task.assigneeId === ctx.userId;
+  }
+  return task.owner === personalOwner(ctx);
+}
+
 /** משימות של המשתמש האישי לפי תפקיד */
 export function filterPersonalTasks(tasks: AppTask[], ctx: AccessContext): AppTask[] {
-  return tasks.filter((t) => t.owner === personalOwner(ctx));
+  return tasks.filter((t) => isPersonalTask(t, ctx));
 }
 
 /** מבצעים לניהול — ללא המבצע האישי */
 export function filterManagementPeople(people: string[], ctx: AccessContext): string[] {
   return people.filter((person) => person !== personalOwner(ctx));
+}
+
+export type ManagementAssigneeRow = {
+  label: string;
+  person: string;
+};
+
+/** שורות מבצעים במסך ניהול משימות — "אני" ואז שאר הארגון */
+export function buildManagementTaskAssignees(
+  people: string[],
+  ctx: AccessContext
+): ManagementAssigneeRow[] {
+  const owner = personalOwner(ctx);
+  const rows: ManagementAssigneeRow[] = [];
+  if (owner) {
+    rows.push({ label: "אני", person: owner });
+  }
+  for (const person of filterManagementPeople(people, ctx)) {
+    rows.push({ label: person, person });
+  }
+  return rows;
 }
 
 /** משימה הושלמה לפני 90+ יום — ארכיון */

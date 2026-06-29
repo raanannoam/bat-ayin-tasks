@@ -1,9 +1,17 @@
+/** קטגוריה לתצוגה באפליקציה — מקור: bat_ayin.categories */
+export type SupabaseOrgCategory = {
+  id: string;
+  label: string;
+  icon: string;
+};
+
 /** הקשר כתיבה ל-Supabase — נטען לפני INSERT */
 export type SupabaseTasksWriteContext = {
   organizationId: string;
   authUserId: string;
   authUserRole: "manager" | "user";
   categoryIdBySlug: Map<string, string>;
+  categoryCatalog: SupabaseOrgCategory[];
   profileIdByName: Map<string, string>;
   profileNameById: Map<string, string>;
   allowedAssigneeIds: Set<string>;

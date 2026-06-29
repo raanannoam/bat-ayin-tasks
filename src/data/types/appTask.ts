@@ -3,6 +3,8 @@ export type AppTask = {
   id?: string;
   title?: string;
   owner?: string;
+  /** assignee_id מ-Supabase — לזיהוי משימות אישיות לפי auth uid */
+  assigneeId?: string;
   category?: string;
   notes?: string;
   status?: "progress" | "done";
