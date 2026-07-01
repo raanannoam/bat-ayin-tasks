@@ -73,14 +73,13 @@
 .bottom-nav {
   position: fixed;
   bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(100%, 430px);
+  inset-inline: 0;
+  width: 100%;
   display: flex;
-  justify-content: space-around;
+  justify-content: stretch;
   align-items: stretch;
   min-height: var(--nav-height);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-2) 0;
   padding-bottom: calc(var(--space-2) + env(safe-area-inset-bottom, 0px));
   background: color-mix(in srgb, var(--surface-raised) 92%, transparent);
   backdrop-filter: blur(16px);
