@@ -78,7 +78,7 @@ TaskScreens.detail = (id) => {
         ${canEdit ? `<button class="btn btn--primary btn--block" type="button" data-route="task/${id}/edit">${icon("edit")} עריכה</button>` : ""}
         ${!done ? `<button class="btn btn--ghost btn--block" type="button" data-action="complete" data-id="${id}">${icon("done")} סמן כהושלם</button>` : ""}
         ${done && Store.isManager() ? `<button class="btn btn--ghost btn--block" type="button" data-action="reopen" data-id="${id}">פתח מחדש</button>` : ""}
-        ${Store.isManager() ? `<button class="btn btn--danger btn--block" type="button" data-action="delete-task" data-id="${id}">${icon("trash")} מחק</button>` : ""}
+        ${Store.isManager() ? `<button class="btn btn--danger btn--block" type="button" data-action="delete-task" data-id="${id}">${icon("trash")} מחק משימה</button>` : ""}
       </div>
     </div>`;
 };

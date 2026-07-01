@@ -1957,6 +1957,12 @@
       box-shadow: none;
     }
 
+    button.danger.danger--block {
+      width: 100%;
+      min-height: 48px;
+      padding: .75rem 1rem;
+    }
+
     button.danger.final {
       background: var(--danger);
       color: #fff;
@@ -3804,7 +3810,7 @@
         ? `<p class="muted">עדיפות</p><div class="segmented">${priorityButtons.map(([key, label]) => `<button data-priority="${t.id}:${key}" class="${t.priority === key ? "active" : ""}">${label}</button>`).join("")}</div>`
         : `<p class="muted">עדיפות ${priorityLabel(t.priority)}</p>`;
       const deleteBlock = canDeleteTask(t)
-        ? `<section class="detail-panel danger-zone"><div class="detail-row"><h2>מחיקה</h2><div class="detail-row-main"><p class="muted">מחיקה רכה: המשימה תוסתר מהרשימות ולא תימחק לצמיתות.</p><button class="danger" id="deleteTask" type="button">מחק משימה</button></div></div></section>`
+        ? `<section class="detail-panel danger-zone"><button class="danger danger--block" id="deleteTask" type="button">מחק משימה</button></section>`
         : "";
       return `
         <section class="detail-head">
@@ -4720,7 +4726,7 @@
           toast("רק מנהל יכול למחוק משימה");
           return;
         }
-        if (!confirm("למחוק את המשימה? המחיקה רכה ותסתיר אותה מהרשימות.")) return;
+        if (!confirm("למחוק את המשימה?")) return;
         if (await deleteTaskSoft(id)) {
           toast("המשימה נמחקה");
           navigate(backRouteFor(state.view));
