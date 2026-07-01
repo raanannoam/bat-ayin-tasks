@@ -4230,13 +4230,10 @@
       return `<span class="supplier-check-text"><strong>${step.label}</strong><span class="supplier-check-date"> · ${dateLabel}</span></span>`;
     }
     function supplierStepsPanel(item) {
-      const progress = supplierProgress(item);
       return `
         <section class="detail-panel">
           <div class="detail-row detail-row--steps">
-            <h2>שלבי מעקב</h2>
             <div class="detail-row-main">
-              <p class="muted">${progress.done} מתוך ${progress.total} שלבים הושלמו</p>
               <div class="supplier-checklist supplier-checklist--stack">
                 ${supplierSteps.map(step => {
         const date = item.step_dates[step.id];
