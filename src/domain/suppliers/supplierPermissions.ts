@@ -6,6 +6,6 @@ export function canAccessSupplier(
   ctx: AccessContext,
   item: AppSupplier | null | undefined
 ): boolean {
-  if (!item) return false;
+  if (!item || item.deleted_at) return false;
   return ctx.role === "manager" || item.allAssignees || item.assignees.includes(personalOwner(ctx));
 }

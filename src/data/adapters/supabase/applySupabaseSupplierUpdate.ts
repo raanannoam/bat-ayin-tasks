@@ -56,18 +56,9 @@ export async function applySupabaseSupplierSoftDelete(
   if (!contextResult.ok) {
     throw new Error(contextResult.reason || contextResult.code || "Write context load failed.");
   }
-  const deletedById = contextResult.ctx.profileIdByName.get(String(deletedBy).trim());
-  if (!deletedById) {
-    throw new Error("Deleted-by name does not exist in Supabase member map.");
-  }
   const { error } = await client
     .schema("bat_ayin")
     .rpc("soft_delete_supplier_order", { p_order_id: id });
   if (error) throw error;
-  const updated = {
-    ...existing,
-    deleted_at: isoDateFromOffset(0),
-    deleted_by: deletedBy
-  };
-  return suppliers.map((item) => (item.id === id ? updated : item));
+  return suppliers.filter((item) => item.id !== id);
 }

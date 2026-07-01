@@ -10,5 +10,5 @@ export const SUPPLIER_STEPS: SupplierStepMeta[] = [
   { id: "order", label: "הזמנה" },
   { id: "received", label: "קבלה" },
   { id: "payment", label: "תשלום" },
-  { id: "invoice", label: "קבלת חשבונית" }
+  { id: "invoice", label: "חשבונית" }
 ];
