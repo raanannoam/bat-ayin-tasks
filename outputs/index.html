@@ -3146,7 +3146,7 @@
       return filterVisibleDoneTasks(tasks, includeArchive);
     }
     function canAccessTask(task) { return canAccessTaskDomain(accessCtx(), task); }
-    function canEditTaskContent(task) { return canEditTaskContentDomain(accessCtx(), task); }
+    function canEditTaskContent(task) { return canAccessTask(task); }
     function canDeleteTask(task) { return canDeleteTaskDomain(accessCtx(), task); }
     function getTask(id) { return findTask(state.tasks, id); }
     function getVisibleTask(id) { return findVisibleTask(state.tasks, id, accessCtx()); }
@@ -3416,13 +3416,6 @@
         toast("אין הרשאה למשימה זו");
         return false;
       }
-      if (task.status === "done" && !patch.deleted_at) {
-        const restoring = state.role === "manager" && patch.status === "progress";
-        if (!restoring) {
-          toast("משימה שהושלמה נעולה לעריכה");
-          return false;
-        }
-      }
       try {
         state.tasks = await tasksRepository.updateTask(state.tasks, id, patch);
         render();
@@ -3570,7 +3563,7 @@
       if (view === "create") return createScreen();
       if (view === "suppliers") return suppliersScreen();
       if (view === "supplier-create") return supplierFormScreen();
-      if (view.startsWith("task:")) return detailScreen(view.split(":")[1]);
+      if (view.startsWith("task:")) return taskDetailScreen(view.split(":")[1]);
       if (view.startsWith("supplier:")) return supplierDetailScreen(view.split(":")[1]);
       if (view.startsWith("person:")) {
         const person = decodeURIComponent(view.split(":")[1]);
@@ -3786,96 +3779,88 @@
           <div class="linked-text">${renderLinkedText(update.text)}</div>
         </div>`;
     }
-    function detailScreen(id) {
-      const t = getVisibleTask(id);
-      if (!t) return missingTaskScreen();
-      const c = cat(t.category);
-      const overdue = isOverdue(t);
-      const canEdit = canEditTaskContent(t);
-      const canRestore = state.role === "manager" && t.status === "done";
-      const titleBlock = state.editingTitle
-        ? `<div class="detail-edit-panel"><input id="titleInput" value="${escapeHtml(t.title)}"><div class="detail-actions"><button class="primary" id="saveTitle">שמור</button><button id="cancelTitle">ביטול</button></div></div>`
-        : `<div class="detail-title-row"><h1>${t.title}</h1>${canEdit ? `<button class="icon" id="editTitle" aria-label="עריכת שם">${lineIcon("edit")}</button>` : ""}</div>`;
-      const notesBlock = state.editingNotes
-        ? `<div class="detail-edit-panel"><textarea id="notesInput">${escapeHtml(t.notes)}</textarea><div class="detail-actions"><button class="primary" id="saveNotes">שמור</button><button id="cancelNotes">ביטול</button></div></div>`
-        : `<p class="linked-text">${t.notes ? renderLinkedText(t.notes) : "אין הערות."}</p>${canEdit ? `<div class="detail-actions"><button class="soft" id="editNotes">ערוך</button></div>` : ""}`;
-      const categoryOptions = categories.map(item => `<option value="${item.id}" ${item.id === t.category ? "selected" : ""}>${escapeHtml(item.label)}</option>`).join("");
-      const categoryBlock = canEdit
-        ? `<div class="detail-actions"><select id="taskCategorySelect">${categoryOptions}</select><button class="primary" id="saveTaskCategory">שמור קטגוריה</button></div>`
-        : `<p>${lineIcon(c.icon)} ${c.label}</p>`;
-      const statusBlock = canEdit || canRestore
-        ? `<div class="segmented">${statusButtons.map(([key, label]) => `<button data-status="${t.id}:${key}" class="${t.status === key ? "active" : ""}" ${t.status === "done" && key === "done" ? "disabled" : ""}>${label}</button>`).join("")}</div>`
-        : `<p>${statusMeta[t.status].label}</p>`;
-      const priorityBlock = canEdit
-        ? `<p class="muted">עדיפות</p><div class="segmented">${priorityButtons.map(([key, label]) => `<button data-priority="${t.id}:${key}" class="${t.priority === key ? "active" : ""}">${label}</button>`).join("")}</div>`
-        : `<p class="muted">עדיפות ${priorityLabel(t.priority)}</p>`;
-      const deleteBlock = canDeleteTask(t)
-        ? `<section class="detail-panel danger-zone"><button class="danger danger--block" id="deleteTask" type="button">מחק משימה</button></section>`
+    function taskFormActionsMarkup(task) {
+      const deleteBtn = canDeleteTask(task)
+        ? `<button class="danger" type="button" id="deleteTaskOrder">מחק משימה</button>`
         : "";
       return `
-        <section class="detail-head">
-          <div class="screen-title">פרטי משימה</div>
+        <div class="supplier-form-actions">
+          <button class="primary" type="submit">שמור שינויים</button>
+          ${deleteBtn}
+        </div>`;
+    }
+    function taskFormCategoryMarkup(task) {
+      const selectedId = task?.category || "uncategorized";
+      const items = categories.map((c) =>
+        `<label class="chip"><input name="category" type="radio" value="${c.id}" ${c.id === selectedId ? "checked" : ""}> ${lineIcon(c.icon)} ${c.label}</label>`
+      ).join("");
+      return `<div class="chips">${items}</div>`;
+    }
+    function taskFormPeopleMarkup(task) {
+      const owner = task?.owner || personalOwner();
+      const items = people.map((person) =>
+        `<label class="chip"><input name="owner" type="radio" value="${person}" ${person === owner ? "checked" : ""}> ${lineIcon("user")} ${person}</label>`
+      ).join("");
+      return `<div class="chips">${items}</div>`;
+    }
+    function resolveTaskFormDueChoice(task) {
+      if (task.status === "done" || task.due === "done") return "none";
+      if (task.due === "today" || task.due === "tomorrow" || task.due === "none" || task.due === "date") return task.due;
+      if (task.due_date) return "date";
+      return "today";
+    }
+    function taskFormDueMarkup(task) {
+      const choice = resolveTaskFormDueChoice(task);
+      const dateVal = choice === "date" ? (task.due_date || "") : "";
+      const dateBtnLabel = choice === "date" && dateVal ? formatHebrewDate(dateVal) : "בחר תאריך";
+      return `
+        <div class="segmented">
+          <button type="button" data-due-choice="today" class="${choice === "today" ? "active" : ""}">היום</button>
+          <button type="button" data-due-choice="tomorrow" class="${choice === "tomorrow" ? "active" : ""}">מחר</button>
+          <button type="button" data-due-choice="date" class="${choice === "date" ? "active" : ""}">${dateBtnLabel}</button>
+          <button type="button" data-due-choice="none" class="${choice === "none" ? "active" : ""}">ללא יעד</button>
+        </div>
+        <input id="newDate" class="task-date-native" type="date" value="${escapeHtml(dateVal)}">`;
+    }
+    function taskFormStatusMarkup(task) {
+      return `
+        <div class="segmented">
+          <button type="button" data-task-form-status="progress" class="${task.status !== "done" ? "active" : ""}">בתהליך</button>
+          <button type="button" data-task-form-status="done" class="${task.status === "done" ? "active" : ""}">הושלם</button>
+        </div>`;
+    }
+    function taskFormScreen(item) {
+      const canEdit = canAccessTask(item);
+      const updatesBlock = `
+        <div class="form-group">
+          <h2>עדכונים</h2>
+          <div class="updates">
+            ${item.updates.length ? item.updates.map((update, index) => renderUpdateItem(update, index, canEdit)).join("") : `<p class="muted">אין עדכונים עדיין.</p>`}
+          </div>
+          ${canEdit ? (state.addingUpdate ? updateEditorMarkup("newUpdateInput") : `<div class="detail-actions"><button class="soft" type="button" id="addUpdate">+ הוסף עדכון</button></div>`) : ""}
+        </div>`;
+      return `
+        <section class="hero">
           ${backButton(backRouteFor(state.view))}
-          <div class="detail-meta-strip">
-            <span class="category">${lineIcon(c.icon)} ${c.label}</span>
-          </div>
-          ${titleBlock}
+          <h1>${escapeHtml(item.title)}</h1>
+          <p class="screen-subtitle">עריכת משימה</p>
         </section>
-        <section class="detail-panel">
-          <div class="detail-row">
-            <h2>סטטוס</h2>
-            <div class="detail-row-main">
-              ${statusBlock}
-              ${priorityBlock}
-            </div>
-          </div>
-          <div class="detail-row">
-            <h2>קטגוריה</h2>
-            <div class="detail-row-main">${categoryBlock}</div>
-          </div>
-          <div class="detail-row">
-            <h2>יעד</h2>
-            <div class="detail-row-main">
-              <p class="due ${overdue ? "overdue" : ""}">${taskDueLabel(t)}</p>
-              ${canEdit ? `<div class="detail-actions">
-                <button data-tomorrow="${t.id}">העבר למחר</button>
-                <button id="pickDate">שנה תאריך</button>
-              </div>` : ""}
-              ${canEdit ? `<div id="dateChooser" style="display:none;">
-                <input id="dateInput" type="date">
-                <div class="detail-actions" style="margin-top:8px;"><button class="primary" id="saveDate">שמור תאריך</button></div>
-              </div>` : ""}
-            </div>
-          </div>
-          <div class="detail-row">
-            <h2>התראה</h2>
-            <div class="detail-row-main">
-              <p>${t.reminder?.enabled ? "ברירת מחדל: התראה לפני תאריך היעד" : "אין תאריך יעד להתראה כרגע"}</p>
-              <p class="muted">המבנה מוכן לבחירת שעה לפני / כמה שעות לפני / יום לפני / כמה ימים לפני.</p>
-            </div>
-          </div>
-          <div class="detail-row">
-            <h2>נוצרה</h2>
-            <div class="detail-row-main">
-              <p>${formatHebrewDate(t.created_at)}</p>
-              <p class="age-meta">${ageLabel(t.created_at)}</p>
-            </div>
-          </div>
-          <div class="detail-row">
-            <h2>הערות</h2>
-            <div class="detail-row-main">${notesBlock}</div>
-          </div>
-          <div class="detail-row">
-            <h2>עדכונים</h2>
-            <div class="detail-row-main">
-              <div class="updates">
-                ${t.updates.length ? t.updates.map((update, index) => renderUpdateItem(update, index, canEdit)).join("") : `<p class="muted">אין עדכונים עדיין.</p>`}
-              </div>
-              ${canEdit ? (state.addingUpdate ? updateEditorMarkup("newUpdateInput") : `<div class="detail-actions"><button class="soft" id="addUpdate">+ הוסף עדכון</button></div>`) : `<p class="muted">משימה שהושלמה נעולה לקריאה בלבד.</p>`}
-            </div>
-          </div>
-        </section>
-        ${deleteBlock}`;
+        <form id="taskForm" data-task-id="${item.id}">
+          <div class="form-group"><h2>כותרת</h2><input id="taskTitle" required value="${escapeHtml(item.title)}" placeholder="מה צריך לעשות?"></div>
+          <div class="form-group"><h2>סטטוס</h2>${taskFormStatusMarkup(item)}</div>
+          <div class="form-group"><h2>קטגוריה</h2>${taskFormCategoryMarkup(item)}</div>
+          ${state.role === "manager" ? `<div class="form-group"><h2>מבצע</h2>${taskFormPeopleMarkup(item)}</div>` : ""}
+          <div class="form-group form-group--due"><h2>יעד</h2>${taskFormDueMarkup(item)}</div>
+          <div class="form-group"><h2>עדיפות</h2><div class="chips"><label class="chip"><input name="priority" type="radio" value="normal" ${item.priority !== "high" ? "checked" : ""}> רגילה</label><label class="chip"><input name="priority" type="radio" value="high" ${item.priority === "high" ? "checked" : ""}> גבוהה</label></div></div>
+          <div class="form-group"><h2>הערות</h2><textarea id="taskNotes" placeholder="פרטים קצרים">${escapeHtml(item.notes || "")}</textarea></div>
+          ${updatesBlock}
+          ${taskFormActionsMarkup(item)}
+        </form>`;
+    }
+    function taskDetailScreen(id) {
+      const item = getVisibleTask(id);
+      if (!item || !canAccessTask(item)) return missingTaskScreen();
+      return taskFormScreen(item);
     }
     function missingTaskScreen() {
       return `
@@ -4709,97 +4694,18 @@
         state.showDoneArchive = !state.showDoneArchive;
         render();
       });
-      $("saveTaskCategory")?.addEventListener("click", async () => {
-        const id = state.view.split(":")[1];
-        const task = getTask(id);
-        if (!canEditTaskContent(task)) {
-          toast("משימה שהושלמה נעולה לעריכה");
-          return;
-        }
-        await updateTask(id, { category: $("taskCategorySelect").value });
-        toast("הקטגוריה עודכנה");
-      });
-      $("deleteTask")?.addEventListener("click", async () => {
-        const id = state.view.split(":")[1];
-        const task = getTask(id);
-        if (!canDeleteTask(task)) {
-          toast("רק מנהל יכול למחוק משימה");
-          return;
-        }
-        if (!confirm("למחוק את המשימה?")) return;
-        if (await deleteTaskSoft(id)) {
-          toast("המשימה נמחקה");
-          navigate(backRouteFor(state.view));
-        }
-      });
-      document.querySelectorAll("[data-priority]").forEach(el => el.addEventListener("click", async (e) => {
-        e.stopPropagation();
-        const [id, priority] = e.currentTarget.dataset.priority.split(":");
-        const task = getTask(id);
-        if (!canEditTaskContent(task)) {
-          navigate("all");
-          toast("משימה שהושלמה נעולה לעריכה");
-          return;
-        }
-        await updateTask(id, { priority });
-        toast("הדחיפות עודכנה");
+      document.querySelectorAll("[data-task-form-status]").forEach(btn => btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        const row = e.currentTarget.closest(".segmented");
+        row?.querySelectorAll("[data-task-form-status]").forEach((b) => b.classList.remove("active"));
+        e.currentTarget.classList.add("active");
       }));
-      document.querySelectorAll("[data-tomorrow]").forEach(el => el.addEventListener("click", async (e) => {
-        const id = e.currentTarget.dataset.tomorrow;
-        const task = getTask(id);
-        if (!canEditTaskContent(task)) {
-          navigate("all");
-          toast("משימה שהושלמה נעולה לעריכה");
-          return;
-        }
-        await updateTask(id, { due: "tomorrow", due_date: isoDateFromOffset(1), dueLabel: "מחר · רביעי", reminder: defaultTaskReminder({ ...task, due_date: isoDateFromOffset(1) }) });
-        toast("היעד עבר למחר");
-      }));
-      $("editNotes")?.addEventListener("click", () => { state.editingNotes = true; render(); });
-      $("cancelNotes")?.addEventListener("click", () => { state.editingNotes = false; render(); });
-      $("saveNotes")?.addEventListener("click", async () => {
-        const id = state.view.split(":")[1];
-        if (!canEditTaskContent(getTask(id))) {
-          navigate("all");
-          toast("משימה שהושלמה נעולה לעריכה");
-          return;
-        }
-        state.editingNotes = false;
-        await updateTask(id, { notes: $("notesInput").value });
-        toast("ההערות נשמרו");
-      });
-      $("editTitle")?.addEventListener("click", () => { state.editingTitle = true; render(); });
-      $("cancelTitle")?.addEventListener("click", () => { state.editingTitle = false; render(); });
-      $("saveTitle")?.addEventListener("click", async () => {
-        const id = state.view.split(":")[1];
-        if (!canEditTaskContent(getTask(id))) {
-          navigate("all");
-          toast("משימה שהושלמה נעולה לעריכה");
-          return;
-        }
-        state.editingTitle = false;
-        await updateTask(id, { title: $("titleInput").value || "משימה ללא כותרת" });
-        toast("שם המשימה נשמר");
-      });
-      $("pickDate")?.addEventListener("click", () => { $("dateChooser").style.display = "block"; });
-      $("saveDate")?.addEventListener("click", async () => {
-        const input = $("dateInput").value;
-        const id = state.view.split(":")[1];
-        if (!canEditTaskContent(getTask(id))) {
-          navigate("all");
-          toast("משימה שהושלמה נעולה לעריכה");
-          return;
-        }
-        if (!input) return toast("בחר תאריך");
-        await updateTask(id, { due: "date", due_date: input, dueLabel: formatHebrewDate(input), reminder: defaultTaskReminder({ ...getTask(id), due_date: input }) });
-        toast("התאריך עודכן");
-      });
       $("addUpdate")?.addEventListener("click", () => {
         const id = state.view.split(":")[1];
         const t = getTask(id);
-        if (!canEditTaskContent(t)) {
-          navigate("all");
-          toast("משימה שהושלמה נעולה לעריכה");
+        if (!canAccessTask(t)) {
+          navigate(backRouteFor(state.view));
+          toast("אין הרשאה למשימה זו");
           return;
         }
         state.addingUpdate = true;
@@ -4813,9 +4719,9 @@
       $("saveUpdate")?.addEventListener("click", async () => {
         const id = state.view.split(":")[1];
         const t = getTask(id);
-        if (!canEditTaskContent(t)) {
-          navigate("all");
-          toast("משימה שהושלמה נעולה לעריכה");
+        if (!canAccessTask(t)) {
+          navigate(backRouteFor(state.view));
+          toast("אין הרשאה למשימה זו");
           return;
         }
         const text = $("newUpdateInput").value.trim();
@@ -4838,9 +4744,9 @@
         const id = state.view.split(":")[1];
         const t = getTask(id);
         const index = state.editingUpdateIndex;
-        if (!canEditTaskContent(t)) {
-          navigate("all");
-          toast("משימה שהושלמה נעולה לעריכה");
+        if (!canAccessTask(t)) {
+          navigate(backRouteFor(state.view));
+          toast("אין הרשאה למשימה זו");
           return;
         }
         if (!Number.isInteger(index) || !t.updates[index]) {
@@ -5072,6 +4978,87 @@
           dateBtn.textContent = formatHebrewDate(e.currentTarget.value);
           document.querySelectorAll("[data-due-choice]").forEach(b => b.classList.remove("active"));
           dateBtn.classList.add("active");
+        }
+      });
+      $("taskForm")?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const editId = $("taskForm")?.dataset.taskId || "";
+        if (!editId) return;
+        const existing = getTask(editId);
+        if (!existing || !canAccessTask(existing)) {
+          navigate(backRouteFor(state.view));
+          toast("אין הרשאה למשימה זו");
+          return;
+        }
+        const form = e.currentTarget;
+        const title = $("taskTitle").value.trim();
+        if (!title) {
+          toast("כתוב כותרת");
+          return;
+        }
+        const statusChoice = form.querySelector("[data-task-form-status].active")?.dataset.taskFormStatus || existing.status;
+        const dueChoiceEl = form.querySelector("[data-due-choice].active");
+        const dueChoice = statusChoice === "done" ? "done" : (dueChoiceEl?.dataset.dueChoice || "today");
+        if (statusChoice !== "done" && dueChoice === "date" && !$("newDate").value) {
+          openTaskDueDatePicker();
+          toast("בחר תאריך");
+          return;
+        }
+        const dueDate = statusChoice === "done"
+          ? null
+          : dueChoice === "today"
+            ? isoDateFromOffset(0)
+            : dueChoice === "tomorrow"
+              ? isoDateFromOffset(1)
+              : dueChoice === "date"
+                ? $("newDate").value
+                : null;
+        const dueLabel = statusChoice === "done"
+          ? "הושלם · היום"
+          : dueDate
+            ? taskDueLabel({ due_date: dueDate, status: "progress" })
+            : "ללא יעד";
+        const owner = resolveTaskOwner(form);
+        const patch = {
+          title,
+          category: form.category?.value || existing.category || "uncategorized",
+          owner,
+          priority: form.priority?.value || "normal",
+          notes: $("taskNotes").value,
+          status: statusChoice,
+          due: statusChoice === "done" ? "done" : dueChoice,
+          due_date: dueDate,
+          dueLabel,
+          reminder: statusChoice === "done"
+            ? { ...(existing.reminder || {}), enabled: false }
+            : defaultTaskReminder({ ...existing, due_date: dueDate })
+        };
+        if (statusChoice === "done" && existing.status !== "done") patch.completed_at = isoDateFromOffset(0);
+        if (statusChoice === "progress" && existing.status === "done") patch.completed_at = null;
+        const saved = await updateTask(editId, patch);
+        if (saved) {
+          toast("השינויים נשמרו");
+          navigate(backRouteFor(state.view));
+        }
+      });
+      $("deleteTaskOrder")?.addEventListener("click", async () => {
+        const editId = $("taskForm")?.dataset.taskId || "";
+        if (!editId) return;
+        const existing = getTask(editId);
+        if (!existing || !canDeleteTask(existing)) {
+          toast("רק מנהל יכול למחוק משימה");
+          return;
+        }
+        const taskTitle = existing.title || "המשימה";
+        const confirmed = await openConfirmDialog({
+          title: "מחיקת משימה",
+          message: `למחוק את "${taskTitle}"? המשימה תוסתר מהרשימות ולא תימחק לצמיתות.`,
+          confirmLabel: "מחק משימה"
+        });
+        if (!confirmed) return;
+        if (await deleteTaskSoft(editId)) {
+          toast("המשימה נמחקה");
+          navigate(backRouteFor(state.view));
         }
       });
       $("createForm")?.addEventListener("submit", async (e) => {
