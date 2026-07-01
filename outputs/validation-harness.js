@@ -319,7 +319,7 @@
       deleted_at: null
     };
 
-    await suite.step("is-archived", "isArchivedDone for 90+ day task", async () => {
+    await suite.step("is-archived", "isArchivedDone for 30+ day task", async () => {
       assert(H.isArchivedDone(oldDone), "old done task should archive");
       assert(!H.isArchivedDone(recentDone), "recent done task not archived");
     });

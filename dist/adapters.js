@@ -1113,18 +1113,9 @@ var BatAyinAdapters = (() => {
     if (!contextResult.ok) {
       throw new Error(contextResult.reason || contextResult.code || "Write context load failed.");
     }
-    const deletedById = contextResult.ctx.profileIdByName.get(String(deletedBy).trim());
-    if (!deletedById) {
-      throw new Error("Deleted-by name does not exist in Supabase member map.");
-    }
     const { error } = await client.schema("bat_ayin").rpc("soft_delete_supplier_order", { p_order_id: id });
     if (error) throw error;
-    const updated = {
-      ...existing,
-      deleted_at: isoDateFromOffset(0),
-      deleted_by: deletedBy
-    };
-    return suppliers.map((item) => item.id === id ? updated : item);
+    return suppliers.filter((item) => item.id !== id);
   }
 
   // src/data/adapters/supabase/supabaseSuppliersWriteAdapter.ts
@@ -1901,7 +1892,7 @@ var BatAyinAdapters = (() => {
     { id: "order", label: "\u05D4\u05D6\u05DE\u05E0\u05D4" },
     { id: "received", label: "\u05E7\u05D1\u05DC\u05D4" },
     { id: "payment", label: "\u05EA\u05E9\u05DC\u05D5\u05DD" },
-    { id: "invoice", label: "\u05E7\u05D1\u05DC\u05EA \u05D7\u05E9\u05D1\u05D5\u05E0\u05D9\u05EA" }
+    { id: "invoice", label: "\u05D7\u05E9\u05D1\u05D5\u05E0\u05D9\u05EA" }
   ];
 
   // src/data/catalog/preferencesService.ts
@@ -2014,8 +2005,9 @@ var BatAyinAdapters = (() => {
     }
     return rows;
   }
+  var DONE_ARCHIVE_DAYS = 30;
   function isArchivedDone(task) {
-    return task.status === "done" && daysBetween(task.completed_at || task.created_at) >= 90;
+    return task.status === "done" && daysBetween(task.completed_at || task.created_at) >= DONE_ARCHIVE_DAYS;
   }
   function filterVisibleDoneTasks(tasks, includeArchive = false) {
     return filterActiveTasks(tasks).filter(
@@ -2157,7 +2149,7 @@ var BatAyinAdapters = (() => {
 
   // src/domain/suppliers/supplierPermissions.ts
   function canAccessSupplier(ctx, item) {
-    if (!item) return false;
+    if (!item || item.deleted_at) return false;
     return ctx.role === "manager" || item.allAssignees || item.assignees.includes(personalOwner(ctx));
   }
 

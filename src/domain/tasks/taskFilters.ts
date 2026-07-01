@@ -42,9 +42,12 @@ export function buildManagementTaskAssignees(
   return rows;
 }
 
-/** משימה הושלמה לפני 90+ יום — ארכיון */
+/** ימים לפני שמשימה שהושלמה נחשבת ארכיון — זהה לספקים */
+export const DONE_ARCHIVE_DAYS = 30;
+
+/** משימה הושלמה לפני 30+ יום — ארכיון */
 export function isArchivedDone(task: AppTask): boolean {
-  return task.status === "done" && daysBetween(task.completed_at || task.created_at) >= 90;
+  return task.status === "done" && daysBetween(task.completed_at || task.created_at) >= DONE_ARCHIVE_DAYS;
 }
 
 /** משימות שהושלמו — עם/בלי ארכיון */

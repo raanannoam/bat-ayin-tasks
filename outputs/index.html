@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="he" dir="rtl">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -38,7 +39,7 @@
       --surface: #FFFDF8;
       --surface-strong: #F2E8D8;
       --text: #2E2A24;
-      --muted: #7A746A;
+      --muted: #6E6860;
       --line: #E4DCCF;
       --accent: #566B4F;
       --accent-soft: #E8EDE2;
@@ -49,6 +50,11 @@
       --soft-blue: #6F8FA3;
       --outer-shell: #EAE4D8;
       --radius: 12px;
+      --leading-body: 1.45;
+      --leading-tight: 1.3;
+      --weight-title: 600;
+      --weight-emphasis: 600;
+      --weight-strong: 700;
       font-family: "Heebo", "Assistant", "Rubik", "Noto Sans Hebrew", "Segoe UI", Arial, sans-serif;
     }
 
@@ -58,9 +64,9 @@
       --surface-strong: #444A44;
       --text: #ECE7DD;
       --muted: #B8B0A3;
-      --line: rgba(255,255,255,.06);
+      --line: rgba(255, 255, 255, .06);
       --accent: #A7F070;
-      --accent-soft: rgba(167,240,112,.12);
+      --accent-soft: rgba(167, 240, 112, .12);
       --sand: #8E7B5F;
       --outer-shell: #252A25;
       --danger: #B85C50;
@@ -69,113 +75,139 @@
       --soft-blue: #6F8FA3;
     }
 
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
       background: var(--outer-shell);
       color: var(--text);
       min-height: 100vh;
       padding: 18px 0;
+      line-height: var(--leading-body);
+      -webkit-font-smoothing: antialiased;
     }
-    [data-theme="dark"] body, body[data-theme="dark"] {
+
+    [data-theme="dark"] body,
+    body[data-theme="dark"] {
       background: var(--outer-shell);
     }
-    button, input, textarea {
+
+    button,
+    input,
+    textarea {
       font: inherit;
       color: inherit;
     }
+
     button {
       border: 1px solid var(--line);
-      background: linear-gradient(180deg, #FFFDF8 0%, #F3EEE5 100%);
+      background: var(--surface);
       border-radius: 12px;
       padding: .78rem 1rem;
       cursor: pointer;
       min-height: 46px;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.72), 0 2px 8px rgba(0,0,0,.035);
-      transition: transform .18s ease, background .18s ease, border-color .18s ease, color .18s ease;
+      box-shadow: none;
+      transition: background .18s ease, border-color .18s ease, color .18s ease;
     }
+
     button:hover {
       border-color: color-mix(in srgb, var(--sand) 68%, var(--line));
+      background: color-mix(in srgb, var(--surface-strong) 35%, var(--surface));
     }
+
     button:active {
-      transform: translateY(1px);
-      box-shadow: inset 0 1px 2px rgba(46,42,36,.08);
+      background: color-mix(in srgb, var(--surface-strong) 55%, var(--surface));
     }
+
     button.primary {
-      background: linear-gradient(180deg, #6D8264 0%, #566B4F 100%);
+      background: var(--accent);
       color: white;
       border-color: var(--accent);
-      font-weight: 750;
+      font-weight: var(--weight-emphasis);
     }
+
+    button.primary:hover {
+      background: color-mix(in srgb, var(--accent) 88%, #000);
+      border-color: color-mix(in srgb, var(--accent) 88%, #000);
+    }
+
     button.soft {
-      background: linear-gradient(180deg, #F4F6EF 0%, var(--accent-soft) 100%);
+      background: var(--accent-soft);
       border-color: color-mix(in srgb, var(--accent) 22%, var(--line));
       color: var(--accent);
-      font-weight: 700;
+      font-weight: var(--weight-emphasis);
     }
+
     button.icon {
       width: 44px;
       padding: 0;
       display: inline-grid;
       place-items: center;
     }
-    input, textarea {
+
+    input,
+    textarea {
       width: 100%;
       border: 1px solid var(--line);
       background: var(--surface);
       border-radius: var(--radius);
       padding: .85rem;
       outline-color: var(--accent);
-      box-shadow: inset 0 1px 2px rgba(46,42,36,.035);
+      box-shadow: none;
     }
-    textarea { min-height: 110px; resize: vertical; }
+
+    textarea {
+      min-height: 110px;
+      resize: vertical;
+    }
+
     .app-shell {
       width: min(calc(100% - 28px), 430px);
       margin: 0 auto;
       min-height: calc(100vh - 36px);
       padding:
-        calc(18px + env(safe-area-inset-top, 0px))
-        calc(16px + env(safe-area-inset-right, 0px))
-        calc(112px + env(safe-area-inset-bottom, 0px))
-        calc(16px + env(safe-area-inset-left, 0px));
-      background:
-        linear-gradient(180deg, rgba(255,255,255,.68), rgba(255,255,255,0) 160px),
-        linear-gradient(rgba(120,110,90,.04) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(120,110,90,.04) 1px, transparent 1px),
-        var(--surface);
-      background-size: auto, 28px 28px, 28px 28px, auto;
-      border: 1px solid color-mix(in srgb, var(--sand) 42%, var(--line));
+        calc(18px + env(safe-area-inset-top, 0px)) calc(16px + env(safe-area-inset-right, 0px)) calc(112px + env(safe-area-inset-bottom, 0px)) calc(16px + env(safe-area-inset-left, 0px));
+      background: var(--surface);
+      border: 1px solid color-mix(in srgb, var(--sand) 28%, var(--line));
       border-radius: 28px;
-      box-shadow:
-        inset 0 1px 0 rgba(255,255,255,.75),
-        inset 0 0 0 8px rgba(234,228,216,.42),
-        0 2px 8px rgba(0,0,0,.04);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, .04);
       overflow: hidden;
       position: relative;
     }
+
     .topbar {
       position: sticky;
       top: 0;
       z-index: 8;
       margin: -18px -16px 18px;
       padding: 14px 18px 12px;
-      backdrop-filter: blur(16px);
-      background: color-mix(in srgb, var(--surface-strong) 46%, var(--surface));
-      border-bottom: 1px solid color-mix(in srgb, var(--line) 92%, var(--sand));
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.58), 0 8px 16px -16px rgba(46,42,36,.34);
+      background: var(--surface);
+      border-bottom: 1px solid var(--line);
+      box-shadow: none;
       display: flex;
       gap: 8px;
       align-items: center;
       justify-content: space-between;
     }
+
     .brand {
       display: flex;
       flex-direction: column;
       line-height: 1.15;
       min-width: 0;
     }
-    .brand strong { font-size: .98rem; }
-    .brand span { color: var(--muted); font-size: .8rem; }
+
+    .brand strong {
+      font-size: .98rem;
+    }
+
+    .brand span {
+      color: var(--muted);
+      font-size: .8rem;
+    }
+
     .mockup-notice {
       margin: -8px 0 14px;
       padding: 7px 10px;
@@ -187,6 +219,7 @@
       line-height: 1.35;
       text-align: center;
     }
+
     .offline-banner {
       display: none;
       margin: -8px 0 10px;
@@ -198,8 +231,17 @@
       font-size: .78rem;
       text-align: center;
     }
-    .offline-banner.show { display: block; }
-    .auth-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+    .offline-banner.show {
+      display: block;
+    }
+
+    .auth-actions {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
     .auth-actions button {
       font-size: .74rem;
       padding: .45rem .65rem;
@@ -208,17 +250,31 @@
       background: var(--surface);
       cursor: pointer;
     }
+
     .auth-actions button.primary {
       background: var(--accent);
       color: #fff;
       border-color: transparent;
     }
-    .login-screen, .gate-screen {
+
+    .login-screen,
+    .gate-screen {
       padding: 28px 8px;
       text-align: center;
     }
-    .login-screen h2, .gate-screen h2 { margin-bottom: .75rem; }
-    .login-screen p, .gate-screen p { color: var(--muted); margin-bottom: 1rem; line-height: 1.45; }
+
+    .login-screen h2,
+    .gate-screen h2 {
+      margin-bottom: .75rem;
+    }
+
+    .login-screen p,
+    .gate-screen p {
+      color: var(--muted);
+      margin-bottom: 1rem;
+      line-height: 1.45;
+    }
+
     .pilot-notice {
       margin: -8px 0 14px;
       padding: 7px 10px;
@@ -230,32 +286,70 @@
       line-height: 1.35;
       text-align: center;
     }
+
     .app-loading {
       padding: 28px 8px;
       text-align: center;
       color: var(--muted);
       font-size: .92rem;
     }
-    h1, h2, h3, p { margin: 0; }
-    h1 { font-size: clamp(1.65rem, 4.5vw, 2.15rem); letter-spacing: 0; font-weight: 760; }
-    h2 { font-size: 1.08rem; margin-bottom: .75rem; font-weight: 720; }
-    h3 { font-size: 1rem; margin-bottom: .48rem; }
-    .muted { color: var(--muted); }
-    .hero {
-      padding: 22px 2px 16px;
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin: 0;
     }
+
+    h1 {
+      font-size: clamp(1.65rem, 4.5vw, 2.15rem);
+      letter-spacing: 0;
+      font-weight: var(--weight-title);
+      line-height: var(--leading-tight);
+    }
+
+    h2 {
+      font-size: 1.08rem;
+      margin-bottom: .75rem;
+      font-weight: var(--weight-title);
+      line-height: var(--leading-tight);
+    }
+
+    h3 {
+      font-size: 1rem;
+      margin-bottom: .48rem;
+      font-weight: var(--weight-emphasis);
+      line-height: var(--leading-tight);
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .hero {
+      position: relative;
+      padding: 24px 2px 18px;
+    }
+
+    .hero:has(.back),
+    .detail-head:has(.back) {
+      padding-inline-start: 44px;
+    }
+
     .screen-title {
       color: var(--muted);
       font-size: .92rem;
-      font-weight: 740;
-      line-height: 1.25;
+      font-weight: var(--weight-emphasis);
+      line-height: var(--leading-tight);
     }
+
     .screen-subtitle {
-      margin-top: 6px;
+      margin-top: 8px;
       color: var(--muted);
       font-size: .9rem;
-      line-height: 1.35;
+      line-height: var(--leading-body);
     }
+
     .hero .count {
       margin-top: 14px;
       width: 74px;
@@ -267,78 +361,146 @@
       border: 1px solid var(--line);
       color: var(--accent);
       font-size: 2.1rem;
-      font-weight: 760;
+      font-weight: var(--weight-strong);
     }
+
     .section {
-      padding: 14px 0;
+      padding: 16px 0;
       border-top: 1px solid var(--line);
     }
+
     .task-group {
-      padding: 14px 0;
+      padding: 16px 0;
       border-top: 1px solid var(--line);
     }
+
     .task-group-title {
-      font-size: 1rem;
+      font-size: .95rem;
       color: var(--muted);
-      font-weight: 700;
-      margin-bottom: 8px;
+      font-weight: var(--weight-emphasis);
+      margin-bottom: 10px;
+      letter-spacing: 0.01em;
     }
+
+    .task-group-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      width: 100%;
+      padding: 0 18px;
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+      text-align: right;
+    }
+
+    .task-group-toggle .task-group-title {
+      margin-bottom: 0;
+    }
+
+    .task-group-chevron {
+      width: 28px;
+      height: 28px;
+      flex-shrink: 0;
+      display: grid;
+      place-items: center;
+      border: 1px solid color-mix(in srgb, var(--line) 88%, transparent);
+      border-radius: 8px;
+      color: var(--muted);
+    }
+
+    .task-group-chevron .line-icon {
+      width: 14px;
+      height: 14px;
+      transition: transform .18s ease;
+    }
+
+    .task-group.is-open .task-group-chevron .line-icon {
+      transform: rotate(180deg);
+    }
+
+    .supplier-done-hint {
+      margin: 0 18px 10px;
+      font-size: .82rem;
+    }
+
+    .supplier-done-archive-btn {
+      margin: 8px 18px 0;
+    }
+
     .list-group {
       padding-top: 10px;
     }
-    .list-group + .list-group {
+
+    .list-group+.list-group {
       margin-top: 18px;
     }
+
     .list-group-title {
       display: flex;
       align-items: center;
       gap: 10px;
-      margin: 0 18px 8px;
+      margin: 0 18px 10px;
       color: var(--muted);
-      font-size: .92rem;
-      font-weight: 720;
+      font-size: .9rem;
+      font-weight: var(--weight-emphasis);
     }
+
     .list-group-title::after {
       content: "";
       flex: 1;
       height: 1px;
       background: color-mix(in srgb, var(--line) 82%, transparent);
     }
+
     .list-subgroup {
       margin: 0 0 14px;
     }
+
     .list-subgroup:last-child {
       margin-bottom: 0;
     }
+
     .list-subgroup-title {
-      margin: 0 24px 6px;
+      margin: 0 24px 8px;
       color: color-mix(in srgb, var(--muted) 88%, var(--text));
       font-size: .82rem;
-      font-weight: 700;
+      font-weight: var(--weight-emphasis);
     }
+
     .task-group.highlight {
       border-top: 2px solid var(--sand);
     }
-    .cards, .list, .mgmt-list {
+
+    .cards,
+    .list,
+    .mgmt-list {
       display: grid;
       gap: 8px;
     }
+
     .task-card {
       background: var(--surface);
       border: 1px solid var(--line);
       border-radius: 16px;
       padding: 18px;
       text-align: right;
-      box-shadow: 0 2px 8px rgba(0,0,0,.035);
+      box-shadow: none;
     }
-    .task-card header, .list-row header {
+
+    .task-card header,
+    .list-row header {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 10px;
       margin-bottom: 8px;
     }
-    .category, .status-line, .person-line {
+
+    .category,
+    .status-line,
+    .person-line {
       color: var(--muted);
       font-size: .95rem;
       display: flex;
@@ -346,34 +508,45 @@
       align-items: center;
       flex-wrap: wrap;
     }
+
     .status-badge {
       display: inline-flex;
       width: fit-content;
       padding: .28rem .55rem;
       border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
       border-radius: 999px;
-      background: color-mix(in srgb, var(--surface-strong) 45%, var(--surface));
+      background: transparent;
       color: var(--muted);
       font-size: .82rem;
-      font-weight: 560;
+      font-weight: 500;
     }
+
     .task-title {
-      font-size: 1.04rem;
-      font-weight: 760;
+      font-size: 1.02rem;
+      font-weight: var(--weight-emphasis);
       margin: 8px 0;
+      line-height: var(--leading-tight);
     }
+
     .due {
       color: var(--muted);
       margin: 4px 0 0;
       font-size: .9rem;
     }
+
     .quick-actions {
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
     }
-    .quick-actions button { flex: 1; min-width: 112px; }
-    .list-row, .mgmt-row {
+
+    .quick-actions button {
+      flex: 1;
+      min-width: 112px;
+    }
+
+    .list-row,
+    .mgmt-row {
       display: block;
       width: 100%;
       text-align: right;
@@ -385,6 +558,7 @@
       min-height: 66px;
       box-shadow: none;
     }
+
     .list-row {
       position: relative;
       padding: 0;
@@ -392,23 +566,27 @@
       overflow: hidden;
       min-height: 68px;
     }
+
     .list-row-content {
-      padding: 8px 18px 8px 92px;
+      padding: 10px 18px 10px 58px;
       min-height: 68px;
     }
+
     .list-row.completed .list-row-content {
       padding-left: 18px;
     }
+
     .row-meta {
       display: flex;
       gap: 7px 10px;
       align-items: center;
       flex-wrap: wrap;
       color: var(--muted);
-      font-size: .88rem;
-      margin-top: 3px;
-      line-height: 1.4;
+      font-size: .86rem;
+      margin-top: 4px;
+      line-height: var(--leading-body);
     }
+
     .row-meta .person-line,
     .row-meta .due {
       margin: 0;
@@ -417,117 +595,159 @@
       align-items: center;
       gap: 5px;
     }
+
     .priority-meta.high {
       color: color-mix(in srgb, var(--danger) 78%, var(--muted));
       font-weight: 620;
     }
+
     .age-meta {
       color: var(--muted);
       font-size: .86rem;
     }
+
     .due.overdue {
       color: color-mix(in srgb, var(--danger) 58%, var(--muted));
       font-weight: 650;
     }
+
     .list-row .task-title {
-      margin: 1px 0 2px;
+      margin: 2px 0 3px;
       font-size: 1rem;
+      font-weight: var(--weight-emphasis);
+      line-height: var(--leading-tight);
     }
+
     .complete-row {
       position: absolute;
       left: 0;
       top: 0;
       bottom: 0;
-      width: 82px;
+      width: 48px;
       min-height: 100%;
-      padding: .45rem .3rem;
+      padding: 0;
       border: 0;
       border-right: 1px solid color-mix(in srgb, var(--status-done) 34%, var(--line));
       border-radius: 0;
       color: var(--status-done);
       background: color-mix(in srgb, var(--status-done) 13%, var(--surface));
       font-weight: 650;
-      font-size: .78rem;
-      line-height: 1.12;
-      text-align: center;
-      white-space: normal;
       z-index: 2;
       display: grid;
       place-content: center;
-      gap: 5px;
-      box-shadow: inset 1px 0 0 rgba(255,255,255,.42);
     }
+
     .complete-row .line-icon {
-      width: 17px;
-      height: 17px;
+      width: 20px;
+      height: 20px;
       margin-inline: auto;
     }
+
     .complete-label {
       display: block;
       line-height: 1.12;
     }
-    .supplier-edit-row {
-      position: absolute;
-      left: 0;
-      top: 0;
-      bottom: 0;
-      width: 82px;
-      min-height: 100%;
-      padding: .45rem .3rem;
-      border: 0;
-      border-right: 1px solid color-mix(in srgb, var(--soft-blue) 34%, var(--line));
-      border-radius: 0;
-      color: var(--soft-blue);
-      background: color-mix(in srgb, var(--soft-blue) 13%, var(--surface));
-      font-weight: 650;
-      font-size: .78rem;
-      line-height: 1.12;
-      text-align: center;
-      white-space: normal;
-      z-index: 2;
-      display: grid;
-      place-content: center;
-      gap: 5px;
-      box-shadow: inset 1px 0 0 rgba(255,255,255,.42);
-      cursor: pointer;
-    }
-    .supplier-edit-row .line-icon {
-      width: 17px;
-      height: 17px;
-      margin-inline: auto;
-    }
+
     .supplier-list-row {
       cursor: default;
     }
-    .supplier-list-row.completed .list-row-content {
-      padding-left: 92px;
+
+    .supplier-created-notice {
+      margin: 0 18px 12px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+      border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line));
+      color: var(--accent);
+      font-size: .9rem;
+      font-weight: var(--weight-emphasis);
     }
-    .supplier-progress {
+
+    .supplier-list-row.is-new .list-row-content {
+      background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+      border-inline-start: 3px solid var(--accent);
+    }
+
+    .supplier-list-row .list-row-content {
+      padding: 10px 14px;
+      min-width: 0;
+      cursor: pointer;
+    }
+
+    .supplier-card-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .supplier-card-head .task-title {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .supplier-steps-toggle {
+      width: 28px;
+      height: 28px;
+      flex-shrink: 0;
       display: grid;
-      gap: 7px;
+      place-items: center;
+      padding: 0;
+      border: 1px solid color-mix(in srgb, var(--line) 88%, transparent);
+      border-radius: 8px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .supplier-steps-toggle .line-icon {
+      width: 14px;
+      height: 14px;
+      transition: transform .18s ease;
+    }
+
+    .supplier-list-row.is-steps-open .supplier-steps-toggle .line-icon {
+      transform: rotate(180deg);
+    }
+
+    .supplier-steps-panel {
+      display: none;
       margin-top: 8px;
     }
+
+    .supplier-list-row.is-steps-open .supplier-steps-panel {
+      display: block;
+    }
+
     .supplier-steps {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 6px;
     }
+
     .supplier-step {
       --step-color: var(--accent);
       position: relative;
       overflow: hidden;
-      min-height: 38px;
-      padding: .42rem .35rem;
+      min-height: 52px;
+      min-width: 0;
+      padding: .38rem .28rem;
       border-radius: 10px;
       border: 1px solid color-mix(in srgb, var(--step-color) 20%, var(--line));
       background: color-mix(in srgb, var(--step-color) 7%, var(--surface));
       color: var(--muted);
-      font-size: .78rem;
+      font-size: .72rem;
       font-weight: 700;
       text-align: center;
       box-shadow: none;
       cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      line-height: 1.15;
     }
+
     .supplier-step::before,
     .supplier-check::before {
       content: "";
@@ -537,23 +757,81 @@
       background: var(--step-color);
       opacity: .72;
     }
+
     .supplier-step.done {
       border-color: color-mix(in srgb, var(--step-color) 44%, var(--line));
       background: color-mix(in srgb, var(--step-color) 13%, var(--surface));
       color: color-mix(in srgb, var(--step-color) 80%, var(--text));
     }
-    .step-order { --step-color: var(--soft-blue); }
-    .step-received { --step-color: var(--sand); }
-    .step-payment { --step-color: var(--status-progress); }
-    .step-invoice { --step-color: var(--status-done); }
-    .supplier-step small {
-      color: inherit;
-      font-weight: 540;
+
+    .step-order {
+      --step-color: var(--soft-blue);
     }
+
+    .step-received {
+      --step-color: var(--sand);
+    }
+
+    .step-payment {
+      --step-color: var(--status-progress);
+    }
+
+    .step-invoice {
+      --step-color: var(--status-done);
+    }
+
+    .supplier-step small,
+    .supplier-step-date {
+      display: block;
+      color: inherit;
+      font-size: .64rem;
+      font-weight: 540;
+      line-height: 1.15;
+      word-break: break-word;
+    }
+
+    .supplier-step-label {
+      display: block;
+      line-height: 1.15;
+      word-break: break-word;
+    }
+
     .supplier-checklist {
       display: grid;
       gap: 8px;
     }
+
+    .supplier-checklist--stack {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      width: 100%;
+      border-top: 1px solid var(--line);
+    }
+
+    .supplier-checklist--stack .supplier-check {
+      width: 100%;
+      min-height: 42px;
+      padding: .55rem .85rem;
+      padding-inline-start: calc(.85rem + 6px);
+      border: 0;
+      border-bottom: 1px solid var(--line);
+      border-radius: 0;
+      justify-content: flex-start;
+    }
+
+    .supplier-checklist--stack .supplier-check:last-child {
+      border-bottom: 0;
+    }
+
+    .supplier-checklist--stack .supplier-check::before {
+      inset: 0 auto 0 0;
+      inset-inline-start: 0;
+      width: 4px;
+      height: auto;
+      opacity: 1;
+    }
+
     .supplier-check {
       --step-color: var(--accent);
       position: relative;
@@ -570,24 +848,54 @@
       box-shadow: none;
       cursor: pointer;
     }
+
     .supplier-check.done {
       border-color: color-mix(in srgb, var(--step-color) 42%, var(--line));
       color: color-mix(in srgb, var(--step-color) 82%, var(--text));
       background: color-mix(in srgb, var(--step-color) 9%, var(--surface));
     }
-    .supplier-check.step-order { --step-color: var(--soft-blue); }
-    .supplier-check.step-received { --step-color: var(--sand); }
-    .supplier-check.step-payment { --step-color: var(--status-progress); }
-    .supplier-check.step-invoice { --step-color: var(--status-done); }
-    .supplier-check-text {
-      display: grid;
-      gap: 2px;
+
+    .supplier-check.step-order {
+      --step-color: var(--soft-blue);
     }
+
+    .supplier-check.step-received {
+      --step-color: var(--sand);
+    }
+
+    .supplier-check.step-payment {
+      --step-color: var(--status-progress);
+    }
+
+    .supplier-check.step-invoice {
+      --step-color: var(--status-done);
+    }
+
+    .supplier-check-text {
+      display: inline-flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0.35rem 1rem;
+      line-height: 1.25;
+    }
+
+    .supplier-check-text strong {
+      flex-shrink: 0;
+    }
+
     .supplier-check-date {
       color: var(--muted);
       font-size: .82rem;
       font-weight: 500;
+      flex-shrink: 0;
+      padding-inline-start: 0.35rem;
     }
+
+    .supplier-checklist .supplier-check {
+      min-height: 40px;
+      padding: .5rem .78rem;
+    }
+
     .supplier-step-date-input {
       width: 150px;
       min-width: 0;
@@ -595,6 +903,7 @@
       border-radius: 9px;
       font-size: .86rem;
     }
+
     .supplier-step-date-native {
       position: absolute;
       left: 12px;
@@ -604,6 +913,19 @@
       opacity: 0;
       pointer-events: none;
     }
+
+    .task-date-native {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .form-group--due {
+      position: relative;
+    }
+
     .supplier-check input[type="checkbox"],
     .supplier-assignee input {
       width: 16px;
@@ -613,13 +935,16 @@
       accent-color: var(--accent);
       box-shadow: none;
     }
+
     .supplier-links {
       display: grid;
       gap: 6px;
     }
+
     .supplier-link-preview {
       margin-top: 8px;
     }
+
     .supplier-link {
       display: block;
       padding: .58rem .7rem;
@@ -629,9 +954,19 @@
       background: color-mix(in srgb, var(--accent) 6%, var(--surface));
       overflow-wrap: anywhere;
     }
-    .dot { font-size: .9rem; }
-    .dot.progress { color: var(--status-progress); }
-    .dot.done { color: var(--status-done); }
+
+    .dot {
+      font-size: .9rem;
+    }
+
+    .dot.progress {
+      color: var(--status-progress);
+    }
+
+    .dot.done {
+      color: var(--status-done);
+    }
+
     .bottom-nav {
       position: fixed;
       bottom: 18px;
@@ -641,16 +976,22 @@
       display: grid;
       gap: 2px;
       padding: 8px 10px;
-      background: color-mix(in srgb, var(--surface) 82%, transparent);
-      backdrop-filter: blur(16px);
+      background: var(--surface);
       border-top: 1px solid var(--line);
-      border-inline: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
+      border-inline: 1px solid var(--line);
       border-radius: 18px;
-      box-shadow: 0 2px 8px rgba(0,0,0,.04), inset 0 1px 0 rgba(255,255,255,.65);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, .04);
       z-index: 20;
     }
-    .bottom-nav.manager { grid-template-columns: repeat(5, 1fr); }
-    .bottom-nav.user { grid-template-columns: repeat(4, 1fr); }
+
+    .bottom-nav.manager {
+      grid-template-columns: repeat(5, 1fr);
+    }
+
+    .bottom-nav.user {
+      grid-template-columns: repeat(4, 1fr);
+    }
+
     .bottom-nav button {
       border: 0;
       background: transparent;
@@ -663,59 +1004,82 @@
       font-size: .74rem;
       border-radius: var(--radius);
     }
-    .bottom-nav button span:first-child { line-height: 0; }
+
+    .bottom-nav button span:first-child {
+      line-height: 0;
+    }
+
     .bottom-nav button.active {
       background: var(--accent-soft);
       color: var(--accent);
-      font-weight: 800;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.42);
+      font-weight: var(--weight-strong);
     }
+
     .detail-head {
+      position: relative;
       display: grid;
       gap: 10px;
       padding: 4px 0 16px;
       border-bottom: 1px solid var(--line);
     }
+
     .back {
-      justify-self: start;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
+      position: absolute;
+      top: 18px;
+      inset-inline-start: 2px;
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      display: grid;
+      place-items: center;
+      border: 1px solid color-mix(in srgb, var(--line) 88%, transparent);
+      border-radius: 8px;
       background: transparent;
-      border-color: transparent;
-      padding-inline: 0;
       color: var(--muted);
+      cursor: pointer;
+      z-index: 1;
     }
+
+    .back .line-icon {
+      width: 16px;
+      height: 16px;
+    }
+
     .detail-title-row {
       display: flex;
       gap: 10px;
       align-items: start;
       justify-content: space-between;
     }
+
     .detail-title-row h1 {
       flex: 1;
       line-height: 1.2;
     }
+
     .detail-meta-strip {
       display: flex;
       gap: 7px;
       flex-wrap: wrap;
       align-items: center;
     }
+
     .detail-block {
       padding: 0;
       border-top: 1px solid var(--line);
     }
+
     .detail-panel {
       display: grid;
       gap: 0;
       border: 1px solid var(--line);
       border-radius: 10px;
       overflow: hidden;
-      background: color-mix(in srgb, var(--surface) 86%, transparent);
-      box-shadow: 0 1px 4px rgba(0,0,0,.025);
+      background: var(--surface);
+      box-shadow: none;
       margin-top: 12px;
     }
+
     .detail-row {
       display: grid;
       grid-template-columns: 92px 1fr;
@@ -724,23 +1088,51 @@
       padding: 12px 14px;
       border-bottom: 1px solid var(--line);
     }
+
     .detail-row:last-child {
       border-bottom: 0;
     }
+
     .detail-row h2 {
       margin: 0;
       color: var(--muted);
       font-size: .9rem;
-      font-weight: 720;
+      font-weight: var(--weight-emphasis);
     }
+
     .detail-row-main {
       display: grid;
       gap: 8px;
       min-width: 0;
     }
-    .detail-row-main > p {
+
+    .detail-row.detail-row--steps {
+      grid-template-columns: 1fr;
+      gap: 8px;
+      padding: 12px 0 0;
+    }
+
+    .detail-row.detail-row--steps h2 {
+      padding-inline: 14px;
+    }
+
+    .detail-row.detail-row--steps .detail-row-main {
+      width: 100%;
+    }
+
+    .detail-row.detail-row--steps .detail-row-main > .muted {
+      padding-inline: 14px;
+    }
+
+    .detail-row.detail-row--steps .supplier-checklist--stack {
+      width: 100%;
+      align-self: stretch;
+    }
+
+    .detail-row-main>p {
       line-height: 1.5;
     }
+
     .detail-row-main .segmented {
       margin-top: 0;
       gap: 6px;
@@ -749,6 +1141,7 @@
       border-radius: 11px;
       background: color-mix(in srgb, var(--surface) 50%, transparent);
     }
+
     .detail-row-main .segmented button {
       flex: 1;
       min-width: 78px;
@@ -762,17 +1155,20 @@
       font-weight: 640;
       box-shadow: none;
     }
+
     .detail-row-main .segmented button.active {
       background: color-mix(in srgb, var(--accent) 9%, var(--surface));
       border-color: color-mix(in srgb, var(--accent) 18%, transparent);
       color: var(--accent);
       box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent);
     }
+
     .detail-actions {
       display: flex;
       gap: 6px;
       flex-wrap: wrap;
     }
+
     .detail-actions button {
       min-height: 34px;
       padding: .42rem .66rem;
@@ -781,21 +1177,25 @@
       font-weight: 640;
       box-shadow: none;
     }
+
     .detail-edit-panel {
       display: grid;
       gap: 8px;
     }
+
     .segmented {
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
       margin-top: 10px;
     }
+
     .segmented button.active {
       background: var(--accent);
       border-color: var(--accent);
       color: #fff;
     }
+
     #createForm .segmented {
       gap: 6px;
       margin-top: 8px;
@@ -804,6 +1204,7 @@
       border-radius: 11px;
       background: color-mix(in srgb, var(--surface) 50%, transparent);
     }
+
     #createForm .segmented button {
       flex: 1;
       min-width: 82px;
@@ -817,29 +1218,34 @@
       font-weight: 640;
       box-shadow: none;
     }
+
     #createForm .segmented button.active {
       background: color-mix(in srgb, var(--accent) 9%, var(--surface));
       border-color: color-mix(in srgb, var(--accent) 18%, transparent);
       color: var(--accent);
       box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent);
     }
+
     .updates {
       display: grid;
       gap: 9px;
       margin-top: 10px;
     }
+
     .update-item {
       background: var(--surface);
       border: 1px solid var(--line);
       border-radius: 10px;
       padding: 14px;
-      box-shadow: 0 2px 8px rgba(0,0,0,.03);
+      box-shadow: none;
     }
+
     .detail-row .update-item {
       background: color-mix(in srgb, var(--surface) 72%, transparent);
       box-shadow: none;
       padding: 10px 12px;
     }
+
     .update-head {
       display: flex;
       align-items: center;
@@ -847,11 +1253,13 @@
       gap: 10px;
       margin-bottom: 6px;
     }
+
     .update-meta {
       color: var(--muted);
       font-size: .82rem;
       line-height: 1.35;
     }
+
     .update-edit {
       border: 0;
       background: transparent;
@@ -862,35 +1270,42 @@
       font-size: .84rem;
       font-weight: 700;
     }
+
     .update-edit-panel {
       display: grid;
       gap: 8px;
     }
+
     .update-edit-panel textarea {
       min-height: 84px;
     }
+
     .linked-text {
       white-space: pre-wrap;
       overflow-wrap: anywhere;
     }
+
     .linked-text a {
       color: var(--accent);
       text-decoration: underline;
       text-decoration-thickness: 1px;
       text-underline-offset: 3px;
     }
+
     .linked-text a:hover {
       color: var(--accent-strong);
     }
+
     .management-tiles {
       display: grid;
       gap: 0;
       border: 1px solid var(--line);
       border-radius: 10px;
       overflow: hidden;
-      background: color-mix(in srgb, var(--surface) 86%, transparent);
-      box-shadow: 0 1px 4px rgba(0,0,0,.025);
+      background: var(--surface);
+      box-shadow: none;
     }
+
     .mgmt-row {
       display: grid;
       grid-template-columns: 1fr auto;
@@ -905,39 +1320,46 @@
       text-align: right;
       box-shadow: none;
     }
+
     .mgmt-row:last-child {
       border-bottom: 0;
     }
-    .section > .mgmt-row {
+
+    .section>.mgmt-row {
       border: 1px solid var(--line);
       border-radius: 10px;
       background: color-mix(in srgb, var(--surface) 86%, transparent);
     }
+
     .mgmt-row.create-row {
       min-height: 54px;
       padding: 9px 18px 9px 10px;
       border-radius: 10px;
     }
+
     .mgmt-row.create-row,
     .mgmt-row.wide[data-nav="create"] {
       border-color: color-mix(in srgb, var(--accent) 30%, var(--line));
-      background:
-        linear-gradient(180deg, color-mix(in srgb, var(--accent) 8%, var(--surface)) 0%, color-mix(in srgb, var(--surface) 88%, transparent) 100%);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.52), 0 1px 4px rgba(0,0,0,.025);
+      background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+      box-shadow: none;
     }
+
     .mgmt-row.create-row strong {
       margin-bottom: 0;
     }
+
     .mgmt-row.create-row strong,
     .mgmt-row.wide[data-nav="create"] strong {
       color: var(--accent);
-      font-weight: 780;
+      font-weight: var(--weight-strong);
     }
+
     .mgmt-row strong {
       display: block;
       font-size: 1.02rem;
       margin-bottom: 0;
     }
+
     .mgmt-row .big {
       min-width: 38px;
       min-height: 38px;
@@ -947,11 +1369,12 @@
       border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--line));
       background: color-mix(in srgb, var(--accent) 8%, var(--surface));
       font-size: 1.02rem;
-      font-weight: 760;
+      font-weight: var(--weight-emphasis);
       color: var(--accent);
       direction: ltr;
       text-align: center;
     }
+
     .row-left-icon {
       width: 38px;
       height: 38px;
@@ -962,20 +1385,23 @@
       background: color-mix(in srgb, var(--accent) 8%, var(--surface));
       color: var(--accent);
     }
+
     .mgmt-row.create-row .row-left-icon,
     .mgmt-row.wide[data-nav="create"] .row-left-icon {
       border-color: color-mix(in srgb, var(--accent) 34%, var(--line));
       background: color-mix(in srgb, var(--accent) 12%, var(--surface));
     }
+
     .management-list {
       display: grid;
       gap: 0;
       border: 1px solid var(--line);
       border-radius: 10px;
       overflow: hidden;
-      background: color-mix(in srgb, var(--surface) 86%, transparent);
-      box-shadow: 0 1px 4px rgba(0,0,0,.025);
+      background: var(--surface);
+      box-shadow: none;
     }
+
     .management-list-row {
       --row-color: var(--accent);
       position: relative;
@@ -994,6 +1420,7 @@
       text-align: right;
       box-shadow: none;
     }
+
     .management-list-row::before {
       content: "";
       position: absolute;
@@ -1002,9 +1429,11 @@
       background: var(--row-color);
       opacity: .72;
     }
+
     .management-list-row:last-child {
       border-bottom: 0;
     }
+
     .management-list-row .name {
       justify-self: start;
       display: inline-flex;
@@ -1013,6 +1442,7 @@
       color: var(--text);
       font-weight: 620;
     }
+
     .management-list-row .icon-box {
       justify-self: end;
       width: 34px;
@@ -1024,6 +1454,7 @@
       color: var(--accent);
       background: color-mix(in srgb, var(--accent) 8%, var(--surface));
     }
+
     .management-count {
       justify-self: end;
       min-width: 34px;
@@ -1033,19 +1464,55 @@
       color: color-mix(in srgb, var(--row-color) 78%, var(--text));
       background: color-mix(in srgb, var(--row-color) 9%, var(--surface));
       font-size: .82rem;
-      font-weight: 760;
+      font-weight: var(--weight-emphasis);
       text-align: center;
     }
+
     .management-count.zero {
       color: var(--muted);
       border-color: color-mix(in srgb, var(--line) 82%, transparent);
-      background: color-mix(in srgb, var(--surface-strong) 24%, var(--surface));
-      font-weight: 620;
+      background: transparent;
+      font-weight: 500;
     }
+
+    .hub-stat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .hub-stat-card {
+      display: grid;
+      gap: 4px;
+      padding: 12px 8px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: color-mix(in srgb, var(--surface) 86%, transparent);
+      text-align: right;
+      min-width: 0;
+    }
+
+    .hub-stat-card strong {
+      font-size: 1.35rem;
+      font-weight: var(--weight-emphasis);
+      line-height: 1;
+    }
+
+    .hub-stat-card span {
+      font-size: .78rem;
+      line-height: 1.25;
+      color: var(--muted);
+    }
+
+    .hub-stat-card--link {
+      cursor: pointer;
+    }
+
     .mgmt-module-grid {
       display: grid;
       gap: 12px;
     }
+
     .mgmt-module-card {
       display: grid;
       grid-template-columns: auto 1fr auto;
@@ -1055,15 +1522,17 @@
       padding: 14px 16px;
       border: 1px solid var(--line);
       border-radius: 12px;
-      background: color-mix(in srgb, var(--surface) 86%, transparent);
+      background: var(--surface);
       text-align: right;
-      box-shadow: 0 1px 4px rgba(0,0,0,.025);
+      box-shadow: none;
     }
+
     .mgmt-module-card strong {
       display: block;
       font-size: 1.05rem;
       margin-bottom: 4px;
     }
+
     .member-list {
       display: grid;
       gap: 0;
@@ -1072,16 +1541,20 @@
       overflow: hidden;
       background: color-mix(in srgb, var(--surface) 86%, transparent);
     }
+
     .member-row {
       padding: 14px 16px;
       border-bottom: 1px solid var(--line);
     }
+
     .member-row:last-child {
       border-bottom: 0;
     }
+
     .member-row.inactive {
       opacity: 0.72;
     }
+
     .member-head {
       display: flex;
       align-items: flex-start;
@@ -1089,10 +1562,12 @@
       gap: 12px;
       margin-bottom: 8px;
     }
+
     .member-name {
       font-size: 1.02rem;
-      font-weight: 760;
+      font-weight: var(--weight-emphasis);
     }
+
     .member-badge {
       display: inline-block;
       padding: 2px 8px;
@@ -1100,14 +1575,17 @@
       font-size: 0.82rem;
       border: 1px solid var(--line);
     }
+
     .member-badge.active {
       color: var(--status-done);
       border-color: color-mix(in srgb, var(--status-done) 35%, var(--line));
     }
+
     .member-badge.inactive {
       color: var(--danger);
       border-color: color-mix(in srgb, var(--danger) 35%, var(--line));
     }
+
     .member-meta {
       display: grid;
       gap: 4px;
@@ -1115,11 +1593,13 @@
       color: var(--muted);
       margin-bottom: 10px;
     }
+
     .member-actions {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
     }
+
     .member-actions button {
       min-height: 36px;
       padding: 0 12px;
@@ -1128,10 +1608,12 @@
       background: color-mix(in srgb, var(--surface) 92%, transparent);
       font-size: 0.9rem;
     }
+
     .member-actions button.danger {
       color: var(--danger);
       border-color: color-mix(in srgb, var(--danger) 35%, var(--line));
     }
+
     .member-confirm {
       margin-top: 10px;
       padding: 10px 12px;
@@ -1139,11 +1621,13 @@
       border: 1px solid color-mix(in srgb, var(--danger) 25%, var(--line));
       background: color-mix(in srgb, var(--danger) 6%, var(--surface));
     }
+
     .member-confirm-actions {
       display: flex;
       gap: 8px;
       margin-top: 8px;
     }
+
     .invite-form {
       display: grid;
       gap: 10px;
@@ -1152,6 +1636,7 @@
       border-radius: 10px;
       background: color-mix(in srgb, var(--surface) 86%, transparent);
     }
+
     .invite-form input {
       width: 100%;
       min-height: 42px;
@@ -1160,20 +1645,25 @@
       padding: 0 12px;
       background: var(--surface);
     }
+
     #createForm {
       display: grid;
       gap: 0;
     }
-    .prefs-line, .form-group {
+
+    .prefs-line,
+    .form-group {
       padding: 16px 0;
       border-top: 1px solid var(--line);
     }
+
     .prefs-line h2 {
       margin-bottom: 8px;
       color: var(--text);
       font-size: .98rem;
-      font-weight: 740;
+      font-weight: var(--weight-emphasis);
     }
+
     .prefs-line .segmented {
       gap: 6px;
       margin-top: 8px;
@@ -1182,6 +1672,7 @@
       border-radius: 11px;
       background: color-mix(in srgb, var(--surface) 50%, transparent);
     }
+
     .prefs-line .segmented button {
       flex: 1;
       min-width: 82px;
@@ -1195,39 +1686,47 @@
       font-weight: 640;
       box-shadow: none;
     }
+
     .prefs-line .segmented button.active {
       background: color-mix(in srgb, var(--accent) 9%, var(--surface));
       border-color: color-mix(in srgb, var(--accent) 18%, transparent);
       color: var(--accent);
       box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent);
     }
+
     .form-group {
       padding: 14px 0;
     }
+
     .form-group h2 {
       margin-bottom: 8px;
       color: var(--text);
       font-size: .98rem;
-      font-weight: 740;
+      font-weight: var(--weight-emphasis);
     }
+
     #createForm input,
     #createForm textarea {
       min-height: 42px;
       border-radius: 10px;
-      background: color-mix(in srgb, var(--surface) 86%, transparent);
-      border-color: color-mix(in srgb, var(--line) 82%, transparent);
+      background: var(--surface);
+      border-color: var(--line);
       padding: .66rem .78rem;
-      box-shadow: inset 0 1px 1px rgba(46,42,36,.025);
+      box-shadow: none;
     }
+
     #createForm textarea {
       min-height: 86px;
     }
-    .radio-grid, .chips {
+
+    .radio-grid,
+    .chips {
       display: flex;
       gap: 6px;
       flex-wrap: wrap;
       margin-top: 8px;
     }
+
     .chip {
       display: inline-flex;
       align-items: center;
@@ -1244,31 +1743,37 @@
       box-shadow: none;
       transition: border-color .18s ease, background .18s ease, color .18s ease;
     }
+
     .chip:has(input:checked) {
       color: var(--accent);
       border-color: color-mix(in srgb, var(--accent) 24%, var(--line));
       background: color-mix(in srgb, var(--accent) 9%, var(--surface));
     }
+
     .category-chip {
       display: inline-flex;
       align-items: stretch;
       gap: 4px;
     }
+
     .category-chip .chip {
       margin: 0;
     }
+
     .chip.delete-select {
       border-color: var(--line);
       color: var(--text);
-      background: color-mix(in srgb, var(--surface) 56%, transparent);
-      font-weight: 750;
+      background: var(--surface);
+      font-weight: var(--weight-emphasis);
     }
+
     .chip.delete-select.selected {
       border-color: var(--danger);
       outline: 1px solid color-mix(in srgb, var(--danger) 28%, transparent);
       outline-offset: 1px;
       background: color-mix(in srgb, var(--danger) 10%, var(--surface));
     }
+
     button.delete-category {
       min-height: 34px;
       padding: .42rem .66rem;
@@ -1277,9 +1782,10 @@
       color: var(--danger);
       background: color-mix(in srgb, var(--danger) 7%, var(--surface));
       font-size: .88rem;
-      font-weight: 760;
+      font-weight: var(--weight-emphasis);
       box-shadow: none;
     }
+
     button.add-inline {
       min-height: 34px;
       padding: .42rem .66rem;
@@ -1288,9 +1794,10 @@
       color: var(--accent);
       background: color-mix(in srgb, var(--accent) 7%, var(--surface));
       font-size: .88rem;
-      font-weight: 760;
+      font-weight: var(--weight-emphasis);
       box-shadow: none;
     }
+
     .add-panel {
       margin-top: 10px;
       padding: 8px;
@@ -1299,23 +1806,106 @@
       background: color-mix(in srgb, var(--accent) 6%, var(--surface));
       box-shadow: none;
     }
+
     #createForm .quick-actions.add-panel {
       align-items: center;
       gap: 6px;
     }
+
     #createForm .quick-actions.add-panel input {
       flex: 1 1 150px;
     }
+
     #createForm .quick-actions.add-panel button {
       min-height: 38px;
       padding: .5rem .7rem;
       box-shadow: none;
     }
-    #createForm > button.primary[type="submit"] {
+
+    #createForm>button.primary[type="submit"] {
       margin-top: 14px;
       min-height: 48px;
       border-radius: 12px;
     }
+
+    .supplier-form-actions {
+      display: flex;
+      gap: 10px;
+      align-items: stretch;
+      margin-top: 4px;
+    }
+
+    .supplier-form-actions .primary {
+      flex: 1;
+      min-height: 48px;
+      border-radius: 12px;
+    }
+
+    .supplier-form-actions .danger {
+      flex: 0 0 auto;
+      min-height: 48px;
+      padding: .5rem .85rem;
+      font-size: .86rem;
+      border-radius: 12px;
+      white-space: nowrap;
+    }
+
+    .supplier-delete-hint {
+      margin: 8px 0 0;
+      font-size: .84rem;
+    }
+
+    .confirm-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 120;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      background: color-mix(in srgb, #1f1a14 42%, transparent);
+      backdrop-filter: blur(2px);
+    }
+
+    .confirm-overlay[hidden] {
+      display: none !important;
+    }
+
+    .confirm-dialog {
+      width: min(100%, 360px);
+      padding: 18px 16px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, .18);
+      text-align: right;
+    }
+
+    .confirm-dialog h2 {
+      margin: 0 0 8px;
+      font-size: 1.05rem;
+    }
+
+    .confirm-dialog p {
+      margin: 0 0 14px;
+      line-height: 1.45;
+    }
+
+    .confirm-dialog-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-start;
+    }
+
+    .confirm-dialog-actions button {
+      min-height: 40px;
+      padding: .5rem .9rem;
+      border-radius: 10px;
+    }
+
+    .confirm-dialog-actions .danger.final {
+      min-width: 92px;
+    }
+
     .sort-bar {
       display: flex;
       gap: 6px;
@@ -1326,6 +1916,7 @@
       border-radius: 11px;
       background: color-mix(in srgb, var(--surface) 50%, transparent);
     }
+
     .sort-bar button {
       flex: 1;
       min-width: 86px;
@@ -1339,36 +1930,42 @@
       font-weight: 640;
       box-shadow: none;
     }
+
     .sort-bar button.active {
       background: color-mix(in srgb, var(--accent) 9%, var(--surface));
       border-color: color-mix(in srgb, var(--accent) 18%, transparent);
       color: var(--accent);
       box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 10%, transparent);
     }
+
     .danger-zone {
       border-top: 1px solid color-mix(in srgb, var(--danger) 50%, var(--line));
       color: var(--danger);
     }
+
     .danger-zone h2,
     .danger-zone p {
       color: var(--danger);
     }
+
     button.danger {
       width: auto;
       min-height: 34px;
       padding: .42rem .72rem;
       border-radius: 10px;
-      background: linear-gradient(180deg, #FFF7F5 0%, color-mix(in srgb, var(--danger) 12%, var(--surface)) 100%);
+      background: color-mix(in srgb, var(--danger) 8%, var(--surface));
       border-color: var(--danger);
       color: var(--danger);
       font-size: .88rem;
-      font-weight: 700;
+      font-weight: var(--weight-emphasis);
       box-shadow: none;
     }
+
     button.danger.final {
-      background: linear-gradient(180deg, #C96E62 0%, var(--danger) 100%);
+      background: var(--danger);
       color: #fff;
     }
+
     .chip input {
       width: 14px;
       height: 14px;
@@ -1377,6 +1974,7 @@
       flex: 0 0 auto;
       accent-color: var(--accent);
     }
+
     #createForm .chip input {
       width: 14px;
       height: 14px;
@@ -1385,6 +1983,7 @@
       border-radius: 50%;
       box-shadow: none;
     }
+
     .line-icon {
       width: 1.05em;
       height: 1.05em;
@@ -1396,21 +1995,25 @@
       flex: 0 0 auto;
       vertical-align: -0.16em;
     }
+
     .bottom-nav .line-icon {
       width: 19px;
       height: 19px;
     }
+
     .icon-label {
       display: inline-flex;
       align-items: center;
       gap: 7px;
     }
+
     .empty {
       padding: 28px 12px;
       text-align: center;
       color: var(--muted);
       border-top: 1px solid var(--line);
     }
+
     .toast {
       position: fixed;
       right: 50%;
@@ -1425,13 +2028,16 @@
       transition: .2s ease;
       z-index: 30;
     }
+
     .toast.show {
       opacity: 1;
       transform: translateX(50%) translateY(0);
     }
+
     .toast.saving {
       background: color-mix(in srgb, var(--soft-blue) 72%, #3B352E);
     }
+
     .supplier-step.saving,
     .supplier-check.saving {
       opacity: .72;
@@ -1439,62 +2045,72 @@
       outline-offset: 1px;
       animation: supplier-saving-pulse 1s ease-in-out infinite;
     }
+
     @keyframes supplier-saving-pulse {
-      0%, 100% { opacity: .72; }
-      50% { opacity: 1; }
+
+      0%,
+      100% {
+        opacity: .72;
+      }
+
+      50% {
+        opacity: 1;
+      }
     }
+
     [data-theme="dark"] button {
-      background: linear-gradient(180deg, #474D47 0%, #414741 100%);
+      background: var(--surface);
       border-color: var(--line);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.035), 0 1px 2px rgba(0,0,0,.08);
+      box-shadow: none;
     }
+
     [data-theme="dark"] button.primary {
-      background: linear-gradient(180deg, #61715B 0%, #566B4F 100%);
+      background: var(--accent);
       color: var(--text);
+      border-color: color-mix(in srgb, var(--accent) 70%, var(--line));
     }
+
     [data-theme="dark"] button.soft,
     [data-theme="dark"] .sort-bar button.active {
-      background: linear-gradient(180deg, rgba(167,240,112,.14) 0%, rgba(167,240,112,.08) 100%);
-      border-color: rgba(255,255,255,.08);
+      background: var(--accent-soft);
+      border-color: rgba(255, 255, 255, .08);
     }
+
     [data-theme="dark"] input,
     [data-theme="dark"] textarea {
       background: var(--surface-strong);
-      box-shadow: inset 0 1px 1px rgba(0,0,0,.08);
+      box-shadow: none;
     }
+
     [data-theme="dark"] .app-shell {
-      background:
-        linear-gradient(180deg, rgba(140,255,170,.016), rgba(255,255,255,0) 140px),
-        linear-gradient(rgba(140,255,170,.055) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(140,255,170,.055) 1px, transparent 1px),
-        var(--bg);
-      background-size: auto, 28px 28px, 28px 28px, auto;
-      border-color: rgba(255,255,255,.08);
-      box-shadow:
-        inset 0 1px 0 rgba(255,255,255,.035),
-        inset 0 0 0 8px rgba(255,255,255,.018),
-        0 1px 2px rgba(0,0,0,.10);
+      background: var(--bg);
+      border-color: rgba(255, 255, 255, .08);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, .10);
     }
+
     [data-theme="dark"] .topbar,
     [data-theme="dark"] .mockup-notice,
     [data-theme="dark"] .bottom-nav {
-      background: color-mix(in srgb, var(--surface-strong) 82%, transparent);
+      background: var(--surface);
       border-color: var(--line);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.03), 0 1px 2px rgba(0,0,0,.08);
+      box-shadow: none;
     }
+
     [data-theme="dark"] .bottom-nav button.active,
     [data-theme="dark"] .sort-bar button.active,
     [data-theme="dark"] .segmented button.active {
-      background: linear-gradient(180deg, rgba(167,240,112,.18) 0%, rgba(167,240,112,.11) 100%);
-      border-color: rgba(167,240,112,.18);
+      background: var(--accent-soft);
+      border-color: rgba(167, 240, 112, .18);
       color: var(--accent);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.035), 0 0 0 1px rgba(167,240,112,.025);
-      text-shadow: 0 0 8px rgba(167,240,112,.12);
+      box-shadow: none;
+      text-shadow: none;
     }
+
     [data-theme="dark"] .brand strong,
     [data-theme="dark"] h1 {
-      color: color-mix(in srgb, var(--text) 88%, var(--accent));
+      color: var(--text);
     }
+
     [data-theme="dark"] .task-card,
     [data-theme="dark"] .list-row,
     [data-theme="dark"] .mgmt-row,
@@ -1503,93 +2119,120 @@
     [data-theme="dark"] .chip {
       background: #3A3F3A;
       border-color: var(--line);
-      box-shadow: 0 1px 1px rgba(0,0,0,.035);
+      box-shadow: none;
     }
+
     [data-theme="dark"] .detail-row {
       border-color: var(--line);
     }
+
     [data-theme="dark"] .detail-row .update-item {
-      background: rgba(255,255,255,.022);
+      background: rgba(255, 255, 255, .022);
     }
+
     [data-theme="dark"] .status-badge {
-      background: rgba(255,255,255,.035);
-      border-color: rgba(255,255,255,.07);
+      background: rgba(255, 255, 255, .035);
+      border-color: rgba(255, 255, 255, .07);
     }
+
     [data-theme="dark"] .complete-row,
-    [data-theme="dark"] .supplier-edit-row,
     [data-theme="dark"] button.add-inline {
       color: var(--accent);
-      border-color: rgba(167,240,112,.18);
-      background: linear-gradient(180deg, rgba(167,240,112,.12) 0%, rgba(167,240,112,.075) 100%);
+      border-color: rgba(167, 240, 112, .18);
+      background: color-mix(in srgb, var(--accent-soft) 80%, var(--surface));
     }
+
     [data-theme="dark"] .mgmt-row.create-row,
     [data-theme="dark"] .mgmt-row.wide[data-nav="create"] {
-      border-color: rgba(167,240,112,.20);
-      background: linear-gradient(180deg, rgba(167,240,112,.09) 0%, rgba(255,255,255,.022) 100%);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.025), 0 1px 1px rgba(0,0,0,.035);
+      border-color: rgba(167, 240, 112, .20);
+      background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+      box-shadow: none;
     }
+
     [data-theme="dark"] .mgmt-row.create-row .row-left-icon,
     [data-theme="dark"] .mgmt-row.wide[data-nav="create"] .row-left-icon {
-      border-color: rgba(167,240,112,.22);
-      background: rgba(167,240,112,.10);
+      border-color: rgba(167, 240, 112, .22);
+      background: rgba(167, 240, 112, .10);
     }
+
     [data-theme="dark"] #createForm input,
     [data-theme="dark"] #createForm textarea {
-      background: color-mix(in srgb, var(--surface-strong) 78%, transparent);
-      border-color: rgba(255,255,255,.065);
-      box-shadow: inset 0 1px 1px rgba(0,0,0,.045);
+      background: var(--surface-strong);
+      border-color: rgba(255, 255, 255, .065);
+      box-shadow: none;
     }
+
     [data-theme="dark"] #createForm .chip,
     [data-theme="dark"] #createForm .segmented,
     [data-theme="dark"] .prefs-line .segmented,
     [data-theme="dark"] #createForm .sort-bar,
     [data-theme="dark"] .detail-row-main .segmented {
-      background: rgba(255,255,255,.018);
-      border-color: rgba(255,255,255,.06);
+      background: rgba(255, 255, 255, .018);
+      border-color: rgba(255, 255, 255, .06);
       box-shadow: none;
     }
+
     [data-theme="dark"] #createForm .chip:has(input:checked),
     [data-theme="dark"] #createForm .segmented button.active,
     [data-theme="dark"] .prefs-line .segmented button.active,
     [data-theme="dark"] .detail-row-main .segmented button.active {
-      background: rgba(167,240,112,.095);
-      border-color: rgba(167,240,112,.18);
+      background: rgba(167, 240, 112, .095);
+      border-color: rgba(167, 240, 112, .18);
       color: var(--accent);
-      box-shadow: inset 0 0 0 1px rgba(167,240,112,.025);
+      box-shadow: inset 0 0 0 1px rgba(167, 240, 112, .025);
     }
+
     [data-theme="dark"] button.delete-category,
     [data-theme="dark"] button.danger {
-      background: linear-gradient(180deg, rgba(184,92,80,.16) 0%, rgba(184,92,80,.10) 100%);
+      background: color-mix(in srgb, var(--danger) 12%, var(--surface));
     }
+
     [data-theme="dark"] button.danger.final {
-      background: linear-gradient(180deg, rgba(184,92,80,.88) 0%, rgba(184,92,80,.78) 100%);
+      background: var(--danger);
     }
+
     [data-theme="dark"] .add-panel {
-      background: rgba(167,240,112,.07);
+      background: rgba(167, 240, 112, .07);
     }
+
     [data-theme="dark"] .toast {
       background: #4A4036;
     }
+
     @media (min-width: 720px) {
-      .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .management-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .management-tiles .wide { grid-column: 1 / -1; }
+      .cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .management-tiles {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .management-tiles .wide {
+        grid-column: 1 / -1;
+      }
     }
+
     @media (max-width: 480px) {
-      body { padding: 0; }
+      body {
+        padding: 0;
+      }
+
       .app-shell {
         width: 100%;
         min-height: 100vh;
         border-radius: 0;
         border: 0;
       }
+
       .bottom-nav {
         width: calc(100% - 18px);
         bottom: 8px;
       }
     }
-    </style>
+  </style>
 </head>
+
 <body>
   <div class="app-shell">
     <header class="topbar">
@@ -1601,10 +2244,22 @@
     </header>
     <div id="pilotNotice" class="pilot-notice">פיילוט — הנתונים משותפים בין משתמשי הישיבה</div>
     <div id="offlineBanner" class="offline-banner" role="status">אין חיבור לאינטרנט — השינויים נשמרים במכשיר בלבד</div>
-    <main id="app" aria-live="polite"><p class="app-loading">טוען נתונים...</p></main>
+    <main id="app" aria-live="polite">
+      <p class="app-loading">טוען נתונים...</p>
+    </main>
   </div>
   <nav id="bottomNav" class="bottom-nav user" aria-label="ניווט ראשי"></nav>
   <div id="toast" class="toast" role="status"></div>
+  <div id="confirmOverlay" class="confirm-overlay" hidden>
+    <div class="confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="confirmDialogTitle">
+      <h2 id="confirmDialogTitle"></h2>
+      <p id="confirmDialogMessage" class="muted"></p>
+      <div class="confirm-dialog-actions">
+        <button type="button" class="danger final" id="confirmDialogOk">מחק</button>
+        <button type="button" id="confirmDialogCancel">ביטול</button>
+      </div>
+    </div>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="./adapters.js"></script>
@@ -1627,9 +2282,15 @@
         today: '<rect x="4" y="5" width="16" height="16" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/><path d="M9 15h6"/>',
         preferences: '<path d="M4 7h16"/><path d="M7 7a2 2 0 1 0 0 .01"/><path d="M4 17h16"/><path d="M17 17a2 2 0 1 0 0 .01"/>',
         back: '<path d="M19 12H5"/><path d="m12 19-7-7 7-7"/>',
-        edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>'
+        edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+        chevronDown: '<path d="m6 9 6 6 6-6"/>',
+        chevronRight: '<path d="m9 18 6-6-6-6"/>'
       };
       return `<svg class="line-icon" viewBox="0 0 24 24" aria-hidden="true">${icons[name] || icons.office}</svg>`;
+    }
+    function backButton(route) {
+      if (!route) return "";
+      return `<button class="back" type="button" data-nav="${route}" aria-label="חזרה">${lineIcon("chevronRight")}</button>`;
     }
     function labelIcon(name, text) {
       return `<span class="icon-label">${lineIcon(name)}<span>${text}</span></span>`;
@@ -2233,9 +2894,14 @@
       deletingPerson: false,
       peopleToDelete: [],
       showDoneArchive: false,
+      showCompletedTasks: false,
+      showTaskDoneArchive: false,
       allSort: "date",
       draftDate: "",
       supplierPrefill: "",
+      highlightSupplierId: null,
+      showCompletedSuppliers: false,
+      showSupplierDoneArchive: false,
       orgPeople: [],
       orgCategories: [],
       orgMembers: [],
@@ -2246,6 +2912,7 @@
       showInviteForm: false,
       tasks: [],
       suppliers: [],
+      expandedSupplierSteps: {},
       prefs: loadPreferences()
     };
     const localSuppliersAdapter = createLocalSuppliersAdapter();
@@ -2335,6 +3002,31 @@
       return error?.message === "STORAGE_QUOTA_EXCEEDED"
         ? "אין מספיק מקום לשמירה במכשיר"
         : "שגיאה בשמירת הנתונים";
+    }
+    let confirmDialogPending = null;
+    function openConfirmDialog({ title, message, confirmLabel = "מחק" }) {
+      return new Promise((resolve) => {
+        const overlay = $("confirmOverlay");
+        if (!overlay) return resolve(false);
+        $("confirmDialogTitle").textContent = title;
+        $("confirmDialogMessage").textContent = message;
+        $("confirmDialogOk").textContent = confirmLabel;
+        confirmDialogPending = resolve;
+        overlay.hidden = false;
+      });
+    }
+    function closeConfirmDialog(result) {
+      const overlay = $("confirmOverlay");
+      if (overlay) overlay.hidden = true;
+      confirmDialogPending?.(result);
+      confirmDialogPending = null;
+    }
+    function initConfirmDialog() {
+      $("confirmDialogOk")?.addEventListener("click", () => closeConfirmDialog(true));
+      $("confirmDialogCancel")?.addEventListener("click", () => closeConfirmDialog(false));
+      $("confirmOverlay")?.addEventListener("click", (e) => {
+        if (e.target === e.currentTarget) closeConfirmDialog(false);
+      });
     }
     function updateOfflineBanner() {
       const banner = $("offlineBanner");
@@ -2473,8 +3165,11 @@
     }
     async function createSupplierOrder(item) {
       try {
+        const beforeIds = new Set(state.suppliers.map(entry => entry.id));
         state.suppliers = await suppliersRepository.createSupplierOrder(state.suppliers, item);
-        return item;
+        return state.suppliers.find(entry => !beforeIds.has(entry.id))
+          || state.suppliers.find(entry => entry.id === item.id)
+          || item;
       } catch (error) {
         console.warn("Create supplier order failed.", error);
         toast(storageErrorMessage(error));
@@ -2651,7 +3346,9 @@
       window.scrollTo({ top: 0, left: 0, behavior: "auto" });
       document.querySelector(".app-shell")?.scrollTo({ top: 0, left: 0, behavior: "auto" });
     }
+    const DONE_RECENT_DAYS = 30;
     function navigate(view) {
+      if (view === "done") state.showCompletedTasks = true;
       state.editingNotes = false;
       state.editingTitle = false;
       state.addingUpdate = false;
@@ -2666,8 +3363,17 @@
       state.memberConfirm = null;
       state.showInviteForm = false;
       const normalized = guardManagerAdminView(normalizeView(view));
-      if (normalized !== "done" && !normalized.startsWith("filter:done")) state.showDoneArchive = false;
+      if (!["all", "done"].includes(normalized)) {
+        state.showCompletedTasks = false;
+        state.showTaskDoneArchive = false;
+      }
+      if (!normalized.startsWith("filter:done")) state.showDoneArchive = false;
       if (normalized !== "supplier-create") state.supplierPrefill = "";
+      if (normalized !== "suppliers") {
+        state.highlightSupplierId = null;
+        state.showCompletedSuppliers = false;
+        state.showSupplierDoneArchive = false;
+      }
       if (normalized.startsWith("task:")) {
         state.taskReturnRoute = validBackRoute(state.lastList) ? state.lastList : defaultRoute();
       } else {
@@ -2849,9 +3555,8 @@
       if (view === "management") return managementHubScreen();
       if (view === "mgmt-tasks") return mgmtTasksScreen();
       if (view === "mgmt-members") return orgMembersScreen();
-      if (view === "all") return openTasksScreen();
+      if (view === "all" || view === "done") return openTasksScreen();
       if (view === "today") return openTasksScreen();
-      if (view === "done") return doneScreen();
       if (view === "prefs") return prefsScreen();
       if (view === "create") return createScreen();
       if (view === "suppliers") return suppliersScreen();
@@ -2869,29 +3574,55 @@
         const tasks = sortTasks(mgmtVisibleCategoryTasks(category), currentSort("category"));
         return listScreen(c.label, tasks, true, "משימות לפי קטגוריה", true, false, "category");
       }
-      if (view.startsWith("filter:done")) return listScreen("משימות שהושלמו", sortTasks(visibleDoneTasks(state.tasks, state.showDoneArchive), currentSort("org")), true, state.showDoneArchive ? "כל הארגון · כולל ארכיון" : "כל הארגון", true, false, "org");
+      if (view.startsWith("filter:done")) {
+        const archiveToggle = state.role === "manager"
+          ? `<section class="section"><button class="mgmt-row wide" type="button" id="toggleDoneArchive"><span><strong>${state.showDoneArchive ? "הסתר ארכיון" : "הצג ארכיון"}</strong><span class="muted">משימות שהושלמו לפני יותר מ־${DONE_RECENT_DAYS} יום</span></span><span class="row-left-icon">${lineIcon("done")}</span></button></section>`
+          : "";
+        return `${listScreen("משימות שהושלמו", sortTasks(visibleDoneTasks(state.tasks, state.showDoneArchive), currentSort("org")), true, state.showDoneArchive ? "כל הארגון · כולל ארכיון" : "כל הארגון", true, false, "org")}${archiveToggle}`;
+      }
       if (view.startsWith("filter:progress")) return listScreen("משימות בתהליך", sortTasks(activeTasks().filter(t => t.status === "progress"), currentSort("org")), true, "כל הארגון", true, false, "org");
       if (view.startsWith("filter:open")) return listScreen("משימות בתהליך", sortTasks(activeTasks().filter(t => t.status === "progress"), currentSort("org")), true, "כל הארגון", true, false, "org");
+      if (view.startsWith("filter:urgent")) return listScreen("משימות דחופות", sortTasks(activeTasks().filter(t => t.status !== "done" && t.priority === "high"), currentSort("org")), true, "כל הארגון", true, false, "org");
       return openTasksScreen();
     }
-    function doneScreen() {
-      const includeArchive = state.role === "manager" && state.showDoneArchive;
-      const tasks = sortTasks(personalTasks(visibleDoneTasks(state.tasks, includeArchive)), currentSort("personal"));
-      const archiveToggle = state.role === "manager"
-        ? `<section class="section"><button class="mgmt-row wide" type="button" id="toggleDoneArchive"><span><strong>${state.showDoneArchive ? "הסתר ארכיון" : "הצג ארכיון"}</strong><span class="muted">משימות שהושלמו לפני יותר מ־90 יום</span></span><span class="row-left-icon">${lineIcon("done")}</span></button></section>`
+    function personalDoneTasksSection(sortMode, showOwner) {
+      const doneItems = sortTasks(personalTasks(activeTasks().filter((t) => t.status === "done")), sortMode);
+      if (!doneItems.length) return "";
+      const recentDoneItems = doneItems.filter((t) => !isArchivedDone(t));
+      const archivedDoneItems = doneItems.filter((t) => isArchivedDone(t));
+      const visibleDoneItems = state.showTaskDoneArchive ? doneItems : recentDoneItems;
+      const taskListBlock = (list, emptyMsg) => list.length
+        ? `<section class="list">${renderTaskList(list, showOwner, emptyMsg, sortMode, "personal")}</section>`
+        : `<div class="empty">${emptyMsg}</div>`;
+      const doneHint = doneItems.length
+        ? `<p class="supplier-done-hint muted">${recentDoneItems.length} מהחודש האחרון${archivedDoneItems.length ? ` · ${archivedDoneItems.length} ישנות יותר` : ""}</p>`
         : "";
-      return `${listScreen("הושלם", tasks, state.role === "manager", state.role === "manager" ? (state.showDoneArchive ? "המשימות שלי · כולל ארכיון" : "המשימות שלי") : "", true, false, "personal")}${archiveToggle}`;
+      const doneArchiveBtn = state.showCompletedTasks && archivedDoneItems.length && !state.showTaskDoneArchive
+        ? `<button class="mgmt-row supplier-done-archive-btn" type="button" id="toggleTaskDoneArchive"><span><strong>הצג ${archivedDoneItems.length} משימות ישנות יותר</strong><span class="muted">הושלמו לפני יותר מ־${DONE_RECENT_DAYS} יום</span></span><span class="row-left-icon">${lineIcon("chevronDown")}</span></button>`
+        : "";
+      const doneBody = state.showCompletedTasks
+        ? `${doneHint}${taskListBlock(visibleDoneItems, recentDoneItems.length ? "אין משימות שהושלמו בחודש האחרון." : "עדיין לא סימנתם משימות כהושלמו.")}${doneArchiveBtn}`
+        : "";
+      return `
+        <section class="task-group ${state.showCompletedTasks ? "is-open" : ""}">
+          <button type="button" class="task-group-toggle" id="toggleCompletedTasks" aria-expanded="${state.showCompletedTasks ? "true" : "false"}">
+            <h2 class="task-group-title">הושלמו · ${doneItems.length}</h2>
+            <span class="task-group-chevron">${lineIcon("chevronDown")}</span>
+          </button>
+          ${doneBody}
+        </section>`;
     }
     function openTasksScreen() {
       const sortMode = currentSort("personal");
       const tasks = sortTasks(personalTasks(activeTasks()).filter(t => t.status !== "done"), sortMode);
+      const doneCount = personalTasks(activeTasks().filter((t) => t.status === "done")).length;
       const todayTasks = tasks.filter(t => taskDueRank(t) <= 1);
       const otherTasks = tasks.filter(t => taskDueRank(t) > 1);
       const showOwner = state.role === "manager";
       return `
         <section class="hero">
           <h1>משימות</h1>
-          <p class="screen-subtitle">${state.role === "manager" ? "פתוחות · המשימות שלי" : "פתוחות"}</p>
+          <p class="screen-subtitle">${tasks.length} פתוחות · ${doneCount} הושלמו</p>
           ${sortControls("personal")}
         </section>
         <section class="task-group highlight">
@@ -2902,7 +3633,10 @@
           <h2 class="task-group-title">שאר המשימות</h2>
           <div class="list">${renderTaskList(otherTasks, showOwner, "אין משימות נוספות.", sortMode)}</div>
         </section>
-        ${state.role === "user" ? `<section class="section"><button class="mgmt-row wide" data-nav="create"><span><strong>יצירת משימה חדשה</strong><span class="muted">הוספה מהירה למשימות שלי</span></span><span class="row-left-icon">${lineIcon("add")}</span></button></section>` : ""}`;
+        ${personalDoneTasksSection(sortMode, showOwner)}
+        <section class="section">
+          <button class="mgmt-row create-row" data-nav="create"><strong>יצירת משימה חדשה</strong><span class="row-left-icon">${lineIcon("add")}</span></button>
+        </section>`;
     }
     function taskCard(t) {
       const c = cat(t.category);
@@ -2987,7 +3721,7 @@
       const backTarget = parentRoute(state.view);
       return `
         <section class="hero">
-          ${state.role === "manager" && backTarget ? `<button class="back" data-nav="${backTarget}">${lineIcon("back")} חזרה</button>` : ""}
+          ${state.role === "manager" && backTarget ? backButton(backTarget) : ""}
           <h1>${title}</h1>
           ${subtitle ? `<p class="screen-subtitle">${subtitle}</p>` : ""}
           ${sortable ? sortControls(sortContext) : ""}
@@ -3000,20 +3734,24 @@
     function listRow(t, showOwner) {
       const c = cat(t.category), s = statusMeta[t.status];
       const overdue = isOverdue(t);
+      const onDoneScreen = state.view === "done" || state.view.startsWith("filter:done")
+        || (state.view === "all" && state.showCompletedTasks && t.status === "done");
+      const statusBadge = onDoneScreen ? "" : `<span class="status-line status-badge">${lineIcon(s.icon)} ${s.label}</span>`;
+      const priorityBadge = onDoneScreen ? "" : `<span class="priority-meta ${t.priority === "high" ? "high" : ""}">עדיפות ${priorityLabel(t.priority)}</span>`;
+      const titleDot = onDoneScreen ? "" : `<span class="dot ${s.dot}">${lineIcon(s.icon)}</span> `;
       return `
         <div class="list-row ${t.status === "done" ? "completed" : ""}" data-open="${t.id}" role="button" tabindex="0">
           <div class="list-row-content">
             <div class="category">${lineIcon(c.icon)} ${c.label}</div>
-            <div class="task-title"><span class="dot ${s.dot}">${lineIcon(s.icon)}</span> ${t.title}</div>
+            <div class="task-title">${titleDot}${t.title}</div>
             <div class="row-meta">
-              <span class="status-line status-badge">${lineIcon(s.icon)} ${s.label}</span>
-              <span class="priority-meta ${t.priority === "high" ? "high" : ""}">עדיפות ${priorityLabel(t.priority)}</span>
+              ${statusBadge}${priorityBadge}
               ${showOwner ? `<span class="person-line">${lineIcon("user")} ${t.owner}</span>` : ""}
               <span class="due ${overdue ? "overdue" : ""}">${taskDueLabel(t)}</span>
               <span class="age-meta">${ageLabel(t.created_at)}</span>
             </div>
           </div>
-          ${t.status !== "done" ? `<button class="complete-row" type="button" data-status="${t.id}:done" aria-label="סמן כהושלם">${lineIcon("done")}<span class="complete-label">סמן<br>כהושלם</span></button>` : ""}
+          ${t.status !== "done" ? `<button class="complete-row" type="button" data-status="${t.id}:done" aria-label="סמן כהושלם">${lineIcon("done")}</button>` : ""}
         </div>`;
     }
     function updateEditorMarkup(id, text = "", saveId = "saveUpdate", cancelId = "cancelUpdate") {
@@ -3057,10 +3795,10 @@
         ? `<div class="detail-actions"><select id="taskCategorySelect">${categoryOptions}</select><button class="primary" id="saveTaskCategory">שמור קטגוריה</button></div>`
         : `<p>${lineIcon(c.icon)} ${c.label}</p>`;
       const statusBlock = canEdit || canRestore
-        ? `<div class="segmented">${statusButtons.map(([key,label]) => `<button data-status="${t.id}:${key}" class="${t.status === key ? "active" : ""}" ${t.status === "done" && key === "done" ? "disabled" : ""}>${label}</button>`).join("")}</div>`
+        ? `<div class="segmented">${statusButtons.map(([key, label]) => `<button data-status="${t.id}:${key}" class="${t.status === key ? "active" : ""}" ${t.status === "done" && key === "done" ? "disabled" : ""}>${label}</button>`).join("")}</div>`
         : `<p>${statusMeta[t.status].label}</p>`;
       const priorityBlock = canEdit
-        ? `<p class="muted">עדיפות</p><div class="segmented">${priorityButtons.map(([key,label]) => `<button data-priority="${t.id}:${key}" class="${t.priority === key ? "active" : ""}">${label}</button>`).join("")}</div>`
+        ? `<p class="muted">עדיפות</p><div class="segmented">${priorityButtons.map(([key, label]) => `<button data-priority="${t.id}:${key}" class="${t.priority === key ? "active" : ""}">${label}</button>`).join("")}</div>`
         : `<p class="muted">עדיפות ${priorityLabel(t.priority)}</p>`;
       const deleteBlock = canDeleteTask(t)
         ? `<section class="detail-panel danger-zone"><div class="detail-row"><h2>מחיקה</h2><div class="detail-row-main"><p class="muted">מחיקה רכה: המשימה תוסתר מהרשימות ולא תימחק לצמיתות.</p><button class="danger" id="deleteTask" type="button">מחק משימה</button></div></div></section>`
@@ -3068,7 +3806,7 @@
       return `
         <section class="detail-head">
           <div class="screen-title">פרטי משימה</div>
-          <button class="back" data-nav="${backRouteFor(state.view)}">${lineIcon("back")} חזרה</button>
+          ${backButton(backRouteFor(state.view))}
           <div class="detail-meta-strip">
             <span class="category">${lineIcon(c.icon)} ${c.label}</span>
           </div>
@@ -3133,20 +3871,36 @@
     function missingTaskScreen() {
       return `
         <section class="hero">
-          <button class="back" data-nav="${backRouteFor(state.view)}">${lineIcon("back")} חזרה</button>
+          ${backButton(backRouteFor(state.view))}
           <h1>המשימה לא נמצאה</h1>
         </section>`;
     }
+    function hubStatCard(count, label, nav) {
+      const inner = `<strong>${count}</strong><span>${escapeHtml(label)}</span>`;
+      return nav
+        ? `<button class="hub-stat-card hub-stat-card--link" type="button" data-nav="${nav}">${inner}</button>`
+        : `<div class="hub-stat-card">${inner}</div>`;
+    }
     function managementHubScreen() {
+      const openTasks = activeTasks().filter(t => t.status !== "done");
+      const urgentTasks = openTasks.filter(t => t.priority === "high");
+      const openSuppliers = visibleSuppliers().filter(item => !supplierProgress(item).complete).length;
       return `
         <section class="hero">
           <h1>ניהול</h1>
-          <p class="screen-subtitle">מרכז ניהול הארגון</p>
+          <p class="screen-subtitle">מרכז שליטה ארגוני</p>
+        </section>
+        <section class="section">
+          <div class="hub-stat-grid">
+            ${hubStatCard(openTasks.length, "משימות פתוחות", "filter:progress")}
+            ${hubStatCard(urgentTasks.length, "משימות דחופות", "filter:urgent")}
+            ${hubStatCard(openSuppliers, "ספקים פתוחים", "suppliers")}
+          </div>
         </section>
         <section class="mgmt-module-grid">
           <button class="mgmt-module-card" data-nav="mgmt-tasks">
             <span class="mgmt-module-icon">${lineIcon("list")}</span>
-            <span><strong>משימות</strong><span class="muted">תמונת מצב, קטגוריות ומבצעים</span></span>
+            <span><strong>ניהול משימות</strong><span class="muted">לפי קטגוריה, מבצע וסטטוס</span></span>
             <span class="row-left-icon">${lineIcon("back")}</span>
           </button>
           <button class="mgmt-module-card" data-nav="suppliers">
@@ -3176,7 +3930,7 @@
       const personColor = (person, index) => personColors[index % personColors.length];
       return `
         <section class="hero">
-          <button class="back" data-nav="${backRouteFor("mgmt-tasks")}">${lineIcon("back")} חזרה</button>
+          ${backButton(backRouteFor("mgmt-tasks"))}
           <h1>ניהול משימות</h1>
           <p class="screen-subtitle">תמונת מצב ארגונית</p>
         </section>
@@ -3278,7 +4032,7 @@
       if (state.orgMembersLoading) {
         return `
           <section class="hero">
-            <button class="back" data-nav="management">${lineIcon("back")} חזרה</button>
+            ${backButton("management")}
             <h1>חברי ארגון</h1>
             <p class="screen-subtitle">טוען...</p>
           </section>
@@ -3287,7 +4041,7 @@
       if (state.orgMembersError) {
         return `
           <section class="hero">
-            <button class="back" data-nav="management">${lineIcon("back")} חזרה</button>
+            ${backButton("management")}
             <h1>חברי ארגון</h1>
             <p class="screen-subtitle">שגיאה בטעינה</p>
           </section>
@@ -3308,7 +4062,7 @@
         : `<button class="mgmt-row create-row" type="button" id="showInviteForm"><strong>הוספת חבר</strong><span class="row-left-icon">${lineIcon("add")}</span></button>`;
       return `
         <section class="hero">
-          <button class="back" data-nav="management">${lineIcon("back")} חזרה</button>
+          ${backButton("management")}
           <h1>חברי ארגון</h1>
           <p class="screen-subtitle">${members.length} חברים · ${countActiveManagers(members)} מנהלים פעילים</p>
         </section>
@@ -3350,31 +4104,51 @@
         syncPeopleCatalog(state.orgPeople);
       }
     }
+    function formatSupplierStepDate(value) {
+      if (!value) return "";
+      const full = formatHebrewDate(value);
+      const parts = full.split(" · ");
+      return parts.length > 1 ? parts.slice(1).join(" · ") : full;
+    }
     function supplierStepsMarkup(item) {
       return `<div class="supplier-steps">${supplierSteps.map(step => {
         const date = item.step_dates[step.id];
-        return `<div class="supplier-step step-${step.id} ${item.steps[step.id] ? "done" : ""}" data-supplier-date-trigger="${item.id}:${step.id}" role="button" tabindex="0" aria-label="${step.label}">${item.steps[step.id] ? "✓ " : ""}${step.label}${date ? `<br><small>${formatHebrewDate(date)}</small>` : ""}<input class="supplier-step-date-native" type="date" data-supplier-step-date="${item.id}:${step.id}" value="${escapeHtml(item.step_dates[step.id] || "")}" tabindex="-1"></div>`;
+        const dateLabel = date ? formatSupplierStepDate(date) : "";
+        return `<div class="supplier-step step-${step.id} ${item.steps[step.id] ? "done" : ""}" data-supplier-date-trigger="${item.id}:${step.id}" role="button" tabindex="0" aria-label="${step.label}${dateLabel ? ` · ${dateLabel}` : ""}"><span class="supplier-step-label">${item.steps[step.id] ? "✓ " : ""}${step.label}</span>${dateLabel ? `<span class="supplier-step-date">${dateLabel}</span>` : ""}<input class="supplier-step-date-native" type="date" data-supplier-step-date="${item.id}:${step.id}" value="${escapeHtml(item.step_dates[step.id] || "")}" tabindex="-1"></div>`;
       }).join("")}</div>`;
     }
     function supplierRow(item) {
       const progress = supplierProgress(item);
       const assignees = item.allAssignees ? "כולם" : item.assignees.join(", ") || "ללא שיוך";
+      const expanded = Boolean(state.expandedSupplierSteps[item.id]);
+      const isNew = state.highlightSupplierId === item.id;
       return `
-        <div class="list-row supplier-list-row ${progress.complete ? "completed" : ""}">
-          <button class="supplier-edit-row" type="button" data-edit-supplier="${item.id}" aria-label="עריכת הזמנה">${lineIcon("edit")}<span class="complete-label">עריכה</span></button>
-          <div class="list-row-content">
-            <div class="category">${lineIcon("money")} ספקים / רכש</div>
-            <div class="task-title">${escapeHtml(item.supplier)}</div>
+        <div class="list-row supplier-list-row ${progress.complete ? "completed" : ""} ${expanded ? "is-steps-open" : ""} ${isNew ? "is-new" : ""}">
+          <div class="list-row-content" data-open-supplier="${item.id}" role="button" tabindex="0" aria-label="עריכת הזמנה ${escapeHtml(item.supplier)}">
+            <div class="supplier-card-head">
+              <div class="task-title">${escapeHtml(item.supplier)}</div>
+              <button class="supplier-steps-toggle" type="button" data-supplier-steps-toggle="${item.id}" aria-expanded="${expanded}" aria-label="שלבי הזמנה">${lineIcon("chevronDown")}</button>
+            </div>
             <div class="row-meta">
               <span>${escapeHtml(item.description || "ללא תיאור")}</span>
               ${item.amount ? `<span>סכום: ${escapeHtml(item.amount)}</span>` : ""}
               ${item.due_date ? `<span class="due">יעד: ${formatHebrewDate(item.due_date)}</span>` : ""}
               <span class="person-line">${lineIcon("user")} ${escapeHtml(assignees)}</span>
-              <span>${progress.done}/${progress.total} שלבים</span>
             </div>
-            <div class="supplier-progress">${supplierStepsMarkup(item)}</div>
+            <div class="supplier-steps-panel">${supplierStepsMarkup(item)}</div>
           </div>
         </div>`;
+    }
+    function supplierCompletedAt(item) {
+      const dates = supplierSteps.map((step) => item.step_dates?.[step.id]).filter(Boolean);
+      if (dates.length) return dates.sort().at(-1) || "";
+      return item.due_date || item.created_at || "";
+    }
+    function isArchivedCompletedSupplier(item, recentDays = DONE_RECENT_DAYS) {
+      if (!supplierProgress(item).complete) return false;
+      const completedAt = supplierCompletedAt(item);
+      if (!completedAt) return false;
+      return daysBetween(completedAt) >= recentDays;
     }
     function supplierQuickNames(items) {
       return [...new Set(items.map(item => item.supplier).filter(Boolean))].sort((a, b) => a.localeCompare(b, "he")).slice(0, 6);
@@ -3382,24 +4156,48 @@
     function suppliersScreen() {
       const items = visibleSuppliers();
       const quickNames = supplierQuickNames(items);
-      const open = items.filter(item => !supplierProgress(item).complete).length;
-      const done = items.length - open;
+      const openItems = items.filter(item => !supplierProgress(item).complete);
+      const doneItems = items.filter(item => supplierProgress(item).complete);
+      const recentDoneItems = doneItems.filter(item => !isArchivedCompletedSupplier(item));
+      const archivedDoneItems = doneItems.filter(item => isArchivedCompletedSupplier(item));
+      const visibleDoneItems = state.showSupplierDoneArchive ? doneItems : recentDoneItems;
+      const supplierList = (list, emptyMsg) => list.length
+        ? `<section class="list">${list.map(supplierRow).join("")}</section>`
+        : `<div class="empty">${emptyMsg}</div>`;
+      const createdNotice = state.highlightSupplierId
+        ? `<p class="supplier-created-notice" role="status">ההזמנה נוצרה בהצלחה</p>`
+        : "";
+      const doneHint = doneItems.length
+        ? `<p class="supplier-done-hint muted">${recentDoneItems.length} מהחודש האחרון${archivedDoneItems.length ? ` · ${archivedDoneItems.length} ישנות יותר` : ""}</p>`
+        : "";
+      const doneArchiveBtn = state.showCompletedSuppliers && archivedDoneItems.length && !state.showSupplierDoneArchive
+        ? `<button class="mgmt-row supplier-done-archive-btn" type="button" id="toggleSupplierDoneArchive"><span><strong>הצג ${archivedDoneItems.length} הזמנות ישנות יותר</strong><span class="muted">הושלמו לפני יותר מ־${DONE_RECENT_DAYS} יום</span></span><span class="row-left-icon">${lineIcon("chevronDown")}</span></button>`
+        : "";
+      const doneBody = state.showCompletedSuppliers
+        ? `${doneHint}${supplierList(visibleDoneItems, recentDoneItems.length ? "אין הזמנות שהושלמו בחודש האחרון." : "אין הזמנות שהושלמו.")}${doneArchiveBtn}`
+        : "";
       return `
         <section class="hero">
           <h1>ספקים / רכש</h1>
           <p class="screen-subtitle">ניהול הזמנות, תשלומים וחשבוניות</p>
         </section>
+        ${createdNotice}
         <section class="section">
-          <h2>ספקים</h2>
+          <h2>יצירה מהירה</h2>
           <div class="chips">
             ${quickNames.length ? quickNames.map(name => `<button class="chip" type="button" data-supplier-new="${escapeHtml(name)}">${escapeHtml(name)}</button>`).join("") : `<span class="muted">עדיין אין ספקים ברשימה.</span>`}
           </div>
-        </section>        <section class="management-tiles">
-          <button class="mgmt-row"><strong>פתוחות</strong><div class="big">${open}</div></button>
-          <button class="mgmt-row"><strong>הושלמו</strong><div class="big">${done}</div></button>
         </section>
-        <section class="list">
-          ${items.length ? items.map(supplierRow).join("") : `<div class="empty">אין הזמנות ספקים להצגה.</div>`}
+        <section class="task-group">
+          <h2 class="task-group-title">פתוחות · ${openItems.length}</h2>
+          ${supplierList(openItems, "אין הזמנות פתוחות.")}
+        </section>
+        <section class="task-group ${state.showCompletedSuppliers ? "is-open" : ""}">
+          <button type="button" class="task-group-toggle" id="toggleCompletedSuppliers" aria-expanded="${state.showCompletedSuppliers ? "true" : "false"}">
+            <h2 class="task-group-title">הושלמו · ${doneItems.length}</h2>
+            <span class="task-group-chevron">${lineIcon("chevronDown")}</span>
+          </button>
+          ${doneBody}
         </section>
         <section class="section">
           <button class="mgmt-row create-row" data-nav="supplier-create"><strong>הזמנת ספק חדשה</strong><span class="row-left-icon">${lineIcon("add")}</span></button>
@@ -3408,7 +4206,7 @@
     function supplierDetailScreen(id) {
       const item = getVisibleSupplier(id);
       if (!item) {
-        return `<section class="hero"><button class="back" data-nav="suppliers">${lineIcon("back")} חזרה</button><h1>ההזמנה לא נמצאה</h1></section>`;
+        return `<section class="hero">${backButton("suppliers")}<h1>ההזמנה לא נמצאה</h1></section>`;
       }
       return supplierFormScreen(item);
     }
@@ -3419,31 +4217,52 @@
         <div class="chips">
           <label class="chip supplier-assignee"><input name="supplierAll" type="checkbox" value="all" ${allChecked}> כולם</label>
           ${people.map(person => {
-            const checked = item && !item.allAssignees && item.assignees.includes(person) ? "checked" : "";
-            return `<label class="chip supplier-assignee"><input name="supplierAssignee" type="checkbox" value="${escapeHtml(person)}" ${checked} ${disableAssignees}> ${escapeHtml(person)}</label>`;
-          }).join("")}
+        const checked = item?.allAssignees || (item && item.assignees.includes(person)) ? "checked" : "";
+        return `<label class="chip supplier-assignee"><input name="supplierAssignee" type="checkbox" value="${escapeHtml(person)}" ${checked} ${disableAssignees}> ${escapeHtml(person)}</label>`;
+      }).join("")}
         </div>`;
     }
+    function supplierDueDateLabel(value) {
+      return value ? ` · ${formatHebrewDate(value)}` : " · בחר תאריך";
+    }
     function supplierDueDateField(dueDate = "") {
-      const label = dueDate ? formatHebrewDate(dueDate) : "בחר תאריך";
+      const label = supplierDueDateLabel(dueDate);
       return `
         <div class="form-group"><h2>תאריך יעד / ביצוע</h2><div class="supplier-check" data-supplier-due-date-trigger role="button" tabindex="0"><span class="supplier-check-text"><strong>תאריך יעד / ביצוע</strong><span class="supplier-check-date" id="supplierDateLabel">${label}</span></span><input class="supplier-step-date-native" id="supplierDate" type="date" value="${escapeHtml(dueDate)}"></div></div>`;
+    }
+    function supplierStepCheckLabel(step, item) {
+      const date = item.step_dates[step.id];
+      const dateLabel = date ? formatSupplierStepDate(date) : "בחר תאריך";
+      return `<span class="supplier-check-text"><strong>${step.label}</strong><span class="supplier-check-date"> · ${dateLabel}</span></span>`;
     }
     function supplierStepsPanel(item) {
       const progress = supplierProgress(item);
       return `
         <section class="detail-panel">
-          <div class="detail-row">
+          <div class="detail-row detail-row--steps">
             <h2>שלבי מעקב</h2>
             <div class="detail-row-main">
               <p class="muted">${progress.done} מתוך ${progress.total} שלבים הושלמו</p>
-              <div class="supplier-checklist">
-                ${supplierSteps.map(step => `<div class="supplier-check step-${step.id} ${item.steps[step.id] ? "done" : ""}" data-supplier-date-trigger="${item.id}:${step.id}" role="button" tabindex="0"><span class="supplier-check-text"><strong>${step.label}</strong><span class="supplier-check-date">${item.step_dates[step.id] ? formatHebrewDate(item.step_dates[step.id]) : "ללא תאריך"}</span></span><input type="checkbox" data-supplier-step="${item.id}:${step.id}" aria-label="${step.label}" ${item.steps[step.id] ? "checked" : ""}><input class="supplier-step-date-native" type="date" data-supplier-step-date="${item.id}:${step.id}" value="${escapeHtml(item.step_dates[step.id] || "")}"></div>`).join("")}
+              <div class="supplier-checklist supplier-checklist--stack">
+                ${supplierSteps.map(step => {
+        const date = item.step_dates[step.id];
+        const dateLabel = date ? formatSupplierStepDate(date) : "בחר תאריך";
+        return `<div class="supplier-check step-${step.id} ${item.steps[step.id] ? "done" : ""}" data-supplier-date-trigger="${item.id}:${step.id}" role="button" tabindex="0" aria-label="${step.label} · ${dateLabel}">${supplierStepCheckLabel(step, item)}<input class="supplier-step-date-native" type="date" data-supplier-step-date="${item.id}:${step.id}" value="${escapeHtml(item.step_dates[step.id] || "")}"></div>`;
+      }).join("")}
               </div>
-              <div class="detail-actions"><button class="soft" type="button" data-supplier-all="${item.id}">סמן הכל</button></div>
             </div>
           </div>
         </section>`;
+    }
+    function supplierFormActionsMarkup(isEdit) {
+      if (!isEdit) {
+        return `<button class="primary" type="submit" style="width:100%;">צור הזמנת ספק</button>`;
+      }
+      return `
+        <div class="supplier-form-actions">
+          <button class="primary" type="submit">שמור שינויים</button>
+          <button class="danger" type="button" id="deleteSupplierOrder">מחק הזמנה</button>
+        </div>`;
     }
     function supplierFormScreen(item = null) {
       const isEdit = Boolean(item);
@@ -3454,10 +4273,10 @@
       const initialDocuments = isEdit ? item.document_notes : "";
       const initialNotes = isEdit ? item.notes : "";
       const createStepDates = isEdit ? "" : `
-          <div class="form-group"><h2>תאריכי שלבים</h2><div class="supplier-checklist">${supplierSteps.map(step => `<div class="supplier-check step-${step.id}" data-new-step-date-trigger="${step.id}" role="button" tabindex="0"><span class="supplier-check-text"><strong>${step.label}</strong><span class="supplier-check-date" id="newStepDateLabel-${step.id}">בחר תאריך</span></span><input class="supplier-step-date-native" id="newStepDate-${step.id}" type="date" data-new-step-date="${step.id}"></div>`).join("")}</div></div>`;
+          <div class="form-group"><h2>תאריכי שלבים</h2><div class="supplier-checklist">${supplierSteps.map(step => `<div class="supplier-check step-${step.id}" data-new-step-date-trigger="${step.id}" role="button" tabindex="0"><span class="supplier-check-text"><strong>${step.label}</strong><span class="supplier-check-date" id="newStepDateLabel-${step.id}"> · בחר תאריך</span></span><input class="supplier-step-date-native" id="newStepDate-${step.id}" type="date" data-new-step-date="${step.id}"></div>`).join("")}</div></div>`;
       return `
         <section class="hero">
-          <button class="back" data-nav="suppliers">${lineIcon("back")} חזרה</button>
+          ${backButton("suppliers")}
           <h1>${isEdit ? escapeHtml(item.supplier) : "הזמנת ספק חדשה"}</h1>
           <p class="screen-subtitle">${isEdit ? "עריכת פרטי ההזמנה" : "מעקב רכש פשוט: הזמנה, קבלה, תשלום וחשבונית"}</p>
         </section>
@@ -3472,7 +4291,7 @@
           <div class="form-group"><h2>קישורים</h2><textarea id="supplierLinks" placeholder="קישור אחד בכל שורה">${escapeHtml(initialLinks)}</textarea><div id="supplierLinksPreview" class="supplier-links supplier-link-preview"></div></div>
           <div class="form-group"><h2>מסמכים / צילום מסך</h2><textarea id="supplierDocuments" placeholder="תיאור מסמך, שם קובץ או מקום זמני">${escapeHtml(initialDocuments)}</textarea></div>
           <div class="form-group"><h2>הערות</h2><textarea id="supplierNotes" placeholder="הערות פנימיות">${escapeHtml(initialNotes)}</textarea></div>
-          <button class="primary" type="submit" style="width:100%;">${isEdit ? "שמור שינויים" : "צור הזמנת ספק"}</button>
+          ${supplierFormActionsMarkup(isEdit)}
         </form>`;
     }
     function prefsScreen() {
@@ -3502,7 +4321,7 @@
           const selected = state.categoriesToDelete.includes(c.id) ? " selected" : "";
           return `<button class="chip delete-select${selected}" type="button" data-mark-delete-category="${c.id}">${lineIcon(c.icon)} ${c.label}</button>`;
         }
-        return `<label class="chip"><input name="category" type="radio" value="${c.id}" ${i===0 ? "checked" : ""}> ${lineIcon(c.icon)} ${c.label}</label>`;
+        return `<label class="chip"><input name="category" type="radio" value="${c.id}" ${i === 0 ? "checked" : ""}> ${lineIcon(c.icon)} ${c.label}</label>`;
       }).join("");
       const canManageCategories = state.role === "manager" && DATA_BACKEND !== "supabase";
       const deleteButton = canManageCategories && categories.length ? `<button class="delete-category" type="button" id="startDeleteCategory">${state.deletingCategory ? "ביטול מחיקה" : "מחק קטגוריה"}</button>` : "";
@@ -3523,7 +4342,7 @@
           const selected = state.peopleToDelete.includes(person) ? " selected" : "";
           return `<button class="chip delete-select${selected}" type="button" data-mark-delete-person="${person}">${lineIcon("user")} ${person}</button>`;
         }
-        return `<label class="chip"><input name="owner" type="radio" value="${person}" ${i===0 ? "checked" : ""}> ${person}</label>`;
+        return `<label class="chip"><input name="owner" type="radio" value="${person}" ${i === 0 ? "checked" : ""}> ${person}</label>`;
       }).join("");
       const deleteButton = people.length && DATA_BACKEND !== "supabase"
         ? `<button class="delete-category" type="button" id="startDeletePerson">${state.deletingPerson ? "ביטול מחיקה" : "מחק מבצע"}</button>`
@@ -3545,7 +4364,7 @@
     function createScreen() {
       return `
         <section class="hero">
-          <button class="back" data-nav="${backRouteFor("create")}">${lineIcon("back")} חזרה</button>
+          ${backButton(backRouteFor("create"))}
           <h1>משימה חדשה</h1>
         </section>
         <form id="createForm">
@@ -3557,7 +4376,7 @@
             ${state.addingCategory && DATA_BACKEND !== "supabase" ? `<div class="quick-actions add-panel"><input id="newCategoryName" placeholder="שם קטגוריה"><button class="primary" type="button" id="saveCategory">שמור קטגוריה</button><button type="button" id="cancelCategory">ביטול</button></div>` : ""}
           </div>
           ${state.role === "manager" ? `<div class="form-group"><h2>מבצע</h2>${peoplePickerMarkup()}${people.length ? "" : `<p class="muted" style="margin-top:10px;">${DATA_BACKEND === "supabase" ? "אין חברי ארגון זמינים לשיוך כרגע." : "אין מבצעים כרגע. אפשר ליצור משימה ללא מבצע או להוסיף מבצע חדש."}</p>`}${state.addingPerson && DATA_BACKEND !== "supabase" ? `<div class="quick-actions add-panel"><input id="newPersonName" placeholder="שם מבצע"><button class="primary" type="button" id="savePerson">שמור מבצע</button><button type="button" id="cancelPerson">ביטול</button></div>` : ""}</div>` : ""}
-          <div class="form-group"><h2>יעד</h2><div class="segmented"><button type="button" data-due-choice="today" class="active">היום</button><button type="button" data-due-choice="tomorrow">מחר</button><button type="button" data-due-choice="date">בחר תאריך</button><button type="button" data-due-choice="none">ללא יעד</button></div><input id="newDate" type="date" style="display:none; margin-top:10px;"></div>
+          <div class="form-group form-group--due"><h2>יעד</h2><div class="segmented"><button type="button" data-due-choice="today" class="active">היום</button><button type="button" data-due-choice="tomorrow">מחר</button><button type="button" data-due-choice="date">בחר תאריך</button><button type="button" data-due-choice="none">ללא יעד</button></div><input id="newDate" class="task-date-native" type="date"></div>
           <div class="form-group"><h2>עדיפות</h2><div class="chips"><label class="chip"><input name="priority" type="radio" value="normal" checked> רגילה</label><label class="chip"><input name="priority" type="radio" value="high"> גבוהה</label></div></div>
           <div class="form-group"><h2>הערות</h2><textarea id="newNotes" placeholder="פרטים קצרים"></textarea></div>
           <button class="primary" type="submit" style="width:100%;">צור משימה</button>
@@ -3565,11 +4384,11 @@
     }
     function renderNav() {
       const items = state.role === "manager"
-        ? [["management","ניהול","settings"],["all","משימות","list"],["suppliers","ספקים","money"],["done","הושלם","done"],["prefs","העדפות","preferences"]]
-        : [["all","משימות","list"],["suppliers","ספקים","money"],["done","הושלם","done"],["prefs","העדפות","preferences"]];
+        ? [["management", "ניהול", "settings"], ["all", "משימות", "list"], ["suppliers", "ספקים", "money"], ["prefs", "העדפות", "preferences"]]
+        : [["all", "משימות", "list"], ["suppliers", "ספקים", "money"], ["prefs", "העדפות", "preferences"]];
       const nav = $("bottomNav");
       nav.className = `bottom-nav ${state.role === "manager" ? "manager" : "user"}`;
-      nav.innerHTML = items.map(([view,label,iconName]) => `<button data-nav="${view}" class="${state.view === view ? "active" : ""}"><span>${lineIcon(iconName)}</span><span>${label}</span></button>`).join("");
+      nav.innerHTML = items.map(([view, label, iconName]) => `<button data-nav="${view}" class="${state.view === view || (view === "all" && state.view === "done") ? "active" : ""}"><span>${lineIcon(iconName)}</span><span>${label}</span></button>`).join("");
     }
     let authButtonsBound = false;
     function bindAuthButtons() {
@@ -3641,6 +4460,24 @@
         state.supplierPrefill = e.currentTarget.dataset.supplierNew || "";
         navigate("supplier-create");
       }));
+      $("toggleCompletedTasks")?.addEventListener("click", () => {
+        state.showCompletedTasks = !state.showCompletedTasks;
+        if (!state.showCompletedTasks) state.showTaskDoneArchive = false;
+        render();
+      });
+      $("toggleTaskDoneArchive")?.addEventListener("click", () => {
+        state.showTaskDoneArchive = true;
+        render();
+      });
+      $("toggleCompletedSuppliers")?.addEventListener("click", () => {
+        state.showCompletedSuppliers = !state.showCompletedSuppliers;
+        if (!state.showCompletedSuppliers) state.showSupplierDoneArchive = false;
+        render();
+      });
+      $("toggleSupplierDoneArchive")?.addEventListener("click", () => {
+        state.showSupplierDoneArchive = true;
+        render();
+      });
       document.querySelectorAll("[data-sort]").forEach(el => el.addEventListener("click", e => {
         state.allSort = e.currentTarget.dataset.sort;
         render();
@@ -3654,9 +4491,22 @@
         e.preventDefault();
         navigate(`task:${e.currentTarget.dataset.open}`);
       }));
-      document.querySelectorAll("[data-edit-supplier]").forEach(el => el.addEventListener("click", e => {
+      document.querySelectorAll("[data-open-supplier]").forEach(el => el.addEventListener("click", e => {
+        if (e.target.closest("[data-supplier-steps-toggle], [data-supplier-date-trigger]")) return;
+        navigate(`supplier:${e.currentTarget.dataset.openSupplier}`);
+      }));
+      document.querySelectorAll("[data-open-supplier]").forEach(el => el.addEventListener("keydown", e => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        if (e.target.closest("[data-supplier-steps-toggle], [data-supplier-date-trigger]")) return;
+        e.preventDefault();
+        navigate(`supplier:${e.currentTarget.dataset.openSupplier}`);
+      }));
+      document.querySelector(".supplier-list-row.is-new")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      document.querySelectorAll("[data-supplier-steps-toggle]").forEach(el => el.addEventListener("click", e => {
         e.stopPropagation();
-        navigate(`supplier:${e.currentTarget.dataset.editSupplier}`);
+        const id = e.currentTarget.dataset.supplierStepsToggle;
+        state.expandedSupplierSteps[id] = !state.expandedSupplierSteps[id];
+        render();
       }));
       function openSupplierStepDate(container) {
         const input = container.querySelector("[data-supplier-step-date]");
@@ -3667,7 +4517,6 @@
       document.querySelectorAll("[data-supplier-date-trigger]").forEach(el => {
         el.addEventListener("click", e => {
           e.stopPropagation();
-          if (e.target.closest("input[type='checkbox']")) return;
           openSupplierStepDate(e.currentTarget);
         });
         el.addEventListener("keydown", e => {
@@ -3676,7 +4525,7 @@
           e.stopPropagation();
           openSupplierStepDate(e.currentTarget);
         });
-      });      function openSupplierDueDate() {
+      }); function openSupplierDueDate() {
         const input = $("supplierDate");
         if (!input) return;
         if (typeof input.showPicker === "function") input.showPicker();
@@ -3692,9 +4541,9 @@
       });
       $("supplierDate")?.addEventListener("change", e => {
         const label = $("supplierDateLabel");
-        if (label) label.textContent = e.currentTarget.value ? formatHebrewDate(e.currentTarget.value) : "בחר תאריך";
+        if (label) label.textContent = e.currentTarget.value ? supplierDueDateLabel(e.currentTarget.value) : " · בחר תאריך";
         e.currentTarget.closest(".supplier-check")?.classList.toggle("done", Boolean(e.currentTarget.value));
-      });      function openNewSupplierStepDate(container) {
+      }); function openNewSupplierStepDate(container) {
         const input = container.querySelector("[data-new-step-date]");
         if (!input) return;
         if (typeof input.showPicker === "function") input.showPicker();
@@ -3711,20 +4560,13 @@
       document.querySelectorAll("[data-new-step-date]").forEach(el => el.addEventListener("change", e => {
         const step = e.currentTarget.dataset.newStepDate;
         const label = $(`newStepDateLabel-${step}`);
-        if (label) label.textContent = e.currentTarget.value ? formatHebrewDate(e.currentTarget.value) : "בחר תאריך";
+        if (label) label.textContent = e.currentTarget.value ? supplierDueDateLabel(e.currentTarget.value) : " · בחר תאריך";
         e.currentTarget.closest(".supplier-check")?.classList.toggle("done", Boolean(e.currentTarget.value));
-      }));      document.querySelectorAll("[data-supplier-step]").forEach(el => el.addEventListener("change", async e => {
-        const [id, step] = e.currentTarget.dataset.supplierStep.split(":");
-        await updateSupplierStage(id, step, e.currentTarget.checked, null, {
-          saveTarget: e.currentTarget,
-          successMessage: "שלב ההזמנה עודכן"
-        });
       }));
       document.querySelectorAll("[data-supplier-step-date]").forEach(el => el.addEventListener("change", async e => {
         const [id, step] = e.currentTarget.dataset.supplierStepDate.split(":");
         const value = e.currentTarget.value;
-        const current = getSupplier(id);
-        await updateSupplierStage(id, step, value ? true : Boolean(current?.steps[step]), value, {
+        await updateSupplierStage(id, step, Boolean(value), value, {
           saveTarget: e.currentTarget,
           successMessage: "תאריך השלב נשמר"
         });
@@ -3735,11 +4577,11 @@
           saveTarget: e.currentTarget.closest(".detail-row-main"),
           successMessage: "כל שלבי ההזמנה סומנו"
         });
-      }));      $("supplierForm")?.addEventListener("change", e => {
+      })); $("supplierForm")?.addEventListener("change", e => {
         if (e.target.name !== "supplierAll") return;
         document.querySelectorAll('input[name="supplierAssignee"]').forEach(input => {
           input.disabled = e.target.checked;
-          if (e.target.checked) input.checked = false;
+          input.checked = e.target.checked;
         });
       });
       function updateSupplierLinksPreview() {
@@ -3749,11 +4591,11 @@
         const links = input.value.split(/\s+/).map(value => value.trim()).filter(value => /^https?:\/\//i.test(value));
         preview.innerHTML = links.length
           ? links.map(link => `<a class="supplier-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(link)}</a>`).join("")
-          : `<p class="muted">קישורים שיודבקו כאן יופיעו כהיפרלינקים.</p>`;
+          : "";
       }
       $("supplierLinks")?.addEventListener("input", updateSupplierLinksPreview);
       $("supplierLinks")?.addEventListener("paste", () => setTimeout(updateSupplierLinksPreview, 0));
-      updateSupplierLinksPreview();      $("supplierForm")?.addEventListener("submit", async e => {
+      updateSupplierLinksPreview(); $("supplierForm")?.addEventListener("submit", async e => {
         e.preventDefault();
         const editId = $("supplierForm")?.dataset.supplierId || "";
         const allAssignees = Boolean(document.querySelector('input[name="supplierAll"]')?.checked);
@@ -3806,9 +4648,31 @@
           step_dates: stepDates,
           created_at: isoDateFromOffset(0)
         }, 0);
-        await createSupplierOrder(item);
+        const created = await createSupplierOrder(item);
+        state.highlightSupplierId = created?.id || item.id;
         toast("הזמנת הספק נוצרה");
-        navigate(`supplier:${item.id}`);
+        navigate("suppliers");
+      });
+      $("deleteSupplierOrder")?.addEventListener("click", async () => {
+        const editId = $("supplierForm")?.dataset.supplierId || "";
+        if (!editId) return;
+        const existing = getSupplier(editId);
+        if (!existing || !canAccessSupplier(existing)) {
+          navigate("suppliers");
+          toast("אין הרשאה להזמנה זו");
+          return;
+        }
+        const supplierName = existing.supplier || "ההזמנה";
+        const confirmed = await openConfirmDialog({
+          title: "מחיקת הזמנה",
+          message: `למחוק את "${supplierName}"? ההזמנה תוסתר מהרשימות ולא תימחק לצמיתות.`,
+          confirmLabel: "מחק הזמנה"
+        });
+        if (!confirmed) return;
+        if (await deleteSupplierOrderSoft(editId)) {
+          toast("ההזמנה נמחקה");
+          navigate("suppliers");
+        }
       });
       document.querySelectorAll("[data-status]").forEach(el => el.addEventListener("click", async (e) => {
         e.stopPropagation();
@@ -4172,21 +5036,42 @@
         render();
         toast(names.length === 1 ? "המבצע נמחק" : "המבצעים נמחקו");
       });
+      function openTaskDueDatePicker() {
+        const dateInput = $("newDate");
+        if (!dateInput) return;
+        if (typeof dateInput.showPicker === "function") dateInput.showPicker();
+        else dateInput.focus();
+      }
       document.querySelectorAll("[data-due-choice]").forEach(btn => btn.addEventListener("click", e => {
         document.querySelectorAll("[data-due-choice]").forEach(b => b.classList.remove("active"));
         e.currentTarget.classList.add("active");
         const dateInput = $("newDate");
-        const dateMode = e.currentTarget.dataset.dueChoice === "date";
-        dateInput.style.display = dateMode ? "block" : "none";
-        dateInput.required = dateMode;
+        const choice = e.currentTarget.dataset.dueChoice;
+        const dateBtn = document.querySelector('[data-due-choice="date"]');
+        if (choice === "date") {
+          dateInput.required = true;
+          openTaskDueDatePicker();
+        } else {
+          dateInput.required = false;
+          dateInput.value = "";
+          if (dateBtn) dateBtn.textContent = "בחר תאריך";
+        }
       }));
+      $("newDate")?.addEventListener("change", e => {
+        const dateBtn = document.querySelector('[data-due-choice="date"]');
+        if (dateBtn && e.currentTarget.value) {
+          dateBtn.textContent = formatHebrewDate(e.currentTarget.value);
+          document.querySelectorAll("[data-due-choice]").forEach(b => b.classList.remove("active"));
+          dateBtn.classList.add("active");
+        }
+      });
       $("createForm")?.addEventListener("submit", async (e) => {
         e.preventDefault();
         const form = e.currentTarget;
         const owner = resolveTaskOwner(form);
         const dueChoice = document.querySelector("[data-due-choice].active").dataset.dueChoice;
         if (dueChoice === "date" && !$("newDate").value) {
-          $("newDate").focus();
+          openTaskDueDatePicker();
           toast("בחר תאריך");
           return;
         }
@@ -4223,7 +5108,7 @@
       });
     }
     function escapeHtml(text) {
-      return String(text).replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;" }[ch]));
+      return String(text).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[ch]));
     }
     function renderLinkedText(text) {
       return escapeHtml(text).replace(/\bhttps?:\/\/[^\s<]+/g, (match) => {
@@ -4242,11 +5127,7 @@
       });
     }
     window.addEventListener("hashchange", () => {
-      const nextView = location.hash.replace("#", "") || defaultRoute();
-      state.view = nextView;
-      syncListRoute(nextView);
-      render();
-      resetScroll();
+      navigate(location.hash.replace("#", "") || defaultRoute());
     });
     let authListenerReady = false;
     function registerPilotAuthListener() {
@@ -4287,6 +5168,7 @@
         await unregisterServiceWorkersForAuth();
       }
       updateOfflineBanner();
+      initConfirmDialog();
       window.addEventListener("online", updateOfflineBanner);
       window.addEventListener("offline", updateOfflineBanner);
 
@@ -4312,6 +5194,7 @@
           location.hash = defaultRoute();
         }
         state.view = location.hash.replace("#", "") || defaultRoute();
+        if (state.view === "done") state.showCompletedTasks = true;
         if (state.role === "manager") {
           const migration = await migrateLocalPilotData({
             isManager: true,
@@ -4431,8 +5314,9 @@
         document.addEventListener("visibilitychange", () => {
           if (document.visibilityState === "visible") registration.update();
         });
-      }).catch(() => {});
+      }).catch(() => { });
     }
   </script>
 </body>
+
 </html>
