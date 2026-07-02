@@ -1772,26 +1772,30 @@
 
     button.delete-category {
       min-height: 34px;
+      min-width: 34px;
       padding: .42rem .66rem;
       border-radius: 10px;
       border-color: color-mix(in srgb, var(--danger) 65%, var(--line));
       color: var(--danger);
       background: color-mix(in srgb, var(--danger) 7%, var(--surface));
-      font-size: .88rem;
-      font-weight: var(--weight-emphasis);
+      font-size: 1.1rem;
+      font-weight: bold;
       box-shadow: none;
+      text-align: center;
     }
 
     button.add-inline {
       min-height: 34px;
+      min-width: 34px;
       padding: .42rem .66rem;
       border-radius: 10px;
       border-color: color-mix(in srgb, var(--accent) 42%, var(--line));
       color: var(--accent);
       background: color-mix(in srgb, var(--accent) 7%, var(--surface));
-      font-size: .88rem;
-      font-weight: var(--weight-emphasis);
+      font-size: 1.1rem;
+      font-weight: bold;
       box-shadow: none;
+      text-align: center;
     }
 
     .add-panel {
@@ -4315,7 +4319,7 @@
         return `<label class="chip"><input name="category" type="radio" value="${c.id}" ${i === 0 ? "checked" : ""}> ${lineIcon(c.icon)} ${c.label}</label>`;
       }).join("");
       const canManageCategories = state.role === "manager" && DATA_BACKEND !== "supabase";
-      const deleteButton = canManageCategories && categories.length ? `<button class="delete-category" type="button" id="startDeleteCategory">${state.deletingCategory ? "ביטול מחיקה" : "מחק קטגוריה"}</button>` : "";
+      const deleteButton = canManageCategories && categories.length ? `<button class="delete-category" type="button" id="startDeleteCategory" title="${state.deletingCategory ? "ביטול מחיקה" : "מחק קטגוריה"}">${state.deletingCategory ? "×" : "−"}</button>` : "";
       const confirm = state.deletingCategory && state.categoriesToDelete.length
         ? `<div class="quick-actions" style="margin-top:10px;"><button class="danger final" type="button" id="confirmDeleteCategory">אשר מחיקה (${state.categoriesToDelete.length})</button><button type="button" id="cancelDeleteCategory">ביטול</button></div>`
         : "";
@@ -4323,7 +4327,7 @@
         ? `<p class="muted" style="margin-top:10px; color: var(--danger);">בחר קטגוריה אחת או יותר למחיקה. רק המסומנות במסגרת אדומה יימחקו.</p>`
         : "";
       return `
-        <div class="chips">${categoryItems}${canManageCategories ? `<button class="add-inline" type="button" id="showCategoryInput">הוספת קטגוריה +</button>` : ""}${deleteButton}</div>
+        <div class="chips">${categoryItems}${canManageCategories ? `<button class="add-inline" type="button" id="showCategoryInput" title="הוספת קטגוריה">+</button>` : ""}${deleteButton}</div>
         ${help}
         ${confirm}`;
     }
@@ -4336,7 +4340,7 @@
         return `<label class="chip"><input name="owner" type="radio" value="${person}" ${i === 0 ? "checked" : ""}> ${person}</label>`;
       }).join("");
       const deleteButton = people.length && DATA_BACKEND !== "supabase"
-        ? `<button class="delete-category" type="button" id="startDeletePerson">${state.deletingPerson ? "ביטול מחיקה" : "מחק מבצע"}</button>`
+        ? `<button class="delete-category" type="button" id="startDeletePerson" title="${state.deletingPerson ? "ביטול מחיקה" : "מחק מבצע"}">${state.deletingPerson ? "×" : "−"}</button>`
         : "";
       const confirm = state.deletingPerson && state.peopleToDelete.length
         ? `<div class="quick-actions" style="margin-top:10px;"><button class="danger final" type="button" id="confirmDeletePerson">אשר מחיקה (${state.peopleToDelete.length})</button><button type="button" id="cancelDeletePerson">ביטול</button></div>`
@@ -4346,7 +4350,7 @@
         : "";
       const addPersonButton = DATA_BACKEND === "supabase"
         ? ""
-        : `<button class="add-inline" type="button" id="showPersonInput">הוספת מבצע +</button>`;
+        : `<button class="add-inline" type="button" id="showPersonInput" title="הוספת מבצע">+</button>`;
       return `
         <div class="chips">${items}${addPersonButton}${deleteButton}</div>
         ${help}
