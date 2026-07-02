@@ -4333,6 +4333,11 @@
             <button type="button" data-theme-choice="dark" class="${state.prefs.dark ? "active" : ""}">מצב כהה</button>
           </div>
         </section>
+        ${state.role === "manager" ? `<section class="prefs-line">
+          <h2>ייצוא נתונים</h2>
+          <p>הורד את כל המשימות וההזמנות כקובץ אקסל לפי חודשים.</p>
+          <button class="soft" id="exportExcel" type="button">ייצוא לאקסל ↓</button>
+        </section>` : ""}
         ${state.role === "manager" && DATA_BACKEND !== "supabase" ? `<section class="prefs-line danger-zone">
           <h2>ניקוי משימות</h2>
           <p>${clearPrompt.detail}</p>
@@ -4412,6 +4417,64 @@
       nav.className = `bottom-nav ${state.role === "manager" ? "manager" : "user"}`;
       nav.innerHTML = items.map(([view, label, iconName]) => `<button data-nav="${view}" class="${state.view === view || (view === "all" && state.view === "done") ? "active" : ""}"><span>${lineIcon(iconName)}</span><span>${label}</span></button>`).join("");
     }
+    async function exportToExcel() {
+      if (!window.XLSX) {
+        toast("טוען ספרייה...");
+        await new Promise((resolve, reject) => {
+          const s = document.createElement("script");
+          s.src = "https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js";
+          s.onload = resolve;
+          s.onerror = () => reject(new Error("טעינה נכשלה"));
+          document.head.appendChild(s);
+        }).catch(() => { toast("שגיאה בטעינת ספריית האקסל"); return Promise.reject(); });
+      }
+      const XLSX = window.XLSX;
+      const HE_MONTHS = ["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
+      function mLabel(iso) { if (!iso) return ""; const d = new Date(iso); return `${HE_MONTHS[d.getMonth()]} ${d.getFullYear()}`; }
+      function fDate(iso) { if (!iso) return ""; return new Date(iso).toLocaleDateString("he-IL"); }
+      function cLabel(id) { return categories.find(c => c.id === id)?.label || id || ""; }
+
+      const wb = XLSX.utils.book_new();
+      wb.Workbook = { Views: [{ RTL: true }] };
+
+      // גיליון 1: משימות
+      const tasks = [...state.tasks]
+        .filter(t => !t.deleted_at)
+        .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+      const wsT = XLSX.utils.aoa_to_sheet([
+        ["חודש", "תאריך יצירה", "כותרת", "קטגוריה", "מבצע", "עדיפות", "סטטוס", "תאריך יעד", "תאריך השלמה", "הערות"],
+        ...tasks.map(t => [
+          mLabel(t.created_at), fDate(t.created_at), t.title || "", cLabel(t.category),
+          t.owner || "", t.priority === "high" ? "גבוהה" : "רגילה",
+          t.status === "done" ? "הושלם" : "בתהליך",
+          fDate(t.dueDate || t.due_date), fDate(t.completed_at), t.notes || ""
+        ])
+      ]);
+      wsT["!views"] = [{ RTL: true }];
+      wsT["!cols"] = [14,14,32,14,12,10,10,14,14,32].map(w => ({ wch: w }));
+      XLSX.utils.book_append_sheet(wb, wsT, "משימות");
+
+      // גיליון 2: הזמנות ספקים
+      const sups = [...state.suppliers]
+        .filter(s => !s.deleted_at)
+        .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+      const wsS = XLSX.utils.aoa_to_sheet([
+        ["חודש", "תאריך יצירה", "ספק", "תיאור", "סכום", "שיוך", "הזמנה", "קבלה", "תשלום", "חשבונית", "הערות"],
+        ...sups.map(s => [
+          mLabel(s.created_at), fDate(s.created_at), s.supplier || "", s.description || "",
+          s.amount || "", s.allAssignees ? "כולם" : (s.assignees || []).join(", "),
+          s.steps?.order ? "✓" : "", s.steps?.received ? "✓" : "",
+          s.steps?.payment ? "✓" : "", s.steps?.invoice ? "✓" : "",
+          s.notes || ""
+        ])
+      ]);
+      wsS["!views"] = [{ RTL: true }];
+      wsS["!cols"] = [14,14,18,32,12,16,8,8,8,8,32].map(w => ({ wch: w }));
+      XLSX.utils.book_append_sheet(wb, wsS, "הזמנות ספקים");
+
+      XLSX.writeFile(wb, `בת-עין-${new Date().toISOString().slice(0,10)}.xlsx`);
+      toast("הקובץ הורד בהצלחה");
+    }
     let authButtonsBound = false;
     function bindAuthButtons() {
       if (authButtonsBound) return;
@@ -4448,6 +4511,7 @@
         state.orgMembersLoaded = false;
         void ensureOrgMembersLoaded();
       });
+      $("exportExcel")?.addEventListener("click", async () => { await exportToExcel(); });
       $("showInviteForm")?.addEventListener("click", () => {
         state.showInviteForm = true;
         render();
