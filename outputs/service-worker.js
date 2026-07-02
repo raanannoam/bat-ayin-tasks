@@ -1,4 +1,4 @@
-const CACHE_VERSION = "beit-tasks-pwa-v27";
+const CACHE_VERSION = "beit-tasks-pwa-v28";
 const STATIC_CACHE = CACHE_VERSION;
 const APP_SHELL = [
   "./",
