@@ -3054,7 +3054,11 @@
     // קטלוג מבצעים/קטגוריות — Supabase: רק מ-auth; local: localStorage
     function syncPeopleCatalog(orgPeople = state.orgPeople) {
       if (DATA_BACKEND === "supabase") {
-        people = Array.isArray(orgPeople) && orgPeople.length ? [...orgPeople] : [];
+        const hidden = readHiddenPeople();
+        const custom = readCustomPeople();
+        const base = Array.isArray(orgPeople) ? orgPeople : [];
+        const all = [...new Set([...base, ...custom])];
+        people = all.filter(name => !hidden.includes(name));
         return;
       }
       people = loadPeople();
@@ -4318,7 +4322,7 @@
         }
         return `<label class="chip"><input name="category" type="radio" value="${c.id}" ${i === 0 ? "checked" : ""}> ${lineIcon(c.icon)} ${c.label}</label>`;
       }).join("");
-      const canManageCategories = state.role === "manager" && DATA_BACKEND !== "supabase";
+      const canManageCategories = state.role === "manager";
       const deleteButton = canManageCategories && categories.length ? `<button class="delete-category" type="button" id="startDeleteCategory" title="${state.deletingCategory ? "ביטול מחיקה" : "מחק קטגוריה"}">${state.deletingCategory ? "×" : "−"}</button>` : "";
       const confirm = state.deletingCategory && state.categoriesToDelete.length
         ? `<div class="quick-actions" style="margin-top:10px;"><button class="danger final" type="button" id="confirmDeleteCategory">אשר מחיקה (${state.categoriesToDelete.length})</button><button type="button" id="cancelDeleteCategory">ביטול</button></div>`
@@ -4339,7 +4343,7 @@
         }
         return `<label class="chip"><input name="owner" type="radio" value="${person}" ${i === 0 ? "checked" : ""}> ${person}</label>`;
       }).join("");
-      const deleteButton = people.length && DATA_BACKEND !== "supabase"
+      const deleteButton = people.length
         ? `<button class="delete-category" type="button" id="startDeletePerson" title="${state.deletingPerson ? "ביטול מחיקה" : "מחק מבצע"}">${state.deletingPerson ? "×" : "−"}</button>`
         : "";
       const confirm = state.deletingPerson && state.peopleToDelete.length
@@ -4348,9 +4352,7 @@
       const help = state.deletingPerson
         ? `<p class="muted" style="margin-top:10px; color: var(--danger);">בחר מבצע אחד או יותר למחיקה. רק המסומנים במסגרת אדומה יימחקו.</p>`
         : "";
-      const addPersonButton = DATA_BACKEND === "supabase"
-        ? ""
-        : `<button class="add-inline" type="button" id="showPersonInput" title="הוספת מבצע">+</button>`;
+      const addPersonButton = `<button class="add-inline" type="button" id="showPersonInput" title="הוספת מבצע">+</button>`;
       return `
         <div class="chips">${items}${addPersonButton}${deleteButton}</div>
         ${help}
@@ -4794,16 +4796,25 @@
         state.addingCategory = false;
         render();
       });
-      $("saveCategory")?.addEventListener("click", () => {
+      $("saveCategory")?.addEventListener("click", async () => {
         const name = $("newCategoryName").value.trim();
         if (!name) return toast("כתוב שם קטגוריה");
         if (DATA_BACKEND === "supabase") {
+          if (!supabaseClient) return toast("שגיאת חיבור לשרת");
+          const slug = "cat-" + Date.now();
+          const { data, error } = await supabaseClient
+            .schema("bat_ayin").from("categories")
+            .insert({ organization_id: "00000000-0000-0000-0000-000000000001", slug, name, icon: "office" })
+            .select("slug, name, icon").single();
+          if (error) return toast("שגיאה בהוספת הקטגוריה");
+          const newCat = { id: data.slug, label: data.name, icon: data.icon || "office" };
+          state.orgCategories = [...state.orgCategories, newCat];
+          syncCategoriesCatalog(state.orgCategories);
           state.addingCategory = false;
           state.deletingCategory = false;
           state.categoriesToDelete = [];
-          syncCategoriesCatalog(state.orgCategories);
           render();
-          toast("בפיילוט קטגוריות מנוהלות ב-Supabase");
+          toast("הקטגוריה נוספה");
           return;
         }
         const category = { id: `custom-${Date.now()}`, label: name, icon: "office" };
@@ -4846,10 +4857,19 @@
         const ids = state.categoriesToDelete;
         if (!ids.length) return;
         if (DATA_BACKEND === "supabase") {
+          if (!supabaseClient) return toast("שגיאת חיבור לשרת");
+          const { error } = await supabaseClient
+            .schema("bat_ayin").from("categories")
+            .update({ deleted_at: new Date().toISOString(), is_active: false })
+            .in("slug", ids)
+            .eq("organization_id", "00000000-0000-0000-0000-000000000001");
+          if (error) return toast("שגיאה במחיקת הקטגוריה");
+          state.orgCategories = state.orgCategories.filter(c => !ids.includes(c.id));
+          syncCategoriesCatalog(state.orgCategories);
           state.deletingCategory = false;
           state.categoriesToDelete = [];
-          syncCategoriesCatalog(state.orgCategories);
           render();
+          toast(ids.length === 1 ? "הקטגוריה נמחקה" : "הקטגוריות נמחקו");
           return;
         }
         const hidden = readHiddenCategoryIds();
@@ -4884,12 +4904,19 @@
         const name = $("newPersonName").value.trim();
         if (!name) return toast("כתוב שם מבצע");
         if (DATA_BACKEND === "supabase") {
+          const custom = readCustomPeople();
+          if (!state.orgPeople.includes(name) && !custom.includes(name)) custom.push(name);
+          saveCustomPeople(custom);
+          syncPeopleCatalog(state.orgPeople);
           state.addingPerson = false;
           state.deletingPerson = false;
           state.peopleToDelete = [];
-          syncPeopleCatalog(state.orgPeople);
           render();
-          toast("בפיילוט ניתן לשייך רק חברי ארגון קיימים");
+          setTimeout(() => {
+            const input = document.querySelector(`input[name="owner"][value="${name}"]`);
+            if (input) input.checked = true;
+          }, 0);
+          toast("המבצע נוסף");
           return;
         }
         const custom = readCustomPeople();
@@ -4931,10 +4958,15 @@
         const names = state.peopleToDelete;
         if (!names.length) return;
         if (DATA_BACKEND === "supabase") {
+          const hidden = readHiddenPeople();
+          names.forEach(name => { if (!hidden.includes(name)) hidden.push(name); });
+          saveHiddenPeople(hidden);
+          saveCustomPeople(readCustomPeople().filter(name => !names.includes(name)));
+          syncPeopleCatalog(state.orgPeople);
           state.deletingPerson = false;
           state.peopleToDelete = [];
-          syncPeopleCatalog(state.orgPeople);
           render();
+          toast(names.length === 1 ? "המבצע נמחק" : "המבצעים נמחקו");
           return;
         }
         const hidden = readHiddenPeople();
