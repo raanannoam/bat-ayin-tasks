@@ -3799,17 +3799,42 @@
     }
     function taskFormCategoryMarkup(task) {
       const selectedId = task?.category || "uncategorized";
-      const items = categories.map((c) =>
-        `<label class="chip"><input name="category" type="radio" value="${c.id}" ${c.id === selectedId ? "checked" : ""}> ${lineIcon(c.icon)} ${c.label}</label>`
-      ).join("");
-      return `<div class="chips">${items}</div>`;
+      const categoryItems = categories.map((c) => {
+        if (state.deletingCategory) {
+          const selected = state.categoriesToDelete.includes(c.id) ? " selected" : "";
+          return `<button class="chip delete-select${selected}" type="button" data-mark-delete-category="${c.id}">${lineIcon(c.icon)} ${c.label}</button>`;
+        }
+        return `<label class="chip"><input name="category" type="radio" value="${c.id}" ${c.id === selectedId ? "checked" : ""}> ${lineIcon(c.icon)} ${c.label}</label>`;
+      }).join("");
+      const canManageCategories = state.role === "manager";
+      const deleteButton = canManageCategories && categories.length ? `<button class="delete-category" type="button" id="startDeleteCategory" title="${state.deletingCategory ? "ביטול מחיקה" : "מחק קטגוריה"}">${state.deletingCategory ? "×" : "−"}</button>` : "";
+      const confirm = state.deletingCategory && state.categoriesToDelete.length
+        ? `<div class="quick-actions" style="margin-top:10px;"><button class="danger final" type="button" id="confirmDeleteCategory">אשר מחיקה (${state.categoriesToDelete.length})</button><button type="button" id="cancelDeleteCategory">ביטול</button></div>`
+        : "";
+      const help = state.deletingCategory ? `<p class="muted" style="margin-top:10px; color: var(--danger);">בחר קטגוריה אחת או יותר למחיקה. רק המסומנות במסגרת אדומה יימחקו.</p>` : "";
+      const addPanel = state.addingCategory ? `<div class="quick-actions add-panel"><input id="newCategoryName" placeholder="שם קטגוריה"><button class="primary" type="button" id="saveCategory">שמור קטגוריה</button><button type="button" id="cancelCategory">ביטול</button></div>` : "";
+      return `
+        <div class="chips">${categoryItems}${canManageCategories ? `<button class="add-inline" type="button" id="showCategoryInput" title="הוספת קטגוריה">+</button>` : ""}${deleteButton}</div>
+        ${help}${confirm}${addPanel}`;
     }
     function taskFormPeopleMarkup(task) {
       const owner = task?.owner || personalOwner();
-      const items = people.map((person) =>
-        `<label class="chip"><input name="owner" type="radio" value="${person}" ${person === owner ? "checked" : ""}> ${lineIcon("user")} ${person}</label>`
-      ).join("");
-      return `<div class="chips">${items}</div>`;
+      const items = people.map((person) => {
+        if (state.deletingPerson) {
+          const selected = state.peopleToDelete.includes(person) ? " selected" : "";
+          return `<button class="chip delete-select${selected}" type="button" data-mark-delete-person="${person}">${lineIcon("user")} ${person}</button>`;
+        }
+        return `<label class="chip"><input name="owner" type="radio" value="${person}" ${person === owner ? "checked" : ""}> ${lineIcon("user")} ${person}</label>`;
+      }).join("");
+      const deleteButton = people.length ? `<button class="delete-category" type="button" id="startDeletePerson" title="${state.deletingPerson ? "ביטול מחיקה" : "מחק מבצע"}">${state.deletingPerson ? "×" : "−"}</button>` : "";
+      const confirm = state.deletingPerson && state.peopleToDelete.length
+        ? `<div class="quick-actions" style="margin-top:10px;"><button class="danger final" type="button" id="confirmDeletePerson">אשר מחיקה (${state.peopleToDelete.length})</button><button type="button" id="cancelDeletePerson">ביטול</button></div>`
+        : "";
+      const help = state.deletingPerson ? `<p class="muted" style="margin-top:10px; color: var(--danger);">בחר מבצע אחד או יותר למחיקה. רק המסומנים במסגרת אדומה יימחקו.</p>` : "";
+      const addPanel = state.addingPerson ? `<div class="quick-actions add-panel"><input id="newPersonName" placeholder="שם מבצע"><button class="primary" type="button" id="savePerson">שמור מבצע</button><button type="button" id="cancelPerson">ביטול</button></div>` : "";
+      return `
+        <div class="chips">${items}<button class="add-inline" type="button" id="showPersonInput" title="הוספת מבצע">+</button>${deleteButton}</div>
+        ${help}${confirm}${addPanel}`;
     }
     function resolveTaskFormDueChoice(task) {
       if (task.status === "done" || task.due === "done") return "none";
@@ -4370,9 +4395,9 @@
             <h2>קטגוריה</h2>
             ${categoryPickerMarkup()}
             ${categories.length ? "" : `<p class="muted" style="margin-top:10px;">${DATA_BACKEND === "supabase" ? "אין קטגוריות זמינות בארגון כרגע." : "אין קטגוריות כרגע. אפשר ליצור משימה ללא קטגוריה או להוסיף קטגוריה חדשה."}</p>`}
-            ${state.addingCategory && DATA_BACKEND !== "supabase" ? `<div class="quick-actions add-panel"><input id="newCategoryName" placeholder="שם קטגוריה"><button class="primary" type="button" id="saveCategory">שמור קטגוריה</button><button type="button" id="cancelCategory">ביטול</button></div>` : ""}
+            ${state.addingCategory ? `<div class="quick-actions add-panel"><input id="newCategoryName" placeholder="שם קטגוריה"><button class="primary" type="button" id="saveCategory">שמור קטגוריה</button><button type="button" id="cancelCategory">ביטול</button></div>` : ""}
           </div>
-          ${state.role === "manager" ? `<div class="form-group"><h2>מבצע</h2>${peoplePickerMarkup()}${people.length ? "" : `<p class="muted" style="margin-top:10px;">${DATA_BACKEND === "supabase" ? "אין חברי ארגון זמינים לשיוך כרגע." : "אין מבצעים כרגע. אפשר ליצור משימה ללא מבצע או להוסיף מבצע חדש."}</p>`}${state.addingPerson && DATA_BACKEND !== "supabase" ? `<div class="quick-actions add-panel"><input id="newPersonName" placeholder="שם מבצע"><button class="primary" type="button" id="savePerson">שמור מבצע</button><button type="button" id="cancelPerson">ביטול</button></div>` : ""}</div>` : ""}
+          ${state.role === "manager" ? `<div class="form-group"><h2>מבצע</h2>${peoplePickerMarkup()}${people.length ? "" : `<p class="muted" style="margin-top:10px;">אין מבצעים כרגע. אפשר ליצור משימה ללא מבצע או להוסיף מבצע חדש.</p>`}${state.addingPerson ? `<div class="quick-actions add-panel"><input id="newPersonName" placeholder="שם מבצע"><button class="primary" type="button" id="savePerson">שמור מבצע</button><button type="button" id="cancelPerson">ביטול</button></div>` : ""}</div>` : ""}
           <div class="form-group form-group--due"><h2>יעד</h2><div class="segmented"><button type="button" data-due-choice="today" class="active">היום</button><button type="button" data-due-choice="tomorrow">מחר</button><button type="button" data-due-choice="date">בחר תאריך</button><button type="button" data-due-choice="none">ללא יעד</button></div><input id="newDate" class="task-date-native" type="date"></div>
           <div class="form-group"><h2>עדיפות</h2><div class="chips"><label class="chip"><input name="priority" type="radio" value="normal" checked> רגילה</label><label class="chip"><input name="priority" type="radio" value="high"> גבוהה</label></div></div>
           <div class="form-group"><h2>הערות</h2><textarea id="newNotes" placeholder="פרטים קצרים"></textarea></div>
