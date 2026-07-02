@@ -4335,7 +4335,6 @@
         </section>
         ${state.role === "manager" ? `<section class="prefs-line">
           <h2>ייצוא נתונים</h2>
-          <p>הורד את כל המשימות וההזמנות כקובץ אקסל לפי חודשים.</p>
           <button class="soft" id="exportExcel" type="button">ייצוא לאקסל ↓</button>
         </section>` : ""}
         ${state.role === "manager" && DATA_BACKEND !== "supabase" ? `<section class="prefs-line danger-zone">
