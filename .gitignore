@@ -1,11 +1,9 @@
 node_modules/
+dist/
 .pw-cp23-profile/
 .pw-*-profile/
 .env
 .env.*
 !.env.example
-
-# Local Netlify folder
 .netlify
-
 .vercel
