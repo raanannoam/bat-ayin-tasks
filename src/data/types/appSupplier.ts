@@ -24,4 +24,6 @@ export type AppSupplier = {
   created_at: string;
   deleted_at?: string | null;
   deleted_by?: string | null;
+  is_recurring?: boolean;
+  recurrence?: "weekly" | "monthly" | null;
 };

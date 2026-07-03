@@ -1636,7 +1636,9 @@ var BatAyinAdapters = (() => {
       step_dates: normalizeSupplierStepDates(item.step_dates),
       created_at: item.created_at || isoDateFromOffset(-index),
       deleted_at: item.deleted_at ?? null,
-      deleted_by: item.deleted_by ?? null
+      deleted_by: item.deleted_by ?? null,
+      is_recurring: Boolean(item.is_recurring),
+      recurrence: item.recurrence ?? null
     };
   }
 

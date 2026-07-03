@@ -662,6 +662,40 @@
       font-size: .9rem;
       font-weight: var(--weight-emphasis);
     }
+    .recurring-badge {
+      display: inline-block;
+      font-size: .68rem;
+      font-weight: 600;
+      background: color-mix(in srgb, var(--accent) 15%, var(--surface));
+      color: var(--accent);
+      border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+      padding: 1px 7px;
+      border-radius: 10px;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    .recurring-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .recurring-row-info { flex: 1; min-width: 0; }
+    .recurring-row-info .task-title { font-size: .95rem; }
+    .recurring-row-info .row-meta { margin-top: 2px; }
+    .reorder-btn {
+      flex-shrink: 0;
+      padding: 6px 14px;
+      border-radius: 10px;
+      font-size: .85rem;
+      font-weight: 600;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .reorder-btn:active { opacity: .8; }
 
     .supplier-list-row.is-new .list-row-content {
       background: color-mix(in srgb, var(--accent) 9%, var(--surface));
@@ -4153,7 +4187,7 @@
         <div class="list-row supplier-list-row ${progress.complete ? "completed" : ""} ${expanded ? "is-steps-open" : ""} ${isNew ? "is-new" : ""}">
           <div class="list-row-content" data-open-supplier="${item.id}" role="button" tabindex="0" aria-label="עריכת הזמנה ${escapeHtml(item.supplier)}">
             <div class="supplier-card-head">
-              <div class="task-title">${escapeHtml(item.supplier)}</div>
+              <div class="task-title">${escapeHtml(item.supplier)}${item.is_recurring ? `<span class="recurring-badge">${item.recurrence === "weekly" ? "שבועי" : "חודשי"}</span>` : ""}</div>
               <button class="supplier-steps-toggle" type="button" data-supplier-steps-toggle="${item.id}" aria-expanded="${expanded}" aria-label="שלבי הזמנה">${lineIcon("chevronDown")}</button>
             </div>
             <div class="row-meta">
@@ -4180,8 +4214,21 @@
     function supplierQuickNames(items) {
       return [...new Set(items.map(item => item.supplier).filter(Boolean))].sort((a, b) => a.localeCompare(b, "he")).slice(0, 6);
     }
+    function recurringSupplierRow(item) {
+      return `
+        <div class="list-row supplier-list-row">
+          <div class="list-row-content recurring-row">
+            <div class="recurring-row-info">
+              <div class="task-title">${escapeHtml(item.supplier)}<span class="recurring-badge">${item.recurrence === "weekly" ? "שבועי" : "חודשי"}</span></div>
+              <div class="row-meta"><span>${escapeHtml(item.description || "")}</span>${item.amount ? `<span>סכום: ${escapeHtml(item.amount)}</span>` : ""}</div>
+            </div>
+            <button class="reorder-btn" type="button" data-reorder="${item.id}">הזמן שוב</button>
+          </div>
+        </div>`;
+    }
     function suppliersScreen() {
       const items = visibleSuppliers();
+      const recurringItems = items.filter(item => item.is_recurring);
       const quickNames = supplierQuickNames(items);
       const openItems = items.filter(item => !supplierProgress(item).complete);
       const doneItems = items.filter(item => supplierProgress(item).complete);
@@ -4209,6 +4256,10 @@
           <p class="screen-subtitle">ניהול הזמנות, תשלומים וחשבוניות</p>
         </section>
         ${createdNotice}
+        ${recurringItems.length ? `<section class="task-group">
+          <h2 class="task-group-title">הזמנות חוזרות · ${recurringItems.length}</h2>
+          <section class="list">${recurringItems.map(recurringSupplierRow).join("")}</section>
+        </section>` : ""}
         <section class="section">
           <h2>יצירה מהירה</h2>
           <div class="chips">
@@ -4296,6 +4347,8 @@
       const initialLinks = isEdit ? item.links.join("\n") : "";
       const initialDocuments = isEdit ? item.document_notes : "";
       const initialNotes = isEdit ? item.notes : "";
+      const initialIsRecurring = isEdit ? Boolean(item.is_recurring) : false;
+      const initialRecurrence = isEdit ? (item.recurrence || "monthly") : "monthly";
       const createStepDates = isEdit ? "" : `
           <div class="form-group"><h2>תאריכי שלבים</h2><div class="supplier-checklist">${supplierSteps.map(step => `<div class="supplier-check step-${step.id}" data-new-step-date-trigger="${step.id}" role="button" tabindex="0"><span class="supplier-check-text"><strong>${step.label}</strong><span class="supplier-check-date" id="newStepDateLabel-${step.id}"> · בחר תאריך</span></span><input class="supplier-step-date-native" id="newStepDate-${step.id}" type="date" data-new-step-date="${step.id}"></div>`).join("")}</div></div>`;
       return `
@@ -4315,6 +4368,14 @@
           <div class="form-group"><h2>קישורים</h2><textarea id="supplierLinks" placeholder="קישור אחד בכל שורה">${escapeHtml(initialLinks)}</textarea><div id="supplierLinksPreview" class="supplier-links supplier-link-preview"></div></div>
           <div class="form-group"><h2>מסמכים / צילום מסך</h2><textarea id="supplierDocuments" placeholder="תיאור מסמך, שם קובץ או מקום זמני">${escapeHtml(initialDocuments)}</textarea></div>
           <div class="form-group"><h2>הערות</h2><textarea id="supplierNotes" placeholder="הערות פנימיות">${escapeHtml(initialNotes)}</textarea></div>
+          <div class="form-group">
+            <h2>הזמנה חוזרת</h2>
+            <div class="chips"><label class="chip"><input type="checkbox" id="supplierIsRecurring"${initialIsRecurring ? " checked" : ""}> חוזרת</label></div>
+            <div id="recurrenceOptions" style="${initialIsRecurring ? "" : "display:none"}"><div class="chips" style="margin-top:8px">
+              <label class="chip"><input type="radio" name="recurrence" value="weekly"${initialRecurrence === "weekly" ? " checked" : ""}> שבועית</label>
+              <label class="chip"><input type="radio" name="recurrence" value="monthly"${initialRecurrence !== "weekly" ? " checked" : ""}> חודשית</label>
+            </div></div>
+          </div>
           ${supplierFormActionsMarkup(isEdit)}
         </form>`;
     }
@@ -4511,6 +4572,37 @@
         void ensureOrgMembersLoaded();
       });
       $("exportExcel")?.addEventListener("click", async () => { await exportToExcel(); });
+      $("supplierIsRecurring")?.addEventListener("change", e => {
+        const opts = document.getElementById("recurrenceOptions");
+        if (opts) opts.style.display = e.currentTarget.checked ? "" : "none";
+      });
+      document.querySelectorAll("[data-reorder]").forEach(el => el.addEventListener("click", async e => {
+        const id = e.currentTarget.dataset.reorder;
+        const source = getSupplier(id);
+        if (!source) return;
+        const emptySteps = supplierSteps.reduce((acc, s) => { acc[s.id] = false; return acc; }, {});
+        const emptyDates = supplierSteps.reduce((acc, s) => { acc[s.id] = ""; return acc; }, {});
+        const newItem = normalizeSupplier({
+          id: `s${Date.now()}`,
+          supplier: source.supplier,
+          description: source.description,
+          amount: source.amount,
+          assignees: [...source.assignees],
+          allAssignees: source.allAssignees,
+          links: [...source.links],
+          notes: source.notes,
+          document_notes: source.document_notes,
+          is_recurring: source.is_recurring,
+          recurrence: source.recurrence,
+          steps: emptySteps,
+          step_dates: emptyDates,
+          created_at: isoDateFromOffset(0)
+        });
+        const created = await createSupplierOrder(newItem);
+        state.highlightSupplierId = created?.id || newItem.id;
+        toast("הזמנה חדשה נוצרה");
+        navigate("suppliers");
+      }));
       $("showInviteForm")?.addEventListener("click", () => {
         state.showInviteForm = true;
         render();
@@ -4693,6 +4785,10 @@
           return;
         }
         const links = $("supplierLinks").value.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+        const isRecurring = Boolean($("supplierIsRecurring")?.checked);
+        const recurrence = isRecurring
+          ? (document.querySelector('input[name="recurrence"]:checked')?.value || "monthly")
+          : null;
         const formValues = {
           supplier: $("supplierName").value.trim(),
           description: $("supplierDescription").value.trim(),
@@ -4702,7 +4798,9 @@
           document_notes: $("supplierDocuments").value.trim(),
           links,
           assignees,
-          allAssignees
+          allAssignees,
+          is_recurring: isRecurring,
+          recurrence
         };
         if (editId) {
           const existing = getSupplier(editId);
