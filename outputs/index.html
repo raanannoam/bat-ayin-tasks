@@ -4370,11 +4370,10 @@
           <div class="form-group"><h2>הערות</h2><textarea id="supplierNotes" placeholder="הערות פנימיות">${escapeHtml(initialNotes)}</textarea></div>
           <div class="form-group">
             <h2>הזמנה חוזרת</h2>
-            <div class="chips"><label class="chip"><input type="checkbox" id="supplierIsRecurring"${initialIsRecurring ? " checked" : ""}> חוזרת</label></div>
-            <div id="recurrenceOptions" style="${initialIsRecurring ? "" : "display:none"}"><div class="chips" style="margin-top:8px">
-              <label class="chip"><input type="radio" name="recurrence" value="weekly"${initialRecurrence === "weekly" ? " checked" : ""}> שבועית</label>
-              <label class="chip"><input type="radio" name="recurrence" value="monthly"${initialRecurrence !== "weekly" ? " checked" : ""}> חודשית</label>
-            </div></div>
+            <div class="chips">
+              <label class="chip"><input type="checkbox" id="recurWeekly"${initialIsRecurring && initialRecurrence === "weekly" ? " checked" : ""}> שבועית</label>
+              <label class="chip"><input type="checkbox" id="recurMonthly"${initialIsRecurring && initialRecurrence !== "weekly" ? " checked" : ""}> חודשית</label>
+            </div>
           </div>
           ${supplierFormActionsMarkup(isEdit)}
         </form>`;
@@ -4572,10 +4571,8 @@
         void ensureOrgMembersLoaded();
       });
       $("exportExcel")?.addEventListener("click", async () => { await exportToExcel(); });
-      $("supplierIsRecurring")?.addEventListener("change", e => {
-        const opts = document.getElementById("recurrenceOptions");
-        if (opts) opts.style.display = e.currentTarget.checked ? "" : "none";
-      });
+      $("recurWeekly")?.addEventListener("change", e => { if (e.currentTarget.checked) { const m = $("recurMonthly"); if (m) m.checked = false; } });
+      $("recurMonthly")?.addEventListener("change", e => { if (e.currentTarget.checked) { const w = $("recurWeekly"); if (w) w.checked = false; } });
       document.querySelectorAll("[data-reorder]").forEach(el => el.addEventListener("click", async e => {
         const id = e.currentTarget.dataset.reorder;
         const source = getSupplier(id);
@@ -4785,10 +4782,10 @@
           return;
         }
         const links = $("supplierLinks").value.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-        const isRecurring = Boolean($("supplierIsRecurring")?.checked);
-        const recurrence = isRecurring
-          ? (document.querySelector('input[name="recurrence"]:checked')?.value || "monthly")
-          : null;
+        const weeklyChecked = Boolean($("recurWeekly")?.checked);
+        const monthlyChecked = Boolean($("recurMonthly")?.checked);
+        const isRecurring = weeklyChecked || monthlyChecked;
+        const recurrence = weeklyChecked ? "weekly" : monthlyChecked ? "monthly" : null;
         const formValues = {
           supplier: $("supplierName").value.trim(),
           description: $("supplierDescription").value.trim(),
