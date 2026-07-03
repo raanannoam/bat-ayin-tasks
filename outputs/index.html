@@ -612,10 +612,46 @@
     }
 
     .list-row .task-title {
-      margin: 2px 0 3px;
+      margin: 4px 0 3px;
       font-size: 1rem;
       font-weight: var(--weight-emphasis);
       line-height: var(--leading-tight);
+    }
+    .task-row-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .task-cat-line {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--muted);
+      font-size: .82rem;
+    }
+    .priority-inline {
+      display: none;
+    }
+    .priority-inline.high {
+      display: inline;
+      font-size: .82rem;
+      font-weight: 600;
+      color: color-mix(in srgb, var(--danger) 72%, var(--muted));
+      margin-right: 8px;
+    }
+    .task-row-bottom {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: .86rem;
+      margin-top: 3px;
+    }
+    .task-row-sep {
+      color: var(--line);
+      font-weight: 300;
     }
 
     .complete-row {
@@ -3781,19 +3817,18 @@
       const onDoneScreen = state.view === "done" || state.view.startsWith("filter:done")
         || (state.view === "all" && state.showCompletedTasks && t.status === "done");
       const statusBadge = onDoneScreen ? "" : `<span class="status-line status-badge">${lineIcon(s.icon)} ${s.label}</span>`;
-      const priorityBadge = onDoneScreen ? "" : `<span class="priority-meta ${t.priority === "high" ? "high" : ""}">עדיפות ${priorityLabel(t.priority)}</span>`;
-      const titleDot = onDoneScreen ? "" : `<span class="dot ${s.dot}">${lineIcon(s.icon)}</span> `;
+      const dueLabel = taskDueLabel(t);
+      const dueEl = dueLabel ? `<span class="due ${overdue ? "overdue" : ""}">${overdue ? "⚠️ " : ""}${dueLabel}</span>` : "";
+      const ownerEl = showOwner && t.owner ? `<span class="task-row-sep">|</span><span class="person-line">${lineIcon("user")} ${t.owner}</span>` : "";
       return `
         <div class="list-row ${t.status === "done" ? "completed" : ""}" data-open="${t.id}" role="button" tabindex="0">
           <div class="list-row-content">
-            <div class="category">${lineIcon(c.icon)} ${c.label}</div>
-            <div class="task-title">${titleDot}${t.title}</div>
-            <div class="row-meta">
-              ${statusBadge}${priorityBadge}
-              ${showOwner ? `<span class="person-line">${lineIcon("user")} ${t.owner}</span>` : ""}
-              <span class="due ${overdue ? "overdue" : ""}">${taskDueLabel(t)}</span>
-              <span class="age-meta">${ageLabel(t.created_at)}</span>
+            <div class="task-row-top">
+              <span class="task-cat-line">${lineIcon(c.icon)} ${c.label}</span>
+              ${statusBadge}
             </div>
+            <div class="task-title">${t.title}<span class="priority-inline ${t.priority === "high" ? "high" : ""}">עדיפות גבוהה</span></div>
+            <div class="task-row-bottom">${dueEl}${ownerEl}</div>
           </div>
           ${t.status !== "done" ? `<button class="complete-row" type="button" data-status="${t.id}:done" aria-label="סמן כהושלם">${lineIcon("done")}</button>` : ""}
         </div>`;
