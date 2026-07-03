@@ -746,13 +746,27 @@
 
     .supplier-card-head {
       display: flex;
-      align-items: center;
-      gap: 8px;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
     }
 
     .supplier-card-head .task-title {
       flex: 1;
       min-width: 0;
+    }
+
+    .supplier-amount {
+      flex-shrink: 0;
+      font-size: .9rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .supplier-desc {
+      font-size: .9rem;
+      color: var(--muted);
+      margin-top: 3px;
     }
 
     .supplier-steps-toggle {
@@ -4215,22 +4229,20 @@
     function supplierRow(item) {
       const progress = supplierProgress(item);
       const assignees = item.allAssignees ? "כולם" : item.assignees.join(", ") || "ללא שיוך";
-      const expanded = Boolean(state.expandedSupplierSteps[item.id]);
       const isNew = state.highlightSupplierId === item.id;
+      const recurringBadge = item.is_recurring ? `<span class="recurring-badge">${item.recurrence === "weekly" ? "שבועי" : "חודשי"}</span>` : "";
       return `
-        <div class="list-row supplier-list-row ${progress.complete ? "completed" : ""} ${expanded ? "is-steps-open" : ""} ${isNew ? "is-new" : ""}">
+        <div class="list-row supplier-list-row ${progress.complete ? "completed" : ""} ${isNew ? "is-new" : ""}">
           <div class="list-row-content" data-open-supplier="${item.id}" role="button" tabindex="0" aria-label="עריכת הזמנה ${escapeHtml(item.supplier)}">
             <div class="supplier-card-head">
-              <div class="task-title">${escapeHtml(item.supplier)}${item.is_recurring ? `<span class="recurring-badge">${item.recurrence === "weekly" ? "שבועי" : "חודשי"}</span>` : ""}</div>
-              <button class="supplier-steps-toggle" type="button" data-supplier-steps-toggle="${item.id}" aria-expanded="${expanded}" aria-label="שלבי הזמנה">${lineIcon("chevronDown")}</button>
+              <div class="task-title">${escapeHtml(item.supplier)}${recurringBadge}</div>
+              ${item.amount ? `<span class="supplier-amount">${escapeHtml(item.amount)}</span>` : ""}
             </div>
-            <div class="row-meta">
-              <span>${escapeHtml(item.description || "ללא תיאור")}</span>
-              ${item.amount ? `<span>סכום: ${escapeHtml(item.amount)}</span>` : ""}
-              ${item.due_date ? `<span class="due">יעד: ${formatHebrewDate(item.due_date)}</span>` : ""}
+            ${item.description ? `<div class="supplier-desc">${escapeHtml(item.description)}</div>` : ""}
+            <div class="task-row-bottom">
+              ${item.due_date ? `<span>📅 ${formatHebrewDate(item.due_date)}</span><span class="task-row-sep">•</span>` : ""}
               <span class="person-line">${lineIcon("user")} ${escapeHtml(assignees)}</span>
             </div>
-            <div class="supplier-steps-panel">${supplierStepsMarkup(item)}</div>
           </div>
         </div>`;
     }
