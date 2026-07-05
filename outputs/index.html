@@ -2166,6 +2166,15 @@
       border-color: rgba(255, 255, 255, .08);
     }
 
+    [data-theme="dark"] button.primary {
+      background: color-mix(in srgb, var(--accent) 13%, var(--surface));
+      border-color: color-mix(in srgb, var(--accent) 28%, var(--line));
+      color: var(--accent);
+    }
+    [data-theme="dark"] button.primary:hover {
+      background: color-mix(in srgb, var(--accent) 20%, var(--surface));
+    }
+
     [data-theme="dark"] input,
     [data-theme="dark"] textarea {
       background: var(--surface-strong);
