@@ -4181,9 +4181,6 @@
           <h1>חברי ארגון</h1>
           <p class="screen-subtitle">${members.length} חברים · ${countActiveManagers(members)} מנהלים פעילים</p>
         </section>
-        <section class="section">
-          ${inviteSection}
-        </section>
         <section class="member-list">
           ${members.length ? members.map(memberRowMarkup).join("") : `<div class="empty">אין חברי ארגון להצגה.</div>`}
         </section>`;
