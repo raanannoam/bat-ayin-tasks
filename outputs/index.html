@@ -2777,7 +2777,8 @@
       "updateTask",
       "completeTask",
       "reopenTask",
-      "deleteTaskSoft"
+      "deleteTaskSoft",
+      "clearAllTasks"
     ]);
     async function loadTasks() {
       return tasksRepository.loadTasks();
@@ -4449,7 +4450,7 @@
           <h2>ייצוא נתונים</h2>
           <button class="soft" id="exportExcel" type="button">ייצוא לאקסל ↓</button>
         </section>` : ""}
-        ${state.role === "manager" && DATA_BACKEND !== "supabase" ? `<section class="prefs-line danger-zone">
+        ${state.role === "manager" ? `<section class="prefs-line danger-zone">
           <h2>ניקוי משימות</h2>
           <p>${clearPrompt.detail}</p>
           <button class="danger${clearPrompt.cls}" id="clearAllTasks" type="button">${clearPrompt.text}</button>
@@ -5006,10 +5007,21 @@
         render();
       }));
       $("clearAllTasks")?.addEventListener("click", async () => {
-        if (DATA_BACKEND === "supabase") return;
         if (state.clearAllStep < 2) {
           state.clearAllStep += 1;
           render();
+          return;
+        }
+        if (DATA_BACKEND === "supabase") {
+          try {
+            state.tasks = await tasksRepository.clearAllTasks(personalOwner());
+            state.clearAllStep = 0;
+            render();
+            toast("כל המשימות נמחקו");
+          } catch (error) {
+            console.warn("Clear all tasks failed.", error);
+            toast(storageErrorMessage(error));
+          }
           return;
         }
         state.tasks = await tasksRepository.saveTasks([]);

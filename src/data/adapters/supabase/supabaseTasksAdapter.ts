@@ -12,9 +12,10 @@ export type SupabaseTasksAdapter = {
   deleteTaskSoft(tasks: AppTask[], id: string, deletedBy: string): Promise<AppTask[]>;
   completeTask(tasks: AppTask[], id: string): Promise<AppTask[]>;
   reopenTask(tasks: AppTask[], id: string): Promise<AppTask[]>;
+  clearAllTasks(tasks: AppTask[], deletedBy: string): Promise<AppTask[]>;
 };
 
-/** adapter מאוחד — read + write + saveTasks noop */
+/** adapter מאוחד — read + write; saveTasks נשאר noop (כתיבות בודדות כבר נשמרות ב-Supabase ישירות) */
 export function createSupabaseTasksAdapter(client: SupabaseClient | null): SupabaseTasksAdapter {
   const readAdapter = createSupabaseTasksReadAdapter(client);
   const writeAdapter = createSupabaseTasksWriteAdapter(client);
@@ -39,6 +40,9 @@ export function createSupabaseTasksAdapter(client: SupabaseClient | null): Supab
     },
     reopenTask(tasks, id) {
       return writeAdapter.reopenTask(tasks, id);
+    },
+    clearAllTasks(tasks, deletedBy) {
+      return writeAdapter.clearAllTasks(tasks, deletedBy);
     }
   };
 }

@@ -8,6 +8,7 @@ import {
 } from "./applySupabaseTaskPatch.js";
 import { loadSupabaseTasksWriteContext } from "./loadSupabaseTasksWriteContext.js";
 import { mapAppTaskToSupabaseInsert } from "./mapAppTaskToSupabaseInsert.js";
+import { mapAppTaskPatchToSupabaseUpdate } from "./mapAppTaskPatchToSupabaseUpdate.js";
 import { loadSupabaseTasksReadContext } from "./loadSupabaseTasksReadContext.js";
 import { mapDbTaskRowToApp } from "./mapDbTaskRowToApp.js";
 import { normalizeTask } from "../../shared/normalizeTask.js";
@@ -19,6 +20,7 @@ export type SupabaseTasksWriteAdapter = {
   deleteTaskSoft(tasks: AppTask[], id: string, deletedBy: string): Promise<AppTask[]>;
   completeTask(tasks: AppTask[], id: string): Promise<AppTask[]>;
   reopenTask(tasks: AppTask[], id: string): Promise<AppTask[]>;
+  clearAllTasks(tasks: AppTask[], deletedBy: string): Promise<AppTask[]>;
 };
 
 /** יוצר adapter כתיבה ל-Supabase */
@@ -64,6 +66,30 @@ export function createSupabaseTasksWriteAdapter(
       const task = tasks.find((item) => item.id === id);
       if (!task) return Promise.resolve(tasks);
       return applySupabaseTaskPatch(client, tasks, id, buildReopenTaskPatch(task));
+    },
+    async clearAllTasks(tasks, deletedBy) {
+      if (!client) {
+        throw new Error("Supabase is not configured.");
+      }
+      const contextResult = await loadSupabaseTasksWriteContext(client);
+      if (!contextResult.ok) {
+        throw new Error(contextResult.reason || contextResult.code || "Write context load failed.");
+      }
+      if (contextResult.ctx.authUserRole !== "manager") {
+        throw new Error("Only a manager can clear all tasks.");
+      }
+      const patchResult = mapAppTaskPatchToSupabaseUpdate(buildDeleteTaskSoftPatch(deletedBy), contextResult.ctx);
+      if (!patchResult.ok) {
+        throw new Error(patchResult.reason || patchResult.code || "Task patch mapping failed.");
+      }
+      const { error } = await client
+        .schema("bat_ayin")
+        .from("tasks")
+        .update(patchResult.payload)
+        .eq("organization_id", contextResult.ctx.organizationId)
+        .is("deleted_at", null);
+      if (error) throw error;
+      return [];
     }
   };
 }
