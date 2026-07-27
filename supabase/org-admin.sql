@@ -28,7 +28,7 @@ returns integer
 language sql
 stable
 security definer
-set search_path = bat_ayin, public
+set search_path = bat_ayin, public;
 as $$
   select count(*)::integer
   from bat_ayin.organization_members om
