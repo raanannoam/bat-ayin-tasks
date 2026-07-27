@@ -64,16 +64,31 @@ export async function loadPilotAuthContext(
       };
     }
 
-    // נסה לקבל הזמנה ממתינה – התעלם משגיאת "אין הזמנה"
+    // נסה לקבל הזמנה ממתינה – RPC מחזיר false כשאין הזמנה
     try {
-      const { error: acceptError } = await client.rpc("accept_pending_invitation");
+      const { data: acceptResult, error: acceptError } = await client.rpc("accept_pending_invitation");
       if (acceptError) {
-        // שגיאת RPC אמיתית (לא "אין הזמנה") – דווח
-        console.warn("[pilot] accept_pending_invitation RPC error:", acceptError);
-        // לא זורק – המשתמש עדיין יכול להיות חבר ארגון קיים
+        // שגיאת RPC אמיתית – לא ממשיכים
+        return {
+          ...empty,
+          status: "error",
+          userId: user.id,
+          email: user.email || "",
+          code: "accept_invitation_failed",
+          reason: acceptError.message
+        };
       }
+      // acceptResult === false → אין הזמנה, ממשיכים כרגיל
     } catch (acceptCatch) {
-      console.warn("[pilot] accept_pending_invitation exception:", acceptCatch);
+      const message = acceptCatch instanceof Error ? acceptCatch.message : String(acceptCatch);
+      return {
+        ...empty,
+        status: "error",
+        userId: user.id,
+        email: user.email || "",
+        code: "accept_invitation_failed",
+        reason: message
+      };
     }
 
     const ctxResult = await loadSupabaseTasksWriteContext(client);
