@@ -290,7 +290,11 @@ begin
     v_invitation.role,
     true
   )
-  on conflict (organization_id, user_id) do nothing;
+  on conflict (organization_id, user_id)
+  do update set
+    role = excluded.role,
+    is_active = true,
+    updated_at = now();
 
   update bat_ayin.organization_invitations
   set
