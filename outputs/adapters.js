@@ -2280,6 +2280,29 @@ var BatAyinAdapters = (() => {
           reason: profileResult.reason
         };
       }
+      try {
+        const { data: acceptResult, error: acceptError } = await client.rpc("accept_pending_invitation");
+        if (acceptError) {
+          return {
+            ...empty,
+            status: "error",
+            userId: user.id,
+            email: user.email || "",
+            code: "accept_invitation_failed",
+            reason: acceptError.message
+          };
+        }
+      } catch (acceptCatch) {
+        const message = acceptCatch instanceof Error ? acceptCatch.message : String(acceptCatch);
+        return {
+          ...empty,
+          status: "error",
+          userId: user.id,
+          email: user.email || "",
+          code: "accept_invitation_failed",
+          reason: message
+        };
+      }
       const ctxResult = await loadSupabaseTasksWriteContext(client);
       if (!ctxResult.ok) {
         const status = ctxResult.code === "not_org_member" ? "not_org_member" : "error";
