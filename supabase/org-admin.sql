@@ -28,7 +28,7 @@ returns integer
 language sql
 stable
 security definer
-set search_path = bat_ayin, public
+set search_path = bat_ayin, public;
 as $$
   select count(*)::integer
   from bat_ayin.organization_members om
@@ -41,7 +41,7 @@ create or replace function bat_ayin.prevent_last_manager_membership_change()
 returns trigger
 language plpgsql
 security definer
-set search_path = bat_ayin, public
+set search_path = bat_ayin, public;
 as $$
 declare
   active_managers integer;
@@ -80,7 +80,7 @@ returns table (
 language plpgsql
 stable
 security definer
-set search_path = bat_ayin, public, auth
+set search_path = bat_ayin, public, auth;
 as $$
 begin
   if not bat_ayin.is_org_manager(p_organization_id) then
@@ -114,7 +114,7 @@ create or replace function bat_ayin.update_organization_member_role(
 returns void
 language plpgsql
 security definer
-set search_path = bat_ayin, public
+set search_path = bat_ayin, public;
 as $$
 declare
   current_row bat_ayin.organization_members%rowtype;
@@ -158,7 +158,7 @@ create or replace function bat_ayin.set_organization_member_active(
 returns void
 language plpgsql
 security definer
-set search_path = bat_ayin, public
+set search_path = bat_ayin, public;
 as $$
 declare
   current_row bat_ayin.organization_members%rowtype;
@@ -198,7 +198,7 @@ create or replace function bat_ayin.prepare_organization_invitation(
 returns uuid
 language plpgsql
 security definer
-set search_path = bat_ayin, public
+set search_path = bat_ayin, public;
 as $$
 declare
   normalized_email text;
@@ -250,7 +250,7 @@ create or replace function bat_ayin.accept_pending_invitation()
 returns boolean
 language plpgsql
 security definer
-set search_path = bat_ayin, public
+set search_path = bat_ayin, public;
 as $$
 declare
   v_user_id uuid;
