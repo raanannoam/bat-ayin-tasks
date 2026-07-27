@@ -246,8 +246,74 @@ begin
 end;
 $$;
 
+create or replace function bat_ayin.accept_pending_invitation()
+returns boolean
+language plpgsql
+security definer
+set search_path = bat_ayin, public
+as $$
+declare
+  v_user_id uuid;
+  v_email text;
+  v_invitation record;
+begin
+  v_user_id := auth.uid();
+  if v_user_id is null then
+    return false;
+  end if;
+
+  -- שליפת אימייל מאובטחת מה-JWT (auth.email()) או מ-profiles
+  v_email := lower(trim(auth.email()));
+  if v_email is null or v_email = '' then
+    select lower(trim(p.email)) into v_email
+    from public.profiles p
+    where p.id = v_user_id;
+  end if;
+
+  if v_email is null or v_email = '' then
+    return false;
+  end if;
+
+  select * into v_invitation
+  from bat_ayin.organization_invitations
+  where lower(email) = v_email
+    and status = 'pending'
+    and (expires_at is null or expires_at > now())
+  limit 1;
+
+  if v_invitation.id is null then
+    return false;
+  end if;
+
+  insert into bat_ayin.organization_members (
+    organization_id,
+    user_id,
+    role,
+    is_active
+  )
+  values (
+    v_invitation.organization_id,
+    v_user_id,
+    v_invitation.role,
+    true
+  )
+  on conflict (organization_id, user_id) do nothing;
+
+  update bat_ayin.organization_invitations
+  set
+    status = 'accepted',
+    updated_at = now()
+  where id = v_invitation.id;
+
+  return true;
+end;
+$$;
+
 revoke all on function bat_ayin.list_organization_members(uuid) from public;
 grant execute on function bat_ayin.list_organization_members(uuid) to authenticated;
+
+revoke all on function bat_ayin.accept_pending_invitation() from public;
+grant execute on function bat_ayin.accept_pending_invitation() to authenticated;
 
 revoke all on function bat_ayin.update_organization_member_role(uuid, uuid, text) from public;
 grant execute on function bat_ayin.update_organization_member_role(uuid, uuid, text) to authenticated;
