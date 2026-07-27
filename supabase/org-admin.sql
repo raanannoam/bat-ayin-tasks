@@ -250,7 +250,7 @@ create or replace function bat_ayin.accept_pending_invitation()
 returns boolean
 language plpgsql
 security definer
-set search_path = bat_ayin, public;
+set search_path = bat_ayin, public
 as $$
 declare
   v_user_id uuid;
