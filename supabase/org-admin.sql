@@ -41,7 +41,7 @@ create or replace function bat_ayin.prevent_last_manager_membership_change()
 returns trigger
 language plpgsql
 security definer
-set search_path = bat_ayin, public;
+set search_path = bat_ayin, public
 as $$
 declare
   active_managers integer;
