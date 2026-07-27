@@ -265,9 +265,9 @@ begin
   -- שליפת אימייל מאובטחת מה-JWT (auth.email()) או מ-profiles
   v_email := lower(trim(auth.email()));
   if v_email is null or v_email = '' then
-    select lower(trim(p.email)) into v_email
-    from public.profiles p
-    where p.id = v_user_id;
+    select lower(trim(email)) into v_email
+    from public.profiles
+    where id = v_user_id;
   end if;
 
   if v_email is null or v_email = '' then
