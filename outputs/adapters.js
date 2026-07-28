@@ -2281,7 +2281,7 @@ var BatAyinAdapters = (() => {
         };
       }
       try {
-        const { data: acceptResult, error: acceptError } = await client.rpc("accept_pending_invitation");
+        const { data: acceptResult, error: acceptError } = await client.schema("bat_ayin").rpc("accept_pending_invitation");
         if (acceptError) {
           return {
             ...empty,
