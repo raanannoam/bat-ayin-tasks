@@ -5471,6 +5471,13 @@
         }
         state.view = location.hash.replace("#", "") || defaultRoute();
         if (state.view === "done") state.showCompletedTasks = true;
+        if (state.view === "mgmt-members") {
+          if (canAccessOrgAdmin(accessCtx())) {
+            state.orgMembersLoading = true;
+            state.orgMembersError = "";
+          }
+          void ensureOrgMembersLoaded();
+        }
         if (state.role === "manager") {
           const migration = await migrateLocalPilotData({
             isManager: true,
