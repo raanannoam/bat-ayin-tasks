@@ -7,3 +7,6 @@ dist/
 !.env.example
 .netlify
 .vercel
+.aider*
+run_aider.py
+project-tree.txt

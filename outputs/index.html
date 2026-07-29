@@ -208,6 +208,18 @@
       font-size: .8rem;
     }
 
+    .preview-role-badge {
+      display: inline-block;
+      width: fit-content;
+      margin-top: 2px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--accent, #2563eb);
+      color: #fff;
+      font-size: .7rem;
+      font-weight: 600;
+    }
+
     .mockup-notice {
       margin: -8px 0 14px;
       padding: 7px 10px;
@@ -2345,6 +2357,7 @@
       <div class="brand">
         <strong>משימות ישיבת בת עין</strong>
         <span id="roleLabel">טוען...</span>
+        <span id="previewRoleBadge" class="preview-role-badge" hidden>תצוגת משתמש</span>
       </div>
       <div id="authActions" class="auth-actions"></div>
     </header>
@@ -3140,8 +3153,23 @@
       if (!banner) return;
       banner.classList.toggle("show", navigator.onLine === false);
     }
+    // תצוגה מקדימה של תפקיד "משתמש" — UI בלבד, לצפייה מוגבלת ל-noamraanan@gmail.com
+    const PREVIEW_ROLE_PARAM = (params.get("previewRole") || "").trim();
+    const PREVIEW_ROLE_ALLOWED_EMAILS = ["noamraanan@gmail.com"];
+    function isPreviewRoleActive() {
+      return DATA_BACKEND === "supabase"
+        && PREVIEW_ROLE_PARAM === "user"
+        && state.role === "manager"
+        && PREVIEW_ROLE_ALLOWED_EMAILS.includes((state.userEmail || "").toLowerCase());
+    }
+    // תפקיד "אפקטיבי" — משפיע רק על תצוגה ובדיקות הרשאה בצד הלקוח (UI).
+    // ההרשאה האמיתית נאכפת תמיד ב-Supabase (RLS + פונקציות SECURITY DEFINER) לפי auth.uid() בפועל,
+    // ולכן מצב תצוגה מקדימה לא יכול להעניק או לצמצם הרשאות אמיתיות בשרת.
+    function effectiveRole() {
+      return isPreviewRoleActive() ? "user" : state.role;
+    }
     const accessCtx = () => ({
-      role: state.role,
+      role: effectiveRole(),
       userId: state.userId || "",
       userOwner: DATA_BACKEND === "supabase" ? state.userOwner : (state.userOwner || DEMO_USER_OWNER)
     });
@@ -3165,7 +3193,7 @@
       categories = loadCategories();
     }
     function resolveTaskOwner(form) {
-      const picked = state.role === "manager"
+      const picked = effectiveRole() === "manager"
         ? (form.owner?.value || people[0] || personalOwner())
         : personalOwner();
       if (DATA_BACKEND === "supabase" && state.orgPeople.length && !state.orgPeople.includes(picked)) {
@@ -3360,7 +3388,7 @@
       }
     }
     function validBackRoute(view) {
-      if (state.role === "manager") {
+      if (effectiveRole() === "manager") {
         return ["all", "done", "management", "mgmt-tasks", "mgmt-members", "suppliers"].includes(view)
           || view.startsWith("person:")
           || view.startsWith("category:")
@@ -3377,7 +3405,7 @@
         return validBackRoute(state.taskReturnRoute) ? state.taskReturnRoute : defaultRoute();
       }
       if (view === "create") {
-        return validBackRoute(state.lastList) ? state.lastList : (state.role === "manager" ? "management" : "all");
+        return validBackRoute(state.lastList) ? state.lastList : (effectiveRole() === "manager" ? "management" : "all");
       }
       return null;
     }
@@ -3393,16 +3421,16 @@
       return view === "management" || view === "mgmt-tasks" || view === "mgmt-members";
     }
     function guardManagerAdminView(view) {
-      if (state.role === "manager" || !isManagerAdminView(view)) return view;
+      if (effectiveRole() === "manager" || !isManagerAdminView(view)) return view;
       toast("אין הרשאה לניהול ארגון");
       return "all";
     }
     function defaultRoute() {
-      return state.role === "manager" ? "management" : "all";
+      return effectiveRole() === "manager" ? "management" : "all";
     }
     function normalizeView(view) {
       if (!view || view === "today") return defaultRoute();
-      if (state.role === "user") {
+      if (effectiveRole() === "user") {
         if (isManagerAdminView(view) || view.startsWith("person:") || view.startsWith("category:") || view.startsWith("filter:")) {
           return "all";
         }
@@ -3568,7 +3596,7 @@
         toast("אין הרשאה למשימה זו");
         return false;
       }
-      if (state.role !== "manager") {
+      if (effectiveRole() !== "manager") {
         toast("רק מנהל יכול להחזיר משימה לתהליך");
         return false;
       }
@@ -3629,9 +3657,11 @@
         return;
       }
 
-      $("roleLabel").textContent = state.role === "manager"
+      $("roleLabel").textContent = effectiveRole() === "manager"
         ? `מנהל · ${state.userOwner}`
         : state.userOwner || "משתמש";
+      const previewBadge = $("previewRoleBadge");
+      if (previewBadge) previewBadge.hidden = !isPreviewRoleActive();
       const normalized = guardManagerAdminView(normalizeView(state.view));
       if (normalized !== state.view) {
         setRoute(normalized, true);
@@ -3679,7 +3709,7 @@
         return listScreen(c.label, tasks, true, "משימות לפי קטגוריה", true, false, "category");
       }
       if (view.startsWith("filter:done")) {
-        const archiveToggle = state.role === "manager"
+        const archiveToggle = effectiveRole() === "manager"
           ? `<section class="section"><button class="mgmt-row wide" type="button" id="toggleDoneArchive"><span><strong>${state.showDoneArchive ? "הסתר ארכיון" : "הצג ארכיון"}</strong><span class="muted">משימות שהושלמו לפני יותר מ־${DONE_RECENT_DAYS} יום</span></span><span class="row-left-icon">${lineIcon("done")}</span></button></section>`
           : "";
         return `${listScreen("משימות שהושלמו", sortTasks(visibleDoneTasks(state.tasks, state.showDoneArchive), currentSort("org")), true, state.showDoneArchive ? "כל הארגון · כולל ארכיון" : "כל הארגון", true, false, "org")}${archiveToggle}`;
@@ -3722,7 +3752,7 @@
       const doneCount = personalTasks(activeTasks().filter((t) => t.status === "done")).length;
       const todayTasks = tasks.filter(t => taskDueRank(t) <= 1);
       const otherTasks = tasks.filter(t => taskDueRank(t) > 1);
-      const showOwner = state.role === "manager";
+      const showOwner = effectiveRole() === "manager";
       return `
         <section class="hero">
           <h1>משימות</h1>
@@ -3825,7 +3855,7 @@
       const backTarget = parentRoute(state.view);
       return `
         <section class="hero">
-          ${state.role === "manager" && backTarget ? backButton(backTarget) : ""}
+          ${effectiveRole() === "manager" && backTarget ? backButton(backTarget) : ""}
           <h1>${title}</h1>
           ${subtitle ? `<p class="screen-subtitle">${subtitle}</p>` : ""}
           ${sortable ? sortControls(sortContext) : ""}
@@ -3898,7 +3928,7 @@
         }
         return `<label class="chip"><input name="category" type="radio" value="${c.id}" ${c.id === selectedId ? "checked" : ""}> ${lineIcon(c.icon)} ${c.label}</label>`;
       }).join("");
-      const canManageCategories = state.role === "manager";
+      const canManageCategories = effectiveRole() === "manager";
       const deleteButton = canManageCategories && categories.length ? `<button class="delete-category" type="button" id="startDeleteCategory" title="${state.deletingCategory ? "ביטול מחיקה" : "מחק קטגוריה"}">${state.deletingCategory ? "×" : "−"}</button>` : "";
       const confirm = state.deletingCategory && state.categoriesToDelete.length
         ? `<div class="quick-actions" style="margin-top:10px;"><button class="danger final" type="button" id="confirmDeleteCategory">אשר מחיקה (${state.categoriesToDelete.length})</button><button type="button" id="cancelDeleteCategory">ביטול</button></div>`
@@ -3974,7 +4004,7 @@
           <div class="form-group"><h2>כותרת</h2><input id="taskTitle" required value="${escapeHtml(item.title)}" placeholder="מה צריך לעשות?"></div>
           <div class="form-group"><h2>סטטוס</h2>${taskFormStatusMarkup(item)}</div>
           <div class="form-group"><h2>קטגוריה</h2>${taskFormCategoryMarkup(item)}</div>
-          ${state.role === "manager" ? `<div class="form-group"><h2>מבצע</h2>${taskFormPeopleMarkup(item)}</div>` : ""}
+          ${effectiveRole() === "manager" ? `<div class="form-group"><h2>מבצע</h2>${taskFormPeopleMarkup(item)}</div>` : ""}
           <div class="form-group form-group--due"><h2>יעד</h2>${taskFormDueMarkup(item)}</div>
           <div class="form-group"><h2>עדיפות</h2><div class="chips"><label class="chip"><input name="priority" type="radio" value="normal" ${item.priority !== "high" ? "checked" : ""}> רגילה</label><label class="chip"><input name="priority" type="radio" value="high" ${item.priority === "high" ? "checked" : ""}> גבוהה</label></div></div>
           <div class="form-group"><h2>הערות</h2><textarea id="taskNotes" placeholder="פרטים קצרים">${escapeHtml(item.notes || "")}</textarea></div>
@@ -4446,11 +4476,11 @@
             <button type="button" data-theme-choice="dark" class="${state.prefs.dark ? "active" : ""}">מצב כהה</button>
           </div>
         </section>
-        ${state.role === "manager" ? `<section class="prefs-line">
+        ${effectiveRole() === "manager" ? `<section class="prefs-line">
           <h2>ייצוא נתונים</h2>
           <button class="soft" id="exportExcel" type="button">ייצוא לאקסל ↓</button>
         </section>` : ""}
-        ${state.role === "manager" ? `<section class="prefs-line danger-zone">
+        ${effectiveRole() === "manager" ? `<section class="prefs-line danger-zone">
           <h2>ניקוי משימות</h2>
           <p>${clearPrompt.detail}</p>
           <button class="danger${clearPrompt.cls}" id="clearAllTasks" type="button">${clearPrompt.text}</button>
@@ -4464,7 +4494,7 @@
         }
         return `<label class="chip"><input name="category" type="radio" value="${c.id}" ${i === 0 ? "checked" : ""}> ${lineIcon(c.icon)} ${c.label}</label>`;
       }).join("");
-      const canManageCategories = state.role === "manager";
+      const canManageCategories = effectiveRole() === "manager";
       const deleteButton = canManageCategories && categories.length ? `<button class="delete-category" type="button" id="startDeleteCategory" title="${state.deletingCategory ? "ביטול מחיקה" : "מחק קטגוריה"}">${state.deletingCategory ? "×" : "−"}</button>` : "";
       const confirm = state.deletingCategory && state.categoriesToDelete.length
         ? `<div class="quick-actions" style="margin-top:10px;"><button class="danger final" type="button" id="confirmDeleteCategory">אשר מחיקה (${state.categoriesToDelete.length})</button><button type="button" id="cancelDeleteCategory">ביטול</button></div>`
@@ -4514,7 +4544,7 @@
             ${categories.length ? "" : `<p class="muted" style="margin-top:10px;">${DATA_BACKEND === "supabase" ? "אין קטגוריות זמינות בארגון כרגע." : "אין קטגוריות כרגע. אפשר ליצור משימה ללא קטגוריה או להוסיף קטגוריה חדשה."}</p>`}
             ${state.addingCategory ? `<div class="quick-actions add-panel"><input id="newCategoryName" placeholder="שם קטגוריה"><button class="primary" type="button" id="saveCategory">שמור קטגוריה</button><button type="button" id="cancelCategory">ביטול</button></div>` : ""}
           </div>
-          ${state.role === "manager" ? `<div class="form-group"><h2>מבצע</h2>${peoplePickerMarkup()}${people.length ? "" : `<p class="muted" style="margin-top:10px;">אין מבצעים כרגע. אפשר ליצור משימה ללא מבצע או להוסיף מבצע חדש.</p>`}${state.addingPerson ? `<div class="quick-actions add-panel"><input id="newPersonName" placeholder="שם מבצע"><button class="primary" type="button" id="savePerson">שמור מבצע</button><button type="button" id="cancelPerson">ביטול</button></div>` : ""}</div>` : ""}
+          ${effectiveRole() === "manager" ? `<div class="form-group"><h2>מבצע</h2>${peoplePickerMarkup()}${people.length ? "" : `<p class="muted" style="margin-top:10px;">אין מבצעים כרגע. אפשר ליצור משימה ללא מבצע או להוסיף מבצע חדש.</p>`}${state.addingPerson ? `<div class="quick-actions add-panel"><input id="newPersonName" placeholder="שם מבצע"><button class="primary" type="button" id="savePerson">שמור מבצע</button><button type="button" id="cancelPerson">ביטול</button></div>` : ""}</div>` : ""}
           <div class="form-group form-group--due"><h2>יעד</h2><div class="segmented"><button type="button" data-due-choice="today" class="active">היום</button><button type="button" data-due-choice="tomorrow">מחר</button><button type="button" data-due-choice="date">בחר תאריך</button><button type="button" data-due-choice="none">ללא יעד</button></div><input id="newDate" class="task-date-native" type="date"></div>
           <div class="form-group"><h2>עדיפות</h2><div class="chips"><label class="chip"><input name="priority" type="radio" value="normal" checked> רגילה</label><label class="chip"><input name="priority" type="radio" value="high"> גבוהה</label></div></div>
           <div class="form-group"><h2>הערות</h2><textarea id="newNotes" placeholder="פרטים קצרים"></textarea></div>
@@ -4522,11 +4552,11 @@
         </form>`;
     }
     function renderNav() {
-      const items = state.role === "manager"
+      const items = effectiveRole() === "manager"
         ? [["management", "ניהול", "settings"], ["all", "משימות", "list"], ["suppliers", "ספקים", "money"], ["prefs", "העדפות", "preferences"]]
         : [["all", "משימות", "list"], ["suppliers", "ספקים", "money"], ["prefs", "העדפות", "preferences"]];
       const nav = $("bottomNav");
-      nav.className = `bottom-nav ${state.role === "manager" ? "manager" : "user"}`;
+      nav.className = `bottom-nav ${effectiveRole() === "manager" ? "manager" : "user"}`;
       nav.innerHTML = items.map(([view, label, iconName]) => `<button data-nav="${view}" class="${state.view === view || (view === "all" && state.view === "done") ? "active" : ""}"><span>${lineIcon(iconName)}</span><span>${label}</span></button>`).join("");
     }
     async function exportToExcel() {
@@ -4917,7 +4947,7 @@
           return;
         }
         if (task.status === "done" && status !== "progress") return;
-        if (task.status === "done" && status === "progress" && state.role !== "manager") {
+        if (task.status === "done" && status === "progress" && effectiveRole() !== "manager") {
           toast("רק מנהל יכול להחזיר משימה לתהליך");
           return;
         }
@@ -4929,7 +4959,7 @@
         if (changed) toast(status === "done" ? "✓ המשימה סומנה כהושלמה" : "הסטטוס עודכן");
       }));
       $("toggleDoneArchive")?.addEventListener("click", () => {
-        if (state.role !== "manager") return;
+        if (effectiveRole() !== "manager") return;
         state.showDoneArchive = !state.showDoneArchive;
         render();
       });
