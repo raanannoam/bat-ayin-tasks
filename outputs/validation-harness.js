@@ -401,6 +401,33 @@
       assert(!result.ok && result.code === "last_manager", "expected last_manager error");
     });
 
+    await suite.step("invite-invalid-email", "prepareInvitation rejects invalid email", async () => {
+      assert(!H.isValidInvitationEmail("not-an-email"), "should be invalid");
+      const result = await H.orgMembersRepository.prepareInvitation(members, [], "not-an-email", "user");
+      assert(!result.ok && result.code === "invalid_email", "expected invalid_email error");
+    });
+
+    await suite.step("invite-new-email", "prepareInvitation creates a pending invitation", async () => {
+      const email = `val-invite-${Date.now()}@example.com`;
+      const result = await H.orgMembersRepository.prepareInvitation(members, [], email, "user");
+      assert(result.ok, result.reason || "invite failed");
+      assert(result.invitations.some(i => i.email === email.toLowerCase()), "invitation missing from list");
+    });
+
+    await suite.step("invite-duplicate-pending", "prepareInvitation blocks a second invite to the same pending email", async () => {
+      const email = `val-dup-${Date.now()}@example.com`;
+      const first = await H.orgMembersRepository.prepareInvitation(members, [], email, "user");
+      assert(first.ok, first.reason || "first invite failed");
+      const second = await H.orgMembersRepository.prepareInvitation(members, first.invitations, email, "user");
+      assert(!second.ok && second.code === "already_invited", "expected already_invited error");
+    });
+
+    await suite.step("invite-existing-member", "prepareInvitation blocks inviting an active member", async () => {
+      const activeMember = members.find(m => m.isActive);
+      const result = await H.orgMembersRepository.prepareInvitation(members, [], activeMember.email, "user");
+      assert(!result.ok && result.code === "already_member", "expected already_member error");
+    });
+
     await suite.step("user-route-guard", "regular user cannot access org admin route", async () => {
       const savedRole = H.state.role;
       H.state.role = "user";
@@ -415,11 +442,18 @@
   async function runOrgMembersPageSuite() {
     const H = window.__validationHooks;
     const suite = createSuite("org-members-page");
-    const saved = { role: H.state.role, view: H.state.view, orgMembers: H.state.orgMembers, orgMembersLoaded: H.state.orgMembersLoaded };
+    const saved = {
+      role: H.state.role,
+      view: H.state.view,
+      orgMembers: H.state.orgMembers,
+      orgInvitations: H.state.orgInvitations,
+      orgMembersLoaded: H.state.orgMembersLoaded
+    };
 
     try {
       H.state.role = "manager";
       H.state.orgMembers = H.localOrgMembersAdapter.loadOrgMembers();
+      H.state.orgInvitations = [{ id: "val-pending-1", email: "ממתינה@example.com", role: "user", createdAt: null }];
       H.state.orgMembersLoaded = true;
       H.state.orgMembersLoading = false;
       H.state.orgMembersError = "";
@@ -430,10 +464,16 @@
         assert(text.includes("חברי ארגון"), "title missing");
         assert(text.includes("עדינה") || text.includes("צבי"), "member missing");
       });
+      await suite.step("page-pending-invitation", "Pending invitation shows with status label", async () => {
+        const text = document.getElementById("app")?.innerText || "";
+        assert(text.includes("ממתינה@example.com"), "pending invitation email missing");
+        assert(text.includes("ממתין לכניסה ראשונה"), "pending status label missing");
+      });
     } finally {
       H.state.role = saved.role;
       H.state.view = saved.view;
       H.state.orgMembers = saved.orgMembers;
+      H.state.orgInvitations = saved.orgInvitations;
       H.state.orgMembersLoaded = saved.orgMembersLoaded;
       H.render();
     }
@@ -460,7 +500,10 @@
       "mapAppTaskToSupabaseInsert",
       "canAccessOrgAdmin",
       "canPromoteMember",
-      "canDemoteMember"
+      "canDemoteMember",
+      "isValidInvitationEmail",
+      "findActiveMemberByEmail",
+      "findPendingInvitation"
     ]) {
       await suite.step(`export-${name}`, `export ${name}`, async () => {
         assert(typeof A[name] === "function", `${name} not a function`);

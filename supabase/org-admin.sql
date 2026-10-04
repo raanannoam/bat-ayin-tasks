@@ -19,7 +19,30 @@ create table if not exists bat_ayin.organization_invitations (
   updated_at timestamptz not null default now()
 );
 
-create index if not exists organization_invitations_org_email_idx
+-- Collapse any pre-existing duplicate pending invitations per (organization, email)
+-- before enforcing uniqueness below — keeps the newest pending row per email, revokes
+-- older duplicates. No-op if there are no duplicates.
+with ranked as (
+  select id, row_number() over (
+    partition by organization_id, lower(email)
+    order by created_at desc, id desc
+  ) as rn
+  from bat_ayin.organization_invitations
+  where status = 'pending'
+)
+update bat_ayin.organization_invitations oi
+set status = 'revoked', updated_at = now()
+from ranked
+where oi.id = ranked.id
+  and ranked.rn > 1;
+
+drop index if exists bat_ayin.organization_invitations_org_email_idx;
+
+-- Unique (not just indexed) so two concurrent prepare_organization_invitation calls for
+-- the same (organization, email) can't both pass the pending-invitation check and both
+-- insert — the second insert hits this constraint and is translated to the same
+-- "pending invitation already exists" error inside the function below.
+create unique index if not exists organization_invitations_org_email_pending_idx
   on bat_ayin.organization_invitations (organization_id, lower(email))
   where status = 'pending';
 
@@ -80,7 +103,7 @@ returns table (
 language plpgsql
 stable
 security definer
-set search_path = bat_ayin, public, auth;
+set search_path = bat_ayin, public, auth
 as $$
 begin
   if not bat_ayin.is_org_manager(p_organization_id) then
@@ -114,7 +137,7 @@ create or replace function bat_ayin.update_organization_member_role(
 returns void
 language plpgsql
 security definer
-set search_path = bat_ayin, public;
+set search_path = bat_ayin, public
 as $$
 declare
   current_row bat_ayin.organization_members%rowtype;
@@ -158,7 +181,7 @@ create or replace function bat_ayin.set_organization_member_active(
 returns void
 language plpgsql
 security definer
-set search_path = bat_ayin, public;
+set search_path = bat_ayin, public
 as $$
 declare
   current_row bat_ayin.organization_members%rowtype;
@@ -198,11 +221,13 @@ create or replace function bat_ayin.prepare_organization_invitation(
 returns uuid
 language plpgsql
 security definer
-set search_path = bat_ayin, public;
+set search_path = bat_ayin, public
 as $$
 declare
   normalized_email text;
   invitation_id uuid;
+  existing_member_id uuid;
+  existing_invitation_id uuid;
 begin
   if not bat_ayin.is_org_manager(p_organization_id) then
     raise exception 'permission denied for organization invitation'
@@ -218,31 +243,96 @@ begin
     raise exception 'invalid invitation role %', p_role;
   end if;
 
-  update bat_ayin.organization_invitations
-  set
-    status = 'revoked',
-    updated_at = now()
+  -- An email already belonging to an active member must not get a second,
+  -- conflicting invitation — role changes for existing members go through
+  -- update_organization_member_role, never through re-inviting.
+  select om.user_id into existing_member_id
+  from bat_ayin.organization_members om
+  join public.profiles p on p.id = om.user_id
+  where om.organization_id = p_organization_id
+    and om.is_active = true
+    and lower(trim(p.email)) = normalized_email
+  limit 1;
+
+  if existing_member_id is not null then
+    raise exception 'invitation target is already an active organization member'
+      using errcode = 'P0001';
+  end if;
+
+  -- One pending invitation per email at a time — block instead of silently
+  -- replacing, so the manager gets clear feedback instead of a surprise swap.
+  select id into existing_invitation_id
+  from bat_ayin.organization_invitations
   where organization_id = p_organization_id
     and lower(email) = normalized_email
-    and status = 'pending';
+    and status = 'pending'
+    and (expires_at is null or expires_at > now())
+  limit 1;
 
-  insert into bat_ayin.organization_invitations (
-    organization_id,
-    email,
-    role,
-    invited_by,
-    status
-  )
-  values (
-    p_organization_id,
-    normalized_email,
-    p_role,
-    auth.uid(),
-    'pending'
-  )
-  returning id into invitation_id;
+  if existing_invitation_id is not null then
+    raise exception 'a pending invitation already exists for this email'
+      using errcode = 'P0001';
+  end if;
+
+  -- Re-checked at the constraint level: two concurrent calls can both pass the
+  -- existing_invitation_id check above before either commits, so the unique partial
+  -- index is the real guard against duplicate pending rows — this just gives it the
+  -- same friendly error message as the plain pre-check above.
+  begin
+    insert into bat_ayin.organization_invitations (
+      organization_id,
+      email,
+      role,
+      invited_by,
+      status
+    )
+    values (
+      p_organization_id,
+      normalized_email,
+      p_role,
+      auth.uid(),
+      'pending'
+    )
+    returning id into invitation_id;
+  exception
+    when unique_violation then
+      raise exception 'a pending invitation already exists for this email'
+        using errcode = 'P0001';
+  end;
 
   return invitation_id;
+end;
+$$;
+
+create or replace function bat_ayin.list_organization_invitations(p_organization_id uuid)
+returns table (
+  id uuid,
+  email text,
+  role text,
+  created_at timestamptz
+)
+language plpgsql
+stable
+security definer
+set search_path = bat_ayin, public
+as $$
+begin
+  if not bat_ayin.is_org_manager(p_organization_id) then
+    raise exception 'permission denied for organization invitations list'
+      using errcode = '42501';
+  end if;
+
+  return query
+  select
+    oi.id,
+    oi.email,
+    oi.role,
+    oi.created_at
+  from bat_ayin.organization_invitations oi
+  where oi.organization_id = p_organization_id
+    and oi.status = 'pending'
+    and (oi.expires_at is null or oi.expires_at > now())
+  order by oi.created_at desc;
 end;
 $$;
 
@@ -320,6 +410,9 @@ grant execute on function bat_ayin.set_organization_member_active(uuid, uuid, bo
 
 revoke all on function bat_ayin.prepare_organization_invitation(uuid, text, text) from public;
 grant execute on function bat_ayin.prepare_organization_invitation(uuid, text, text) to authenticated;
+
+revoke all on function bat_ayin.list_organization_invitations(uuid) from public;
+grant execute on function bat_ayin.list_organization_invitations(uuid) to authenticated;
 
 alter table bat_ayin.organization_invitations enable row level security;
 

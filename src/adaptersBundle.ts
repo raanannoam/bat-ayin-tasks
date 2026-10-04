@@ -110,7 +110,13 @@ export {
   lastManagerBlockReason,
   orgMemberRoleLabel
 } from "./domain/organization/orgMemberPermissions.js";
-export { findOrgMember, sortOrgMembers } from "./domain/organization/orgMemberFilters.js";
+export {
+  findActiveMemberByEmail,
+  findOrgMember,
+  findPendingInvitation,
+  isValidInvitationEmail,
+  sortOrgMembers
+} from "./domain/organization/orgMemberFilters.js";
 export {
   PILOT_APP_URL,
   PILOT_MIGRATION_STORAGE_KEY,

@@ -65,7 +65,9 @@ var BatAyinAdapters = (() => {
     filterPersonalTasks: () => filterPersonalTasks,
     filterVisibleDoneTasks: () => filterVisibleDoneTasks,
     filterVisibleSuppliers: () => filterVisibleSuppliers,
+    findActiveMemberByEmail: () => findActiveMemberByEmail,
     findOrgMember: () => findOrgMember,
+    findPendingInvitation: () => findPendingInvitation,
     findSupplier: () => findSupplier,
     findTask: () => findTask,
     findVisibleSupplier: () => findVisibleSupplier,
@@ -79,6 +81,7 @@ var BatAyinAdapters = (() => {
     isPilotDebugEnabled: () => isPilotDebugEnabled,
     isSupabasePlaceholder: () => isSupabasePlaceholder,
     isTaskOverdue: () => isTaskOverdue,
+    isValidInvitationEmail: () => isValidInvitationEmail,
     isoDateFromOffset: () => isoDateFromOffset,
     lastManagerBlockReason: () => lastManagerBlockReason,
     loadCategories: () => loadCategories,
@@ -1239,6 +1242,21 @@ var BatAyinAdapters = (() => {
   function findOrgMember(members, userId) {
     return members.find((member) => member.userId === userId);
   }
+  var EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  function isValidInvitationEmail(email) {
+    return EMAIL_PATTERN.test(email.trim());
+  }
+  function normalizeEmail(email) {
+    return email.trim().toLowerCase();
+  }
+  function findActiveMemberByEmail(members, email) {
+    const normalized = normalizeEmail(email);
+    return members.find((member) => member.isActive && normalizeEmail(member.email) === normalized);
+  }
+  function findPendingInvitation(invitations, email) {
+    const normalized = normalizeEmail(email);
+    return invitations.find((invitation) => normalizeEmail(invitation.email) === normalized);
+  }
 
   // src/data/adapters/supabase/loadSupabaseOrgMembersWriteContext.ts
   async function loadSupabaseOrgMembersWriteContext(client) {
@@ -1313,6 +1331,19 @@ var BatAyinAdapters = (() => {
     return (rows || []).map(mapDbOrgMemberRowToApp);
   }
 
+  // src/data/adapters/supabase/mapDbOrgInvitationRowToApp.ts
+  function mapDbOrgInvitationRowToApp(row) {
+    return {
+      id: row.id,
+      email: row.email || "",
+      role: row.role === "manager" ? "manager" : "user",
+      createdAt: row.created_at
+    };
+  }
+  function mapDbOrgInvitationRowsToApp(rows) {
+    return (rows || []).map(mapDbOrgInvitationRowToApp);
+  }
+
   // src/data/adapters/supabase/supabaseOrgMembersReadAdapter.ts
   function createSupabaseOrgMembersReadAdapter(client) {
     return {
@@ -1328,6 +1359,19 @@ var BatAyinAdapters = (() => {
         });
         if (error) throw error;
         return sortOrgMembers(mapDbOrgMemberRowsToApp(data || []));
+      },
+      async loadPendingInvitations() {
+        if (!client) throw new Error("Supabase is not configured.");
+        const contextResult = await loadSupabaseOrgMembersWriteContext(client);
+        if (!contextResult.ok) {
+          throw new Error(contextResult.reason || contextResult.code || "Org invitations context failed.");
+        }
+        const batAyin = client.schema("bat_ayin");
+        const { data, error } = await batAyin.rpc("list_organization_invitations", {
+          p_organization_id: contextResult.ctx.organizationId
+        });
+        if (error) throw error;
+        return mapDbOrgInvitationRowsToApp(data || []);
       }
     };
   }
@@ -1379,6 +1423,9 @@ var BatAyinAdapters = (() => {
   function inviteError(code, reason) {
     return { ok: false, code, reason };
   }
+  var ALREADY_MEMBER_REASON = "\u05D4\u05DE\u05E9\u05EA\u05DE\u05E9 \u05DB\u05D1\u05E8 \u05D7\u05D1\u05E8 \u05E4\u05E2\u05D9\u05DC \u05D1\u05D0\u05E8\u05D2\u05D5\u05DF.";
+  var ALREADY_INVITED_REASON = "\u05DB\u05D1\u05E8 \u05E7\u05D9\u05D9\u05DE\u05EA \u05D4\u05D6\u05DE\u05E0\u05D4 \u05DE\u05DE\u05EA\u05D9\u05E0\u05D4 \u05DC\u05DB\u05EA\u05D5\u05D1\u05EA \u05D6\u05D5.";
+  var INVALID_EMAIL_REASON = "\u05DB\u05EA\u05D5\u05D1\u05EA \u05D4\u05D0\u05D9\u05DE\u05D9\u05D9\u05DC \u05D0\u05D9\u05E0\u05D4 \u05EA\u05E7\u05D9\u05E0\u05D4.";
   function createSupabaseOrgMembersWriteAdapter(client) {
     const readAdapter = createSupabaseOrgMembersReadAdapter(client);
     async function reloadMembers() {
@@ -1483,8 +1530,18 @@ var BatAyinAdapters = (() => {
         }
         return { ok: true, members: await reloadMembers() };
       },
-      async prepareInvitation(email, role = "user") {
+      async prepareInvitation(members, invitations, email, role = "user") {
         if (!client) return inviteError("supabase_not_configured", "Supabase is not configured.");
+        const trimmedEmail = email.trim();
+        if (!isValidInvitationEmail(trimmedEmail)) {
+          return inviteError("invalid_email", INVALID_EMAIL_REASON);
+        }
+        if (findActiveMemberByEmail(members, trimmedEmail)) {
+          return inviteError("already_member", ALREADY_MEMBER_REASON);
+        }
+        if (findPendingInvitation(invitations, trimmedEmail)) {
+          return inviteError("already_invited", ALREADY_INVITED_REASON);
+        }
         const contextResult = await loadSupabaseOrgMembersWriteContext(client);
         if (!contextResult.ok) {
           return inviteError(contextResult.code || "context_failed", contextResult.reason || "Context failed.");
@@ -1492,13 +1549,30 @@ var BatAyinAdapters = (() => {
         const batAyin = client.schema("bat_ayin");
         const { data, error } = await batAyin.rpc("prepare_organization_invitation", {
           p_organization_id: contextResult.ctx.organizationId,
-          p_email: email.trim(),
+          p_email: trimmedEmail,
           p_role: role
         });
         if (error) {
-          return inviteError("rpc_failed", error.message || String(error));
+          const message = error.message || String(error);
+          if (message.includes("already an active organization member")) {
+            return inviteError("already_member", ALREADY_MEMBER_REASON);
+          }
+          if (message.includes("pending invitation already exists")) {
+            return inviteError("already_invited", ALREADY_INVITED_REASON);
+          }
+          if (message.includes("invalid invitation email")) {
+            return inviteError("invalid_email", INVALID_EMAIL_REASON);
+          }
+          return inviteError("rpc_failed", message);
         }
-        return { ok: true, invitationId: String(data) };
+        const invitationId = String(data);
+        try {
+          const freshInvitations = await readAdapter.loadPendingInvitations();
+          return { ok: true, invitationId, invitations: freshInvitations };
+        } catch (reloadError) {
+          console.warn("Reload pending invitations after save failed.", reloadError);
+          return { ok: true, invitationId, invitations, reloadFailed: true };
+        }
       }
     };
   }
@@ -1510,6 +1584,9 @@ var BatAyinAdapters = (() => {
     return {
       loadOrgMembers() {
         return readAdapter.loadOrgMembers();
+      },
+      loadPendingInvitations() {
+        return readAdapter.loadPendingInvitations();
       },
       promoteMember(members, userId, ctx) {
         return writeAdapter.promoteMember(members, userId, ctx);
@@ -1523,8 +1600,8 @@ var BatAyinAdapters = (() => {
       reactivateMember(members, userId, ctx) {
         return writeAdapter.reactivateMember(members, userId, ctx);
       },
-      prepareInvitation(email, role) {
-        return writeAdapter.prepareInvitation(email, role);
+      prepareInvitation(members, invitations, email, role) {
+        return writeAdapter.prepareInvitation(members, invitations, email, role);
       }
     };
   }
@@ -1782,10 +1859,16 @@ var BatAyinAdapters = (() => {
   function actionError2(code, reason) {
     return { ok: false, code, reason };
   }
+  function inviteError2(code, reason) {
+    return { ok: false, code, reason };
+  }
   function createLocalOrgMembersAdapter() {
     return {
       loadOrgMembers() {
         return sortOrgMembers(starterMembers());
+      },
+      loadPendingInvitations() {
+        return [];
       },
       promoteMember(members, userId, ctx) {
         const member = findOrgMember(members, userId);
@@ -1841,8 +1924,28 @@ var BatAyinAdapters = (() => {
           )
         };
       },
-      prepareInvitation(email) {
-        return { ok: true, invitationId: `local-invite-${email.trim().toLowerCase()}` };
+      prepareInvitation(members, invitations, email, role = "user") {
+        const trimmedEmail = email.trim();
+        if (!isValidInvitationEmail(trimmedEmail)) {
+          return inviteError2("invalid_email", "\u05DB\u05EA\u05D5\u05D1\u05EA \u05D4\u05D0\u05D9\u05DE\u05D9\u05D9\u05DC \u05D0\u05D9\u05E0\u05D4 \u05EA\u05E7\u05D9\u05E0\u05D4.");
+        }
+        if (findActiveMemberByEmail(members, trimmedEmail)) {
+          return inviteError2("already_member", "\u05D4\u05DE\u05E9\u05EA\u05DE\u05E9 \u05DB\u05D1\u05E8 \u05D7\u05D1\u05E8 \u05E4\u05E2\u05D9\u05DC \u05D1\u05D0\u05E8\u05D2\u05D5\u05DF.");
+        }
+        if (findPendingInvitation(invitations, trimmedEmail)) {
+          return inviteError2("already_invited", "\u05DB\u05D1\u05E8 \u05E7\u05D9\u05D9\u05DE\u05EA \u05D4\u05D6\u05DE\u05E0\u05D4 \u05DE\u05DE\u05EA\u05D9\u05E0\u05D4 \u05DC\u05DB\u05EA\u05D5\u05D1\u05EA \u05D6\u05D5.");
+        }
+        const invitation = {
+          id: `local-invite-${Date.now()}`,
+          email: trimmedEmail.toLowerCase(),
+          role,
+          createdAt: (/* @__PURE__ */ new Date()).toISOString()
+        };
+        return {
+          ok: true,
+          invitationId: invitation.id,
+          invitations: [...invitations, invitation]
+        };
       }
     };
   }

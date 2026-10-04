@@ -124,7 +124,8 @@ export async function runRuntimeBundleSuite() {
   await suite.step("adapters-script-tag", "index.html loads adapters.js before app script", () => {
     const html = readFileSync("outputs/index.html", "utf8");
     const adaptersIdx = html.indexOf('src="./adapters.js"');
-    const inlineIdx = html.indexOf("<script>\n    function lineIcon");
+    const inlineMatch = /<script>\s*function lineIcon/.exec(html);
+    const inlineIdx = inlineMatch ? inlineMatch.index : -1;
     if (adaptersIdx < 0 || inlineIdx < 0) throw new Error("script order markers missing");
     if (adaptersIdx > inlineIdx) throw new Error("adapters.js must load before inline script");
   });

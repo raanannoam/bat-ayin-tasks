@@ -1,5 +1,5 @@
 import { BASE_PEOPLE } from "../../catalog/basePeople.js";
-import type { AppOrgMember, OrgMemberActionResult } from "../../types/appOrgMember.js";
+import type { AppOrgInvitation, AppOrgMember, InvitationActionResult, OrgMemberActionResult } from "../../types/appOrgMember.js";
 import {
   canDeactivateMember,
   canDemoteMember,
@@ -7,7 +7,13 @@ import {
   canReactivateMember,
   lastManagerBlockReason
 } from "../../../domain/organization/orgMemberPermissions.js";
-import { findOrgMember, sortOrgMembers } from "../../../domain/organization/orgMemberFilters.js";
+import {
+  findActiveMemberByEmail,
+  findOrgMember,
+  findPendingInvitation,
+  isValidInvitationEmail,
+  sortOrgMembers
+} from "../../../domain/organization/orgMemberFilters.js";
 import type { AccessContext } from "../../../domain/shared/appRoles.js";
 
 function starterMembers(): AppOrgMember[] {
@@ -34,20 +40,33 @@ function actionError(code: string, reason: string): OrgMemberActionResult {
   return { ok: false, code, reason };
 }
 
+function inviteError(code: string, reason: string): InvitationActionResult {
+  return { ok: false, code, reason };
+}
+
 /** adapter מקומי לבדיקות — parity עם Supabase */
 export type LocalOrgMembersAdapter = {
   loadOrgMembers(): AppOrgMember[];
+  loadPendingInvitations(): AppOrgInvitation[];
   promoteMember(members: AppOrgMember[], userId: string, ctx: AccessContext): OrgMemberActionResult;
   demoteMember(members: AppOrgMember[], userId: string, ctx: AccessContext): OrgMemberActionResult;
   deactivateMember(members: AppOrgMember[], userId: string, ctx: AccessContext): OrgMemberActionResult;
   reactivateMember(members: AppOrgMember[], userId: string, ctx: AccessContext): OrgMemberActionResult;
-  prepareInvitation(email: string): { ok: true; invitationId: string };
+  prepareInvitation(
+    members: AppOrgMember[],
+    invitations: AppOrgInvitation[],
+    email: string,
+    role?: "manager" | "user"
+  ): InvitationActionResult;
 };
 
 export function createLocalOrgMembersAdapter(): LocalOrgMembersAdapter {
   return {
     loadOrgMembers() {
       return sortOrgMembers(starterMembers());
+    },
+    loadPendingInvitations() {
+      return [];
     },
     promoteMember(members, userId, ctx) {
       const member = findOrgMember(members, userId);
@@ -103,8 +122,28 @@ export function createLocalOrgMembersAdapter(): LocalOrgMembersAdapter {
         )
       };
     },
-    prepareInvitation(email) {
-      return { ok: true, invitationId: `local-invite-${email.trim().toLowerCase()}` };
+    prepareInvitation(members, invitations, email, role = "user") {
+      const trimmedEmail = email.trim();
+      if (!isValidInvitationEmail(trimmedEmail)) {
+        return inviteError("invalid_email", "כתובת האימייל אינה תקינה.");
+      }
+      if (findActiveMemberByEmail(members, trimmedEmail)) {
+        return inviteError("already_member", "המשתמש כבר חבר פעיל בארגון.");
+      }
+      if (findPendingInvitation(invitations, trimmedEmail)) {
+        return inviteError("already_invited", "כבר קיימת הזמנה ממתינה לכתובת זו.");
+      }
+      const invitation: AppOrgInvitation = {
+        id: `local-invite-${Date.now()}`,
+        email: trimmedEmail.toLowerCase(),
+        role,
+        createdAt: new Date().toISOString()
+      };
+      return {
+        ok: true,
+        invitationId: invitation.id,
+        invitations: [...invitations, invitation]
+      };
     }
   };
 }

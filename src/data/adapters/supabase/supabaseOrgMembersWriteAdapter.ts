@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { AppOrgMember, OrgMemberActionResult } from "../../types/appOrgMember.js";
+import type { AppOrgInvitation, AppOrgMember, InvitationActionResult, OrgMemberActionResult } from "../../types/appOrgMember.js";
 import {
   canDemoteMember,
   canPromoteMember,
@@ -7,7 +7,12 @@ import {
   canReactivateMember,
   lastManagerBlockReason
 } from "../../../domain/organization/orgMemberPermissions.js";
-import { findOrgMember } from "../../../domain/organization/orgMemberFilters.js";
+import {
+  findActiveMemberByEmail,
+  findOrgMember,
+  findPendingInvitation,
+  isValidInvitationEmail
+} from "../../../domain/organization/orgMemberFilters.js";
 import type { AccessContext } from "../../../domain/shared/appRoles.js";
 import { loadSupabaseOrgMembersWriteContext } from "./loadSupabaseOrgMembersWriteContext.js";
 import { createSupabaseOrgMembersReadAdapter } from "./supabaseOrgMembersReadAdapter.js";
@@ -19,6 +24,10 @@ function actionError(code: string, reason: string): OrgMemberActionResult {
 function inviteError(code: string, reason: string): { ok: false; code: string; reason: string } {
   return { ok: false, code, reason };
 }
+
+const ALREADY_MEMBER_REASON = "המשתמש כבר חבר פעיל בארגון.";
+const ALREADY_INVITED_REASON = "כבר קיימת הזמנה ממתינה לכתובת זו.";
+const INVALID_EMAIL_REASON = "כתובת האימייל אינה תקינה.";
 
 /** יוצר adapter כתיבה לניהול חברי ארגון */
 export function createSupabaseOrgMembersWriteAdapter(client: SupabaseClient | null) {
@@ -160,10 +169,24 @@ export function createSupabaseOrgMembersWriteAdapter(client: SupabaseClient | nu
     },
 
     async prepareInvitation(
+      members: AppOrgMember[],
+      invitations: AppOrgInvitation[],
       email: string,
       role: "manager" | "user" = "user"
-    ): Promise<{ ok: true; invitationId: string } | { ok: false; code: string; reason: string }> {
+    ): Promise<InvitationActionResult> {
       if (!client) return inviteError("supabase_not_configured", "Supabase is not configured.");
+
+      const trimmedEmail = email.trim();
+      if (!isValidInvitationEmail(trimmedEmail)) {
+        return inviteError("invalid_email", INVALID_EMAIL_REASON);
+      }
+      if (findActiveMemberByEmail(members, trimmedEmail)) {
+        return inviteError("already_member", ALREADY_MEMBER_REASON);
+      }
+      if (findPendingInvitation(invitations, trimmedEmail)) {
+        return inviteError("already_invited", ALREADY_INVITED_REASON);
+      }
+
       const contextResult = await loadSupabaseOrgMembersWriteContext(client);
       if (!contextResult.ok) {
         return inviteError(contextResult.code || "context_failed", contextResult.reason || "Context failed.");
@@ -172,14 +195,31 @@ export function createSupabaseOrgMembersWriteAdapter(client: SupabaseClient | nu
       const batAyin = client.schema("bat_ayin");
       const { data, error } = await batAyin.rpc("prepare_organization_invitation", {
         p_organization_id: contextResult.ctx.organizationId,
-        p_email: email.trim(),
+        p_email: trimmedEmail,
         p_role: role
       });
       if (error) {
-        return inviteError("rpc_failed", error.message || String(error));
+        const message = error.message || String(error);
+        if (message.includes("already an active organization member")) {
+          return inviteError("already_member", ALREADY_MEMBER_REASON);
+        }
+        if (message.includes("pending invitation already exists")) {
+          return inviteError("already_invited", ALREADY_INVITED_REASON);
+        }
+        if (message.includes("invalid invitation email")) {
+          return inviteError("invalid_email", INVALID_EMAIL_REASON);
+        }
+        return inviteError("rpc_failed", message);
       }
 
-      return { ok: true, invitationId: String(data) };
+      const invitationId = String(data);
+      try {
+        const freshInvitations = await readAdapter.loadPendingInvitations();
+        return { ok: true, invitationId, invitations: freshInvitations };
+      } catch (reloadError) {
+        console.warn("Reload pending invitations after save failed.", reloadError);
+        return { ok: true, invitationId, invitations, reloadFailed: true };
+      }
     }
   };
 }

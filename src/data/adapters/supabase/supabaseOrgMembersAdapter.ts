@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { AppOrgMember, OrgMemberActionResult } from "../../types/appOrgMember.js";
+import type { AppOrgInvitation, AppOrgMember, InvitationActionResult, OrgMemberActionResult } from "../../types/appOrgMember.js";
 import type { AccessContext } from "../../../domain/shared/appRoles.js";
 import { createSupabaseOrgMembersReadAdapter } from "./supabaseOrgMembersReadAdapter.js";
 import { createSupabaseOrgMembersWriteAdapter } from "./supabaseOrgMembersWriteAdapter.js";
@@ -7,6 +7,7 @@ import { createSupabaseOrgMembersWriteAdapter } from "./supabaseOrgMembersWriteA
 /** חוזה adapter חברי ארגון */
 export type SupabaseOrgMembersAdapter = {
   loadOrgMembers(): Promise<AppOrgMember[]>;
+  loadPendingInvitations(): Promise<AppOrgInvitation[]>;
   promoteMember(
     members: AppOrgMember[],
     userId: string,
@@ -28,9 +29,11 @@ export type SupabaseOrgMembersAdapter = {
     ctx: AccessContext
   ): Promise<OrgMemberActionResult>;
   prepareInvitation(
+    members: AppOrgMember[],
+    invitations: AppOrgInvitation[],
     email: string,
     role?: "manager" | "user"
-  ): Promise<{ ok: true; invitationId: string } | { ok: false; code: string; reason: string }>;
+  ): Promise<InvitationActionResult>;
 };
 
 /** adapter מאוחד — read + write */
@@ -44,6 +47,9 @@ export function createSupabaseOrgMembersAdapter(
     loadOrgMembers() {
       return readAdapter.loadOrgMembers();
     },
+    loadPendingInvitations() {
+      return readAdapter.loadPendingInvitations();
+    },
     promoteMember(members, userId, ctx) {
       return writeAdapter.promoteMember(members, userId, ctx);
     },
@@ -56,8 +62,8 @@ export function createSupabaseOrgMembersAdapter(
     reactivateMember(members, userId, ctx) {
       return writeAdapter.reactivateMember(members, userId, ctx);
     },
-    prepareInvitation(email, role) {
-      return writeAdapter.prepareInvitation(email, role);
+    prepareInvitation(members, invitations, email, role) {
+      return writeAdapter.prepareInvitation(members, invitations, email, role);
     }
   };
 }

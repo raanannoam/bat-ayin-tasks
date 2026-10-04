@@ -1,8 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { AppOrgMember } from "../../types/appOrgMember.js";
+import type { AppOrgInvitation, AppOrgMember } from "../../types/appOrgMember.js";
 import { sortOrgMembers } from "../../../domain/organization/orgMemberFilters.js";
 import { loadSupabaseOrgMembersWriteContext } from "./loadSupabaseOrgMembersWriteContext.js";
 import { mapDbOrgMemberRowsToApp } from "./mapDbOrgMemberRowToApp.js";
+import { mapDbOrgInvitationRowsToApp } from "./mapDbOrgInvitationRowToApp.js";
 
 /** קורא חברי ארגון דרך RPC מאובטח */
 export function createSupabaseOrgMembersReadAdapter(client: SupabaseClient | null) {
@@ -21,6 +22,22 @@ export function createSupabaseOrgMembersReadAdapter(client: SupabaseClient | nul
 
       if (error) throw error;
       return sortOrgMembers(mapDbOrgMemberRowsToApp(data || []));
+    },
+
+    async loadPendingInvitations(): Promise<AppOrgInvitation[]> {
+      if (!client) throw new Error("Supabase is not configured.");
+      const contextResult = await loadSupabaseOrgMembersWriteContext(client);
+      if (!contextResult.ok) {
+        throw new Error(contextResult.reason || contextResult.code || "Org invitations context failed.");
+      }
+
+      const batAyin = client.schema("bat_ayin");
+      const { data, error } = await batAyin.rpc("list_organization_invitations", {
+        p_organization_id: contextResult.ctx.organizationId
+      });
+
+      if (error) throw error;
+      return mapDbOrgInvitationRowsToApp(data || []);
     }
   };
 }

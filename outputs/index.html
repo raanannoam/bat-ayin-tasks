@@ -1678,6 +1678,11 @@
       border-color: color-mix(in srgb, var(--danger) 35%, var(--line));
     }
 
+    .member-badge.pending {
+      color: var(--status-progress);
+      border-color: color-mix(in srgb, var(--status-progress) 35%, var(--line));
+    }
+
     .member-meta {
       display: grid;
       gap: 4px;
@@ -1736,6 +1741,11 @@
       border-radius: 8px;
       padding: 0 12px;
       background: var(--surface);
+    }
+
+    .invite-form input:disabled,
+    .invite-form button:disabled {
+      opacity: 0.6;
     }
 
     #createForm {
@@ -2490,6 +2500,7 @@
       orgMemberRoleLabel,
       findOrgMember,
       sortOrgMembers,
+      isValidInvitationEmail,
       countActiveManagers,
       isLastActiveManager,
       lastManagerBlockReason,
@@ -3025,11 +3036,15 @@
       orgPeople: [],
       orgCategories: [],
       orgMembers: [],
+      orgInvitations: [],
+      orgInvitationsError: "",
       orgMembersLoading: false,
       orgMembersError: "",
       orgMembersLoaded: false,
       memberConfirm: null,
       showInviteForm: false,
+      inviteSubmitting: false,
+      inviteEmailDraft: "",
       tasks: [],
       suppliers: [],
       expandedSupplierSteps: {},
@@ -3052,6 +3067,7 @@
     ]);
     const orgMembersRepository = createAsyncRepository(orgMembersAdapter, [
       "loadOrgMembers",
+      "loadPendingInvitations",
       "promoteMember",
       "demoteMember",
       "deactivateMember",
@@ -4111,6 +4127,7 @@
       }
       state.orgMembersLoading = true;
       state.orgMembersError = "";
+      state.orgInvitationsError = "";
       render();
       try {
         state.orgMembers = sortOrgMembers(await orgMembersRepository.loadOrgMembers());
@@ -4118,11 +4135,24 @@
       } catch (error) {
         console.warn("Org members load failed.", error);
         state.orgMembers = [];
+        state.orgInvitations = [];
         state.orgMembersError = error?.message || "שגיאה בטעינת חברי ארגון";
-      } finally {
         state.orgMembersLoading = false;
         render();
+        return;
       }
+      // Pending invitations are a secondary, best-effort section — a failure here
+      // (e.g. an older deployed frontend hitting a DB before list_organization_invitations
+      // exists) must not block the member list itself from rendering.
+      try {
+        state.orgInvitations = (await orgMembersRepository.loadPendingInvitations()) || [];
+      } catch (error) {
+        console.warn("Pending invitations load failed.", error);
+        state.orgInvitations = [];
+        state.orgInvitationsError = "לא ניתן לטעון הזמנות ממתינות כרגע";
+      }
+      state.orgMembersLoading = false;
+      render();
     }
     function memberConfirmMarkup(member, action) {
       const labels = {
@@ -4171,6 +4201,18 @@
           ${confirm ? memberConfirmMarkup(member, confirm) : ""}
         </article>`;
     }
+    function invitationRowMarkup(invitation) {
+      return `
+        <article class="member-row pending-invitation">
+          <div class="member-head">
+            <div class="member-name">${escapeHtml(invitation.email)}</div>
+            <span class="member-badge pending">ממתין לכניסה ראשונה</span>
+          </div>
+          <div class="member-meta">
+            <span>תפקיד: ${orgMemberRoleLabel(invitation.role)}</span>
+          </div>
+        </article>`;
+    }
     function orgMembersScreen() {
       if (!canAccessOrgAdmin(accessCtx())) {
         return `<section class="hero"><h1>אין הרשאה</h1><p class="screen-subtitle">רק מנהלים יכולים לנהל חברי ארגון.</p></section>`;
@@ -4195,14 +4237,17 @@
           <section class="section"><button class="mgmt-row wide" type="button" id="reloadOrgMembers"><strong>נסו שוב</strong></button></section>`;
       }
       const members = sortOrgMembers(state.orgMembers || []);
+      const invitations = state.orgInvitations || [];
+      const submitting = state.inviteSubmitting;
       const inviteSection = state.showInviteForm
         ? `<form class="invite-form" id="inviteMemberForm">
             <label for="inviteMemberEmail">אימייל לחברות עתידית</label>
-            <input id="inviteMemberEmail" type="email" required placeholder="name@example.com" autocomplete="email">
+            <input id="inviteMemberEmail" type="email" required placeholder="name@example.com" autocomplete="email"
+              value="${escapeHtml(state.inviteEmailDraft || "")}" ${submitting ? "disabled" : ""}>
             <p class="muted">ההזמנה תישמר במערכת. שליחת מייל תתווסף בעתיד.</p>
             <div class="member-confirm-actions">
-              <button type="submit" class="primary">שמירת הזמנה</button>
-              <button type="button" id="cancelInviteForm">ביטול</button>
+              <button type="submit" class="primary" ${submitting ? "disabled" : ""}>${submitting ? "שומר..." : "שמירת הזמנה"}</button>
+              <button type="button" id="cancelInviteForm" ${submitting ? "disabled" : ""}>ביטול</button>
             </div>
           </form>`
         : `<button class="mgmt-row create-row" type="button" id="showInviteForm"><strong>הוספת חבר</strong><span class="row-left-icon">${lineIcon("add")}</span></button>`;
@@ -4215,6 +4260,15 @@
         <section class="member-list">
           ${members.length ? members.map(memberRowMarkup).join("") : `<div class="empty">אין חברי ארגון להצגה.</div>`}
         </section>
+        ${invitations.length ? `
+        <section class="section">
+          <h2>הזמנות ממתינות</h2>
+          <div class="member-list">${invitations.map(invitationRowMarkup).join("")}</div>
+        </section>` : ""}
+        ${!invitations.length && state.orgInvitationsError ? `
+        <section class="section">
+          <p class="muted">${escapeHtml(state.orgInvitationsError)}</p>
+        </section>` : ""}
         <section class="section">
           ${inviteSection}
         </section>`;
@@ -4685,31 +4739,54 @@
       }));
       $("showInviteForm")?.addEventListener("click", () => {
         state.showInviteForm = true;
+        state.inviteEmailDraft = "";
         render();
       });
       $("cancelInviteForm")?.addEventListener("click", () => {
+        if (state.inviteSubmitting) return;
         state.showInviteForm = false;
+        state.inviteEmailDraft = "";
         render();
+      });
+      $("inviteMemberEmail")?.addEventListener("input", e => {
+        state.inviteEmailDraft = e.target.value;
       });
       $("inviteMemberForm")?.addEventListener("submit", async e => {
         e.preventDefault();
+        if (state.inviteSubmitting) return;
         const email = $("inviteMemberEmail")?.value?.trim() || "";
+        state.inviteEmailDraft = email;
         if (!email) {
           toast("הזינו כתובת אימייל");
           return;
         }
+        if (!isValidInvitationEmail(email)) {
+          toast("כתובת האימייל אינה תקינה");
+          return;
+        }
+        state.inviteSubmitting = true;
+        render();
+        toastSaving("שומר הזמנה...");
         try {
-          const result = await orgMembersRepository.prepareInvitation(email, "user");
+          const result = await orgMembersRepository.prepareInvitation(state.orgMembers, state.orgInvitations, email, "user");
+          state.inviteSubmitting = false;
           if (!result?.ok) {
             toast(result?.reason || "שגיאה בשמירת הזמנה");
+            render();
             return;
           }
+          state.orgInvitations = result.invitations || state.orgInvitations;
           state.showInviteForm = false;
-          toast("ההזמנה נשמרה — שליחת מייל תתווסף בעתיד");
+          state.inviteEmailDraft = "";
+          toast(result.reloadFailed
+            ? "ההזמנה נשמרה, אך לא ניתן לרענן את הרשימה כרגע"
+            : "ההזמנה נשמרה — שליחת מייל תתווסף בעתיד");
           render();
         } catch (error) {
+          state.inviteSubmitting = false;
           console.warn("Prepare invitation failed.", error);
           toast(error?.message || "שגיאה בשמירת הזמנה");
+          render();
         }
       });
       document.querySelectorAll("[data-nav]").forEach(el => el.addEventListener("click", e => navigate(e.currentTarget.dataset.nav)));
@@ -5559,6 +5636,7 @@
       findOrgMember,
       sortOrgMembers,
       orgMemberRoleLabel,
+      isValidInvitationEmail,
       accessCtx,
       isArchivedDone,
       visibleDoneTasks,

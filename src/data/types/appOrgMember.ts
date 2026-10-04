@@ -16,3 +16,16 @@ export type AppOrgMember = {
 export type OrgMemberActionResult =
   | { ok: true; members: AppOrgMember[] }
   | { ok: false; code: string; reason: string };
+
+/** הזמנה ממתינה להצטרפות לארגון */
+export type AppOrgInvitation = {
+  id: string;
+  email: string;
+  role: AppRole;
+  createdAt: string | null;
+};
+
+/** תוצאת הכנת הזמנה */
+export type InvitationActionResult =
+  | { ok: true; invitationId: string; invitations: AppOrgInvitation[]; reloadFailed?: boolean }
+  | { ok: false; code: string; reason: string };

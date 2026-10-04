@@ -54,6 +54,15 @@ If the manager had local mockup data on this device, it migrates automatically o
 
 Currently **manual**: a manager saves the invited Google email in the app (ניהול → חברי ארגון → הוספת חבר), which stores a pending row in `bat_ayin.organization_invitations`. No email is sent by the app — the manager shares the app link (`https://bat-ayin-tasks.vercel.app`) with the invitee directly. Once the invitee signs in with Google using that exact email, `accept_pending_invitation()` activates their membership automatically.
 
+The "חברי ארגון" screen shows pending invitations (email, role, "ממתין לכניסה ראשונה") below the member list, refreshed immediately after a save. `prepare_organization_invitation` rejects an email that already belongs to an active member or already has a pending invitation (clear error instead of a silent duplicate/replace) — role changes for existing members must go through promote/demote, not re-inviting.
+
+**Required SQL re-apply (2026-10-04 fix):** re-run `supabase/org-admin.sql` in the Supabase SQL editor against the production project *before* deploying the matching frontend build (see deploy order below). It is idempotent (safe to re-run; no destructive table changes — it de-duplicates any pre-existing duplicate pending invitations by revoking older rows, then adds a unique index) and includes:
+- the duplicate-prevention logic above in `prepare_organization_invitation`, now also enforced at the constraint level (a unique partial index on `(organization_id, lower(email)) where status = 'pending'`) so two concurrent invite requests for the same email can't both succeed — not just the single-request check,
+- the new `list_organization_invitations` RPC (manager-only — checks `is_org_manager` internally and is granted only to `authenticated`, same pattern as `list_organization_members`; powers the pending-invitations list),
+- a fix to a stray semicolon after `set search_path` in `list_organization_members`, `update_organization_member_role`, and `set_organization_member_active` that would make `create or replace function` fail with a syntax error on re-run (the same class of bug already fixed for `accept_pending_invitation` — see git history).
+
+**Deploy order:** apply the SQL first, then push/deploy the frontend. The old frontend tolerates the new SQL fine (it only shows the new duplicate/already-member error text verbatim in a toast — no crash). The new frontend does **not** tolerate the old SQL as gracefully on its own: `loadPendingInvitations()` calling a not-yet-created `list_organization_invitations` would fail — the frontend already degrades this to an inline "לא ניתן לטעון הזמנות ממתינות כרגע" note instead of blocking the member list, but applying the SQL first avoids that window entirely.
+
 **Optional future capability (not active):** an automated Hebrew invitation email via Supabase Edge Functions + Resend was designed and its server-side pieces were written, but deliberately left undeployed and unwired:
 
 - `supabase/invitation-email.sql` — DB migration (email-status tracking columns + manager-gated RPCs). Not applied to any project.
