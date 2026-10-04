@@ -472,7 +472,8 @@
       view: H.state.view,
       orgMembers: H.state.orgMembers,
       orgInvitations: H.state.orgInvitations,
-      orgMembersLoaded: H.state.orgMembersLoaded
+      orgMembersLoaded: H.state.orgMembersLoaded,
+      showRemovedMembers: H.state.showRemovedMembers
     };
 
     try {
@@ -482,6 +483,7 @@
       H.state.orgMembersLoaded = true;
       H.state.orgMembersLoading = false;
       H.state.orgMembersError = "";
+      H.state.showRemovedMembers = false;
       H.state.view = "mgmt-members";
       H.render();
       await suite.step("page-load", "Organization Members page renders list", async () => {
@@ -499,12 +501,34 @@
         assert(text.includes("הסר מהארגון"), "remove-from-organization action missing");
         assert(text.includes("בטל הזמנה"), "cancel-invitation action missing");
       });
+      await suite.step("page-removed-hidden-by-default", "Removed members are excluded from the default list and counter", async () => {
+        const target = H.state.orgMembers.find(m => m.isActive && m.role === "user");
+        const removed = H.state.orgMembers.map(m => m.userId === target.userId ? { ...m, isActive: false } : m);
+        const activeCount = removed.filter(m => m.isActive).length;
+        H.state.orgMembers = removed;
+        H.render();
+        const text = document.getElementById("app")?.innerText || "";
+        assert(!text.includes(target.displayName), `removed member ${target.displayName} should not appear in default list`);
+        assert(text.includes(`${activeCount} חברים`), "active-only counter missing or incorrect");
+        assert(text.includes("חברים שהוסרו · 1"), "removed-members toggle with count missing");
+      });
+      await suite.step("page-removed-toggle-shows-rejoin", "Opening the removed-members toggle shows the member with a rejoin action", async () => {
+        H.state.showRemovedMembers = true;
+        H.render();
+        const removedMember = H.state.orgMembers.find(m => !m.isActive);
+        const text = document.getElementById("app")?.innerText || "";
+        assert(text.includes(removedMember.displayName), "removed member should show once toggled open");
+        assert(text.includes("צרף מחדש"), "rejoin action should show for removed member");
+        H.state.showRemovedMembers = false;
+        H.render();
+      });
     } finally {
       H.state.role = saved.role;
       H.state.view = saved.view;
       H.state.orgMembers = saved.orgMembers;
       H.state.orgInvitations = saved.orgInvitations;
       H.state.orgMembersLoaded = saved.orgMembersLoaded;
+      H.state.showRemovedMembers = saved.showRemovedMembers;
       H.render();
     }
 

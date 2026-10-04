@@ -3044,6 +3044,7 @@
       memberConfirm: null,
       invitationConfirm: null,
       orgActionPending: false,
+      showRemovedMembers: false,
       showInviteForm: false,
       inviteSubmitting: false,
       inviteEmailDraft: "",
@@ -4162,7 +4163,7 @@
         promote: "לקדם למנהל",
         demote: "להוריד למשתמש",
         deactivate: "להסיר מהארגון",
-        reactivate: "להפעיל מחדש"
+        reactivate: "לצרף מחדש"
       };
       const pending = state.orgActionPending;
       const explain = action === "deactivate"
@@ -4192,7 +4193,7 @@
         actions.push(`<button type="button" class="danger" data-member-action="${member.userId}:deactivate" ${actionsDisabled}>הסר מהארגון</button>`);
       }
       if (canReactivateMember(accessCtx(), member)) {
-        actions.push(`<button type="button" data-member-action="${member.userId}:reactivate" ${actionsDisabled}>הפעלה מחדש</button>`);
+        actions.push(`<button type="button" data-member-action="${member.userId}:reactivate" ${actionsDisabled}>צרף מחדש</button>`);
       }
       return `
         <article class="member-row ${member.isActive ? "" : "inactive"}">
@@ -4261,7 +4262,9 @@
           <div class="empty">${escapeHtml(state.orgMembersError)}</div>
           <section class="section"><button class="mgmt-row wide" type="button" id="reloadOrgMembers"><strong>נסו שוב</strong></button></section>`;
       }
-      const members = sortOrgMembers(state.orgMembers || []);
+      const allMembers = sortOrgMembers(state.orgMembers || []);
+      const activeMembers = allMembers.filter(m => m.isActive);
+      const removedMembers = allMembers.filter(m => !m.isActive);
       const invitations = state.orgInvitations || [];
       const submitting = state.inviteSubmitting;
       const inviteSection = state.showInviteForm
@@ -4276,15 +4279,25 @@
             </div>
           </form>`
         : `<button class="mgmt-row create-row" type="button" id="showInviteForm"><strong>הוספת חבר</strong><span class="row-left-icon">${lineIcon("add")}</span></button>`;
+      const removedToggle = removedMembers.length
+        ? `<section class="task-group ${state.showRemovedMembers ? "is-open" : ""}">
+            <button type="button" class="task-group-toggle" id="toggleRemovedMembers" aria-expanded="${state.showRemovedMembers ? "true" : "false"}">
+              <h2 class="task-group-title">חברים שהוסרו · ${removedMembers.length}</h2>
+              <span class="task-group-chevron">${lineIcon("chevronDown")}</span>
+            </button>
+            ${state.showRemovedMembers ? `<div class="member-list">${removedMembers.map(memberRowMarkup).join("")}</div>` : ""}
+          </section>`
+        : "";
       return `
         <section class="hero">
           ${backButton("management")}
           <h1>חברי ארגון</h1>
-          <p class="screen-subtitle">${members.length} חברים · ${countActiveManagers(members)} מנהלים פעילים</p>
+          <p class="screen-subtitle">${activeMembers.length} חברים · ${countActiveManagers(activeMembers)} מנהלים פעילים</p>
         </section>
         <section class="member-list">
-          ${members.length ? members.map(memberRowMarkup).join("") : `<div class="empty">אין חברי ארגון להצגה.</div>`}
+          ${activeMembers.length ? activeMembers.map(memberRowMarkup).join("") : `<div class="empty">אין חברי ארגון פעילים להצגה.</div>`}
         </section>
+        ${removedToggle}
         ${invitations.length ? `
         <section class="section">
           <h2>הזמנות ממתינות</h2>
@@ -4783,6 +4796,10 @@
       $("reloadOrgMembers")?.addEventListener("click", () => {
         state.orgMembersLoaded = false;
         void ensureOrgMembersLoaded();
+      });
+      $("toggleRemovedMembers")?.addEventListener("click", () => {
+        state.showRemovedMembers = !state.showRemovedMembers;
+        render();
       });
       $("exportExcel")?.addEventListener("click", async () => { await exportToExcel(); });
       $("recurWeekly")?.addEventListener("change", e => { if (e.currentTarget.checked) { const m = $("recurMonthly"); if (m) m.checked = false; } });
