@@ -29,3 +29,8 @@ export type AppOrgInvitation = {
 export type InvitationActionResult =
   | { ok: true; invitationId: string; invitations: AppOrgInvitation[]; reloadFailed?: boolean }
   | { ok: false; code: string; reason: string };
+
+/** תוצאת ביטול הזמנה ממתינה */
+export type CancelInvitationResult =
+  | { ok: true; invitations: AppOrgInvitation[]; reloadFailed?: boolean }
+  | { ok: false; code: string; reason: string };

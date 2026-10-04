@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { AppOrgInvitation, AppOrgMember, InvitationActionResult, OrgMemberActionResult } from "../../types/appOrgMember.js";
+import type { AppOrgInvitation, AppOrgMember, CancelInvitationResult, InvitationActionResult, OrgMemberActionResult } from "../../types/appOrgMember.js";
 import {
   canDemoteMember,
   canPromoteMember,
@@ -219,6 +219,33 @@ export function createSupabaseOrgMembersWriteAdapter(client: SupabaseClient | nu
       } catch (reloadError) {
         console.warn("Reload pending invitations after save failed.", reloadError);
         return { ok: true, invitationId, invitations, reloadFailed: true };
+      }
+    },
+
+    async cancelInvitation(
+      invitations: AppOrgInvitation[],
+      invitationId: string
+    ): Promise<CancelInvitationResult> {
+      if (!client) return inviteError("supabase_not_configured", "Supabase is not configured.");
+
+      const batAyin = client.schema("bat_ayin");
+      const { error } = await batAyin.rpc("revoke_organization_invitation", {
+        p_invitation_id: invitationId
+      });
+      if (error) {
+        return inviteError("rpc_failed", error.message || String(error));
+      }
+
+      try {
+        const freshInvitations = await readAdapter.loadPendingInvitations();
+        return { ok: true, invitations: freshInvitations };
+      } catch (reloadError) {
+        console.warn("Reload pending invitations after cancel failed.", reloadError);
+        return {
+          ok: true,
+          invitations: invitations.filter((invitation) => invitation.id !== invitationId),
+          reloadFailed: true
+        };
       }
     }
   };

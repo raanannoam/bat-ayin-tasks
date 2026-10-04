@@ -75,7 +75,7 @@ as $$
     where t.id = target_task_id
       and t.deleted_at is null
       and (
-        t.assignee_id = auth.uid()
+        (t.assignee_id = auth.uid() and bat_ayin.is_org_member(t.organization_id))
         or bat_ayin.is_org_manager(t.organization_id)
       )
   );
@@ -435,7 +435,10 @@ on bat_ayin.tasks
 for select
 using (
   deleted_at is null
-  and (assignee_id = auth.uid() or bat_ayin.is_org_manager(organization_id))
+  and (
+    (assignee_id = auth.uid() and bat_ayin.is_org_member(organization_id))
+    or bat_ayin.is_org_manager(organization_id)
+  )
 );
 
 drop policy if exists "users can create own tasks" on bat_ayin.tasks;
@@ -468,7 +471,10 @@ drop policy if exists "users can update own tasks" on bat_ayin.tasks;
 create policy "users can update own tasks"
 on bat_ayin.tasks
 for update
-using (assignee_id = auth.uid())
+using (
+  assignee_id = auth.uid()
+  and bat_ayin.is_org_member(organization_id)
+)
 with check (
   assignee_id = auth.uid()
   and bat_ayin.is_org_member(organization_id)
@@ -485,7 +491,10 @@ drop policy if exists "users can delete own tasks" on bat_ayin.tasks;
 create policy "users can delete own tasks"
 on bat_ayin.tasks
 for delete
-using (assignee_id = auth.uid());
+using (
+  assignee_id = auth.uid()
+  and bat_ayin.is_org_member(organization_id)
+);
 
 drop policy if exists "managers can delete all tasks" on bat_ayin.tasks;
 create policy "managers can delete all tasks"

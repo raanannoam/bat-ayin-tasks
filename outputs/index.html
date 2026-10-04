@@ -3042,6 +3042,8 @@
       orgMembersError: "",
       orgMembersLoaded: false,
       memberConfirm: null,
+      invitationConfirm: null,
+      orgActionPending: false,
       showInviteForm: false,
       inviteSubmitting: false,
       inviteEmailDraft: "",
@@ -3072,7 +3074,8 @@
       "demoteMember",
       "deactivateMember",
       "reactivateMember",
-      "prepareInvitation"
+      "prepareInvitation",
+      "cancelInvitation"
     ]);
     async function loadSuppliers() {
       return suppliersRepository.loadSuppliers();
@@ -4158,32 +4161,38 @@
       const labels = {
         promote: "לקדם למנהל",
         demote: "להוריד למשתמש",
-        deactivate: "להשבית",
+        deactivate: "להסיר מהארגון",
         reactivate: "להפעיל מחדש"
       };
+      const pending = state.orgActionPending;
+      const explain = action === "deactivate"
+        ? `<p class="muted">הגישה של ${escapeHtml(member.displayName)} לארגון תבוטל. היסטוריית המשימות והפעולות תישמר, וניתן לצרף אותו/ה מחדש בעתיד.</p>`
+        : "";
       return `
         <div class="member-confirm">
           <p>לאשר ${labels[action]} את ${escapeHtml(member.displayName)}?</p>
+          ${explain}
           <div class="member-confirm-actions">
-            <button type="button" class="primary" data-member-confirm="${member.userId}:${action}">אישור</button>
-            <button type="button" data-member-cancel>ביטול</button>
+            <button type="button" class="primary" data-member-confirm="${member.userId}:${action}" ${pending ? "disabled" : ""}>${pending ? "מבצע..." : "אישור"}</button>
+            <button type="button" data-member-cancel ${pending ? "disabled" : ""}>ביטול</button>
           </div>
         </div>`;
     }
     function memberRowMarkup(member) {
       const confirm = state.memberConfirm?.userId === member.userId ? state.memberConfirm.action : null;
+      const actionsDisabled = state.orgActionPending ? "disabled" : "";
       const actions = [];
       if (canPromoteMember(accessCtx(), member)) {
-        actions.push(`<button type="button" data-member-action="${member.userId}:promote">קידום למנהל</button>`);
+        actions.push(`<button type="button" data-member-action="${member.userId}:promote" ${actionsDisabled}>קידום למנהל</button>`);
       }
       if (canDemoteMember(accessCtx(), state.orgMembers, member)) {
-        actions.push(`<button type="button" data-member-action="${member.userId}:demote">הורדה למשתמש</button>`);
+        actions.push(`<button type="button" data-member-action="${member.userId}:demote" ${actionsDisabled}>הורדה למשתמש</button>`);
       }
       if (canDeactivateMember(accessCtx(), state.orgMembers, member)) {
-        actions.push(`<button type="button" class="danger" data-member-action="${member.userId}:deactivate">השבתה</button>`);
+        actions.push(`<button type="button" class="danger" data-member-action="${member.userId}:deactivate" ${actionsDisabled}>הסר מהארגון</button>`);
       }
       if (canReactivateMember(accessCtx(), member)) {
-        actions.push(`<button type="button" data-member-action="${member.userId}:reactivate">הפעלה מחדש</button>`);
+        actions.push(`<button type="button" data-member-action="${member.userId}:reactivate" ${actionsDisabled}>הפעלה מחדש</button>`);
       }
       return `
         <article class="member-row ${member.isActive ? "" : "inactive"}">
@@ -4201,7 +4210,19 @@
           ${confirm ? memberConfirmMarkup(member, confirm) : ""}
         </article>`;
     }
+    function invitationConfirmMarkup(invitation) {
+      const pending = state.orgActionPending;
+      return `
+        <div class="member-confirm">
+          <p>לבטל את ההזמנה לכתובת ${escapeHtml(invitation.email)}? לא ניתן יהיה להצטרף עם ההזמנה הזו יותר.</p>
+          <div class="member-confirm-actions">
+            <button type="button" class="primary" data-invitation-confirm="${invitation.id}" ${pending ? "disabled" : ""}>${pending ? "מבצע..." : "אישור"}</button>
+            <button type="button" data-invitation-dismiss ${pending ? "disabled" : ""}>ביטול</button>
+          </div>
+        </div>`;
+    }
     function invitationRowMarkup(invitation) {
+      const confirming = state.invitationConfirm?.id === invitation.id;
       return `
         <article class="member-row pending-invitation">
           <div class="member-head">
@@ -4211,6 +4232,10 @@
           <div class="member-meta">
             <span>תפקיד: ${orgMemberRoleLabel(invitation.role)}</span>
           </div>
+          <div class="member-actions">
+            <button type="button" class="danger" data-invitation-remove="${invitation.id}" ${state.orgActionPending ? "disabled" : ""}>בטל הזמנה</button>
+          </div>
+          ${confirming ? invitationConfirmMarkup(invitation) : ""}
         </article>`;
     }
     function orgMembersScreen() {
@@ -4279,13 +4304,21 @@
         toast("אין הרשאה לניהול חברי ארגון");
         return;
       }
+      if (state.orgActionPending) return;
+      state.orgActionPending = true;
+      render();
+      toastSaving(action === "deactivate" ? "מסיר מהארגון..." : "מבצע פעולה...");
       let result;
       if (action === "promote") result = await orgMembersRepository.promoteMember(state.orgMembers, userId, ctx);
       else if (action === "demote") result = await orgMembersRepository.demoteMember(state.orgMembers, userId, ctx);
       else if (action === "deactivate") result = await orgMembersRepository.deactivateMember(state.orgMembers, userId, ctx);
       else if (action === "reactivate") result = await orgMembersRepository.reactivateMember(state.orgMembers, userId, ctx);
-      else return;
+      else {
+        state.orgActionPending = false;
+        return;
+      }
       state.memberConfirm = null;
+      state.orgActionPending = false;
       if (!result?.ok) {
         toast(result?.reason || "הפעולה נכשלה");
         render();
@@ -4293,8 +4326,39 @@
       }
       state.orgMembers = result.members;
       syncPeopleCatalogFromMembers(result.members);
-      toast("העדכון נשמר");
+      toast(action === "deactivate" ? "החבר הוסר מהארגון" : "העדכון נשמר");
       render();
+    }
+    async function runCancelInvitation(invitationId) {
+      const ctx = accessCtx();
+      if (!canAccessOrgAdmin(ctx)) {
+        toast("אין הרשאה לניהול חברי ארגון");
+        return;
+      }
+      if (state.orgActionPending) return;
+      state.orgActionPending = true;
+      render();
+      toastSaving("מבטל הזמנה...");
+      try {
+        const result = await orgMembersRepository.cancelInvitation(state.orgInvitations, invitationId);
+        state.orgActionPending = false;
+        state.invitationConfirm = null;
+        if (!result?.ok) {
+          toast(result?.reason || "ביטול ההזמנה נכשל");
+          render();
+          return;
+        }
+        state.orgInvitations = result.invitations || state.orgInvitations.filter(i => i.id !== invitationId);
+        toast(result.reloadFailed
+          ? "ההזמנה בוטלה, אך לא ניתן לרענן את הרשימה כרגע"
+          : "ההזמנה בוטלה");
+        render();
+      } catch (error) {
+        state.orgActionPending = false;
+        console.warn("Cancel invitation failed.", error);
+        toast(error?.message || "ביטול ההזמנה נכשל");
+        render();
+      }
     }
     function syncPeopleCatalogFromMembers(members) {
       if (DATA_BACKEND !== "supabase") return;
@@ -4701,6 +4765,19 @@
       }));
       document.querySelectorAll("[data-member-cancel]").forEach(el => el.addEventListener("click", () => {
         state.memberConfirm = null;
+        render();
+      }));
+      document.querySelectorAll("[data-invitation-remove]").forEach(el => el.addEventListener("click", e => {
+        const id = e.currentTarget.dataset.invitationRemove;
+        state.invitationConfirm = { id };
+        render();
+      }));
+      document.querySelectorAll("[data-invitation-confirm]").forEach(el => el.addEventListener("click", async e => {
+        const id = e.currentTarget.dataset.invitationConfirm;
+        await runCancelInvitation(id);
+      }));
+      document.querySelectorAll("[data-invitation-dismiss]").forEach(el => el.addEventListener("click", () => {
+        state.invitationConfirm = null;
         render();
       }));
       $("reloadOrgMembers")?.addEventListener("click", () => {

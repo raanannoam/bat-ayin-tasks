@@ -1,5 +1,5 @@
 import { BASE_PEOPLE } from "../../catalog/basePeople.js";
-import type { AppOrgInvitation, AppOrgMember, InvitationActionResult, OrgMemberActionResult } from "../../types/appOrgMember.js";
+import type { AppOrgInvitation, AppOrgMember, CancelInvitationResult, InvitationActionResult, OrgMemberActionResult } from "../../types/appOrgMember.js";
 import {
   canDeactivateMember,
   canDemoteMember,
@@ -58,6 +58,7 @@ export type LocalOrgMembersAdapter = {
     email: string,
     role?: "manager" | "user"
   ): InvitationActionResult;
+  cancelInvitation(invitations: AppOrgInvitation[], invitationId: string): CancelInvitationResult;
 };
 
 export function createLocalOrgMembersAdapter(): LocalOrgMembersAdapter {
@@ -143,6 +144,12 @@ export function createLocalOrgMembersAdapter(): LocalOrgMembersAdapter {
         ok: true,
         invitationId: invitation.id,
         invitations: [...invitations, invitation]
+      };
+    },
+    cancelInvitation(invitations, invitationId) {
+      return {
+        ok: true,
+        invitations: invitations.filter((invitation) => invitation.id !== invitationId)
       };
     }
   };

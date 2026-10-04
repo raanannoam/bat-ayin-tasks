@@ -428,6 +428,31 @@
       assert(!result.ok && result.code === "already_member", "expected already_member error");
     });
 
+    await suite.step("cancel-invitation", "cancelInvitation removes a pending invitation", async () => {
+      const email = `val-cancel-${Date.now()}@example.com`;
+      const created = await H.orgMembersRepository.prepareInvitation(members, [], email, "user");
+      assert(created.ok, created.reason || "invite failed");
+      const invitation = created.invitations.find(i => i.email === email.toLowerCase());
+      assert(invitation, "invitation missing before cancel");
+      const cancelled = await H.orgMembersRepository.cancelInvitation(created.invitations, invitation.id);
+      assert(cancelled.ok, cancelled.reason || "cancel failed");
+      assert(!cancelled.invitations.some(i => i.id === invitation.id), "invitation still present after cancel");
+    });
+
+    await suite.step("reinvite-removed-member", "prepareInvitation allows re-inviting a removed (inactive) member's email", async () => {
+      const target = members.find(m => m.isActive && m.role === "user");
+      const deactivated = await H.orgMembersRepository.deactivateMember(members, target.userId, managerCtx);
+      assert(deactivated.ok, deactivated.reason || "deactivate (remove) failed");
+      members = deactivated.members;
+      assert(!members.find(m => m.userId === target.userId)?.isActive, "member should be removed/inactive");
+      const result = await H.orgMembersRepository.prepareInvitation(members, [], target.email, "user");
+      assert(result.ok, result.reason || "re-inviting a removed member's email should succeed");
+      const reactivated = await H.orgMembersRepository.reactivateMember(members, target.userId, managerCtx);
+      assert(reactivated.ok, reactivated.reason || "reactivate failed");
+      members = reactivated.members;
+      assert(members.find(m => m.userId === target.userId)?.isActive, "member should be active again");
+    });
+
     await suite.step("user-route-guard", "regular user cannot access org admin route", async () => {
       const savedRole = H.state.role;
       H.state.role = "user";
@@ -468,6 +493,11 @@
         const text = document.getElementById("app")?.innerText || "";
         assert(text.includes("ממתינה@example.com"), "pending invitation email missing");
         assert(text.includes("ממתין לכניסה ראשונה"), "pending status label missing");
+      });
+      await suite.step("page-remove-and-cancel-actions", "Remove-member and cancel-invitation actions render", async () => {
+        const text = document.getElementById("app")?.innerText || "";
+        assert(text.includes("הסר מהארגון"), "remove-from-organization action missing");
+        assert(text.includes("בטל הזמנה"), "cancel-invitation action missing");
       });
     } finally {
       H.state.role = saved.role;

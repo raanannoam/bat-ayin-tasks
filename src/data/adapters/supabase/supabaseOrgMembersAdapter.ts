@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { AppOrgInvitation, AppOrgMember, InvitationActionResult, OrgMemberActionResult } from "../../types/appOrgMember.js";
+import type { AppOrgInvitation, AppOrgMember, CancelInvitationResult, InvitationActionResult, OrgMemberActionResult } from "../../types/appOrgMember.js";
 import type { AccessContext } from "../../../domain/shared/appRoles.js";
 import { createSupabaseOrgMembersReadAdapter } from "./supabaseOrgMembersReadAdapter.js";
 import { createSupabaseOrgMembersWriteAdapter } from "./supabaseOrgMembersWriteAdapter.js";
@@ -34,6 +34,10 @@ export type SupabaseOrgMembersAdapter = {
     email: string,
     role?: "manager" | "user"
   ): Promise<InvitationActionResult>;
+  cancelInvitation(
+    invitations: AppOrgInvitation[],
+    invitationId: string
+  ): Promise<CancelInvitationResult>;
 };
 
 /** adapter מאוחד — read + write */
@@ -64,6 +68,9 @@ export function createSupabaseOrgMembersAdapter(
     },
     prepareInvitation(members, invitations, email, role) {
       return writeAdapter.prepareInvitation(members, invitations, email, role);
+    },
+    cancelInvitation(invitations, invitationId) {
+      return writeAdapter.cancelInvitation(invitations, invitationId);
     }
   };
 }

@@ -336,6 +336,38 @@ begin
 end;
 $$;
 
+create or replace function bat_ayin.revoke_organization_invitation(p_invitation_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = bat_ayin, public
+as $$
+declare
+  v_organization_id uuid;
+  v_status text;
+begin
+  select organization_id, status into v_organization_id, v_status
+  from bat_ayin.organization_invitations
+  where id = p_invitation_id;
+
+  -- Missing row and "not your organization" must be indistinguishable to the caller —
+  -- otherwise a manager could probe invitation ids for existence across organizations.
+  if v_organization_id is null or not bat_ayin.is_org_manager(v_organization_id) then
+    raise exception 'permission denied for organization invitation'
+      using errcode = '42501';
+  end if;
+
+  if v_status <> 'pending' then
+    raise exception 'invitation is not pending';
+  end if;
+
+  update bat_ayin.organization_invitations
+  set status = 'revoked', updated_at = now()
+  where id = p_invitation_id
+    and status = 'pending';
+end;
+$$;
+
 create or replace function bat_ayin.accept_pending_invitation()
 returns boolean
 language plpgsql
@@ -413,6 +445,9 @@ grant execute on function bat_ayin.prepare_organization_invitation(uuid, text, t
 
 revoke all on function bat_ayin.list_organization_invitations(uuid) from public;
 grant execute on function bat_ayin.list_organization_invitations(uuid) to authenticated;
+
+revoke all on function bat_ayin.revoke_organization_invitation(uuid) from public;
+grant execute on function bat_ayin.revoke_organization_invitation(uuid) to authenticated;
 
 alter table bat_ayin.organization_invitations enable row level security;
 

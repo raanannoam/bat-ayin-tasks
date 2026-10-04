@@ -1573,6 +1573,27 @@ var BatAyinAdapters = (() => {
           console.warn("Reload pending invitations after save failed.", reloadError);
           return { ok: true, invitationId, invitations, reloadFailed: true };
         }
+      },
+      async cancelInvitation(invitations, invitationId) {
+        if (!client) return inviteError("supabase_not_configured", "Supabase is not configured.");
+        const batAyin = client.schema("bat_ayin");
+        const { error } = await batAyin.rpc("revoke_organization_invitation", {
+          p_invitation_id: invitationId
+        });
+        if (error) {
+          return inviteError("rpc_failed", error.message || String(error));
+        }
+        try {
+          const freshInvitations = await readAdapter.loadPendingInvitations();
+          return { ok: true, invitations: freshInvitations };
+        } catch (reloadError) {
+          console.warn("Reload pending invitations after cancel failed.", reloadError);
+          return {
+            ok: true,
+            invitations: invitations.filter((invitation) => invitation.id !== invitationId),
+            reloadFailed: true
+          };
+        }
       }
     };
   }
@@ -1602,6 +1623,9 @@ var BatAyinAdapters = (() => {
       },
       prepareInvitation(members, invitations, email, role) {
         return writeAdapter.prepareInvitation(members, invitations, email, role);
+      },
+      cancelInvitation(invitations, invitationId) {
+        return writeAdapter.cancelInvitation(invitations, invitationId);
       }
     };
   }
@@ -1945,6 +1969,12 @@ var BatAyinAdapters = (() => {
           ok: true,
           invitationId: invitation.id,
           invitations: [...invitations, invitation]
+        };
+      },
+      cancelInvitation(invitations, invitationId) {
+        return {
+          ok: true,
+          invitations: invitations.filter((invitation) => invitation.id !== invitationId)
         };
       }
     };
